@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/chrisglaske/reclaim.day/blob/main/SECURITY.md
+    about: Please don't open a public issue. Here's how to report it privately.
+  - name: Ask a question or write privately
+    url: mailto:contact@reclaim.day
+    about: For anything you'd rather not post publicly.
+  - name: FAQ
+    url: https://reclaim.day/faq/
+    about: Short answers to common questions.

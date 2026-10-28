@@ -1,0 +1,44 @@
+name: Something's not working
+description: Report a bug in the app or on the website.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Issues here are public, so please **don't include your health data**: no journal text, logs, medication details, backup files or screenshots that show them. Describe what happened instead, or use made-up values.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can I see it too?
+      description: The steps that lead to it, if you know them.
+      placeholder: |
+        1. Open Today
+        2. Tap …
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where?
+      options:
+        - The app (app.reclaim.day)
+        - The website (reclaim.day)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: e.g. iPhone 15, Safari, added to Home Screen
+  - type: checkboxes
+    id: private
+    attributes:
+      label: Privacy
+      options:
+        - label: I've left out my personal health data, journal text and backup files.
+          required: true

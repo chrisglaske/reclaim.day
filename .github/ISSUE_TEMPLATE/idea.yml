@@ -1,0 +1,29 @@
+name: An idea
+description: Suggest something that would make Reclaim more helpful.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are very welcome. A few things Reclaim will keep the same: it stays free, has no server (your data stays in your own Drive), sends no notifications, and has no ads, trackers or analytics.
+
+        Issues here are public, so please don't share personal health details.
+  - type: textarea
+    id: need
+    attributes:
+      label: What would help?
+      description: What were you trying to do, or what's missing for you?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How you picture it working, if you have something in mind.
+  - type: checkboxes
+    id: private
+    attributes:
+      label: Privacy
+      options:
+        - label: I've left out my personal health data.
+          required: true

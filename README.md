@@ -105,7 +105,7 @@ The Google OAuth Client ID in `tools/build-app.mjs` only works on app.reclaim.da
 
 ## 💬 Ideas, bugs and contributions
 
-Ideas and bug reports are very welcome: [open an issue](../../issues) or write to [contact@reclaim.day](mailto:contact@reclaim.day). Pull requests are welcome too.
+Ideas and bug reports are very welcome: [open an issue](../../issues/new/choose) or write to [contact@reclaim.day](mailto:contact@reclaim.day). Pull requests are welcome too; [CONTRIBUTING.md](CONTRIBUTING.md) explains how to run it and the house rules. To report a security problem privately, see [SECURITY.md](SECURITY.md).
 
 ## 📄 License
 
