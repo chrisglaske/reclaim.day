@@ -11,6 +11,7 @@ smoking, vaping, drinking and medication.
 <a href="https://app.reclaim.day"><img src="https://img.shields.io/badge/Open_Reclaim-app.reclaim.day-2A51B8?style=for-the-badge" alt="Open Reclaim"></a>
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-2A51B8)](LICENSE)
+[![Live app matches this code](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml/badge.svg)](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml)
 ![Free](https://img.shields.io/badge/price-free-2F9E6B)
 ![No server](https://img.shields.io/badge/server-none-2A51B8)
 ![No trackers](https://img.shields.io/badge/trackers-none-2A51B8)
@@ -60,6 +61,8 @@ Everything you log is one JSON file in a `Reclaim` folder in **your own Drive**,
 
 This repository is public so you can check all of that for yourself: [`storage-drive.html`](app/scripts/storage-drive.html) is every call the app makes to Drive, and [`signin.html`](app/scripts/signin.html) the Google sign-in.
 
+**The live app is this code.** The build is reproducible, so building this repository gives exactly the files app.reclaim.day serves. A [check](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml) compares them byte for byte on every change and once a day, and you can run it yourself: `node tools/build-app.mjs && node tools/verify-live.mjs`.
+
 </td>
 <td>
 
@@ -92,7 +95,7 @@ Plain HTML, CSS and JavaScript: no frameworks, no CDNs, self-hosted fonts. One s
 | [`app/`](app) | The app. `Index.html` stitches in `styles/` and `scripts/` in load order: the data layer (`state`, `core`, `habits`, `meds`, `journal`, `insights`, …, read through `model`), then the screens (`ui-today`, `ui-tracking`, `ui-journal`, `ui-insights`, `ui-settings`, …), then `start`. `icons/` and `fonts/` hold the self-hosted icons and fonts. |
 | [`app-host/`](app-host) | app.reclaim.day: a Cloudflare Worker that only serves the built static files. |
 | [`site/`](site) | The website, reclaim.day: the landing page, [What's new](site/whats-new), the [FAQ](site/faq), [guides](site/guides) and the [privacy policy](site/privacy). A small Vite project, also served as static files by a Cloudflare Worker. The screenshots are real captures of the app on made-up sample data. |
-| [`tools/`](tools) | [`build-app.mjs`](tools/build-app.mjs), the build step that turns `app/` into the page app.reclaim.day serves. |
+| [`tools/`](tools) | [`build-app.mjs`](tools/build-app.mjs), the build step that turns `app/` into the page app.reclaim.day serves, and [`verify-live.mjs`](tools/verify-live.mjs), which checks the live app against it. |
 
 ## 🚀 Build it
 

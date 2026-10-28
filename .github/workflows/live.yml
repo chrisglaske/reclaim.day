@@ -1,0 +1,27 @@
+# Builds the app from this repository and checks that app.reclaim.day serves exactly those files,
+# on every push to main, once a day, and on request. It only reads public URLs, so it needs no secrets.
+name: live app matches this code
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+      - name: Build the app
+        run: node tools/build-app.mjs
+      - name: Compare with app.reclaim.day
+        run: node tools/verify-live.mjs
