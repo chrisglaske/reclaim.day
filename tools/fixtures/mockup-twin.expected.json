@@ -1,0 +1,4365 @@
+{
+  "version": 5,
+  "onboarded": true,
+  "setupVersion": 3,
+  "createdAt": "2026-09-14T09:00:00",
+  "profile": {
+    "name": "Alex",
+    "country": "ie",
+    "currency": "EUR",
+    "reasons": [
+      "Be there for slow Saturday mornings",
+      "Breathe easier on my runs",
+      "Put the money toward a new computer"
+    ],
+    "goal": {
+      "name": "New Computer",
+      "amount": 650
+    },
+    "companion": {
+      "toolkit": [
+        "Slow breathing",
+        "Step outside",
+        "Text someone"
+      ],
+      "intentions": [
+        "Take a walk",
+        "Drink water",
+        "Call someone"
+      ],
+      "intentionDays": {
+        "2026-10-22": [
+          "Drink water"
+        ]
+      },
+      "reflections": {},
+      "reminders": {
+        "twin-bupropion:0": {
+          "time": "15:00",
+          "label": "Daily dose"
+        }
+      },
+      "reminderActions": {},
+      "trackMedications": true,
+      "hideCounters": false,
+      "theme": "pine",
+      "autoLight": "pine"
+    }
+  },
+  "vices": {
+    "smoking": {
+      "enabled": true,
+      "perDay": 10,
+      "costPerDay": 8,
+      "phases": [
+        {
+          "mode": "reduce",
+          "at": "2026-10-04T09:00:00",
+          "target": 3
+        }
+      ],
+      "unit": "cigarettes"
+    },
+    "vaping": {
+      "enabled": true,
+      "perDay": 6,
+      "costPerDay": 3,
+      "phases": [
+        {
+          "mode": "reduce",
+          "at": "2026-10-04T09:00:00",
+          "target": 4
+        }
+      ],
+      "unit": "sessions"
+    },
+    "drinking": {
+      "enabled": true,
+      "perDay": 1,
+      "costPerDay": 3.8,
+      "phases": [
+        {
+          "mode": "quit",
+          "at": "2026-09-28T09:00:00",
+          "target": 0
+        }
+      ],
+      "unit": "drinks"
+    }
+  },
+  "meds": [
+    {
+      "id": "twin-bupropion",
+      "catalogId": "",
+      "name": "Bupropion",
+      "dose": 150,
+      "unit": "mg",
+      "freq": 1,
+      "slots": [
+        "Daily dose"
+      ],
+      "startDate": "2026-09-14T09:00:00",
+      "active": true,
+      "timeline": null,
+      "alcohol": null,
+      "whyThisHelps": "Takes the edge off the afternoon cravings.",
+      "dailyLimit": null
+    },
+    {
+      "id": "twin-lozenge",
+      "catalogId": "",
+      "name": "Nicotine lozenge",
+      "dose": 2,
+      "unit": "mg",
+      "freq": "prn",
+      "slots": [],
+      "startDate": "2026-09-14T09:00:00",
+      "active": true,
+      "timeline": null,
+      "alcohol": null,
+      "whyThisHelps": "",
+      "dailyLimit": 5
+    },
+    {
+      "id": "twin-varenicline",
+      "catalogId": "",
+      "name": "Varenicline",
+      "dose": 1,
+      "unit": "mg",
+      "freq": 1,
+      "slots": [
+        "Daily dose"
+      ],
+      "startDate": "2026-08-01T09:00:00",
+      "active": false,
+      "timeline": null,
+      "alcohol": null,
+      "whyThisHelps": "",
+      "dailyLimit": null
+    }
+  ],
+  "slips": [
+    {
+      "id": "twin-smoking-0",
+      "vice": "smoking",
+      "at": "2026-10-01T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-01T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-1",
+      "vice": "smoking",
+      "at": "2026-10-01T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-01T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-2",
+      "vice": "vaping",
+      "at": "2026-10-01T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-01T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-3",
+      "vice": "vaping",
+      "at": "2026-10-01T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-01T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-4",
+      "vice": "vaping",
+      "at": "2026-10-01T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-01T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-5",
+      "vice": "vaping",
+      "at": "2026-10-01T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-01T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-6",
+      "vice": "smoking",
+      "at": "2026-10-02T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-02T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-7",
+      "vice": "smoking",
+      "at": "2026-10-02T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-02T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-8",
+      "vice": "smoking",
+      "at": "2026-10-02T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-02T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-9",
+      "vice": "vaping",
+      "at": "2026-10-02T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-02T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-10",
+      "vice": "vaping",
+      "at": "2026-10-02T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-02T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-11",
+      "vice": "vaping",
+      "at": "2026-10-02T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-02T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-12",
+      "vice": "vaping",
+      "at": "2026-10-02T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-02T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-13",
+      "vice": "smoking",
+      "at": "2026-10-03T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-03T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-14",
+      "vice": "vaping",
+      "at": "2026-10-03T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-03T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-15",
+      "vice": "vaping",
+      "at": "2026-10-03T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-03T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-16",
+      "vice": "vaping",
+      "at": "2026-10-03T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-03T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-17",
+      "vice": "vaping",
+      "at": "2026-10-03T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-03T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-18",
+      "vice": "vaping",
+      "at": "2026-10-04T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-04T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-19",
+      "vice": "vaping",
+      "at": "2026-10-04T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-04T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-20",
+      "vice": "vaping",
+      "at": "2026-10-04T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-04T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-21",
+      "vice": "smoking",
+      "at": "2026-10-05T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-05T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-22",
+      "vice": "smoking",
+      "at": "2026-10-05T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-05T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-23",
+      "vice": "vaping",
+      "at": "2026-10-05T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-05T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-24",
+      "vice": "vaping",
+      "at": "2026-10-05T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-05T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-25",
+      "vice": "vaping",
+      "at": "2026-10-05T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-05T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-26",
+      "vice": "vaping",
+      "at": "2026-10-05T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-05T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-27",
+      "vice": "smoking",
+      "at": "2026-10-06T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-06T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-28",
+      "vice": "smoking",
+      "at": "2026-10-06T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-06T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-29",
+      "vice": "smoking",
+      "at": "2026-10-06T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-06T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-30",
+      "vice": "smoking",
+      "at": "2026-10-06T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-06T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-31",
+      "vice": "vaping",
+      "at": "2026-10-06T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-06T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-32",
+      "vice": "vaping",
+      "at": "2026-10-06T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-06T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-33",
+      "vice": "vaping",
+      "at": "2026-10-06T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-06T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-34",
+      "vice": "vaping",
+      "at": "2026-10-06T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-06T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-35",
+      "vice": "smoking",
+      "at": "2026-10-07T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-07T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-36",
+      "vice": "vaping",
+      "at": "2026-10-07T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-07T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-37",
+      "vice": "vaping",
+      "at": "2026-10-07T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-07T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-38",
+      "vice": "vaping",
+      "at": "2026-10-07T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-07T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-39",
+      "vice": "smoking",
+      "at": "2026-10-08T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-08T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-40",
+      "vice": "smoking",
+      "at": "2026-10-08T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-08T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-41",
+      "vice": "vaping",
+      "at": "2026-10-08T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-08T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-42",
+      "vice": "vaping",
+      "at": "2026-10-08T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-08T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-43",
+      "vice": "vaping",
+      "at": "2026-10-08T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-08T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-44",
+      "vice": "vaping",
+      "at": "2026-10-08T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-08T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-45",
+      "vice": "smoking",
+      "at": "2026-10-09T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-09T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-46",
+      "vice": "smoking",
+      "at": "2026-10-09T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-09T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-47",
+      "vice": "smoking",
+      "at": "2026-10-09T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-09T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-48",
+      "vice": "vaping",
+      "at": "2026-10-09T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-09T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-49",
+      "vice": "vaping",
+      "at": "2026-10-09T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-09T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-50",
+      "vice": "smoking",
+      "at": "2026-10-10T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-10T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-51",
+      "vice": "vaping",
+      "at": "2026-10-10T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-10T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-52",
+      "vice": "vaping",
+      "at": "2026-10-10T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-10T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-53",
+      "vice": "vaping",
+      "at": "2026-10-10T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-10T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-54",
+      "vice": "vaping",
+      "at": "2026-10-11T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-11T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-55",
+      "vice": "vaping",
+      "at": "2026-10-11T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-11T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-56",
+      "vice": "vaping",
+      "at": "2026-10-11T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-11T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-57",
+      "vice": "vaping",
+      "at": "2026-10-11T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-11T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-58",
+      "vice": "smoking",
+      "at": "2026-10-12T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-12T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-59",
+      "vice": "smoking",
+      "at": "2026-10-12T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-12T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-60",
+      "vice": "vaping",
+      "at": "2026-10-12T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-12T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-61",
+      "vice": "vaping",
+      "at": "2026-10-12T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-12T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-62",
+      "vice": "vaping",
+      "at": "2026-10-12T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-12T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-63",
+      "vice": "vaping",
+      "at": "2026-10-12T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-12T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-64",
+      "vice": "smoking",
+      "at": "2026-10-13T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-13T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-65",
+      "vice": "smoking",
+      "at": "2026-10-13T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-13T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-66",
+      "vice": "smoking",
+      "at": "2026-10-13T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-13T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-67",
+      "vice": "vaping",
+      "at": "2026-10-13T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-13T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-68",
+      "vice": "vaping",
+      "at": "2026-10-13T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-13T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-69",
+      "vice": "vaping",
+      "at": "2026-10-13T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-13T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-70",
+      "vice": "smoking",
+      "at": "2026-10-14T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-14T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-71",
+      "vice": "smoking",
+      "at": "2026-10-14T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-14T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-72",
+      "vice": "vaping",
+      "at": "2026-10-14T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-14T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-73",
+      "vice": "vaping",
+      "at": "2026-10-14T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-14T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-74",
+      "vice": "vaping",
+      "at": "2026-10-14T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-14T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-75",
+      "vice": "vaping",
+      "at": "2026-10-14T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-14T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-76",
+      "vice": "smoking",
+      "at": "2026-10-15T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-15T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-77",
+      "vice": "smoking",
+      "at": "2026-10-15T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-15T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-78",
+      "vice": "smoking",
+      "at": "2026-10-15T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-15T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-79",
+      "vice": "smoking",
+      "at": "2026-10-15T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-15T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-80",
+      "vice": "vaping",
+      "at": "2026-10-15T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-15T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-81",
+      "vice": "vaping",
+      "at": "2026-10-15T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-15T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-82",
+      "vice": "smoking",
+      "at": "2026-10-16T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-16T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-83",
+      "vice": "smoking",
+      "at": "2026-10-16T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-16T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-84",
+      "vice": "smoking",
+      "at": "2026-10-16T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-16T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-85",
+      "vice": "vaping",
+      "at": "2026-10-16T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-16T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-86",
+      "vice": "vaping",
+      "at": "2026-10-16T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-16T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-87",
+      "vice": "vaping",
+      "at": "2026-10-16T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-16T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-88",
+      "vice": "smoking",
+      "at": "2026-10-17T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-17T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-89",
+      "vice": "vaping",
+      "at": "2026-10-17T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-17T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-90",
+      "vice": "vaping",
+      "at": "2026-10-17T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-17T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-91",
+      "vice": "vaping",
+      "at": "2026-10-17T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-17T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-92",
+      "vice": "vaping",
+      "at": "2026-10-17T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-17T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-93",
+      "vice": "smoking",
+      "at": "2026-10-18T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-18T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-94",
+      "vice": "smoking",
+      "at": "2026-10-18T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-18T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-95",
+      "vice": "vaping",
+      "at": "2026-10-18T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-18T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-96",
+      "vice": "vaping",
+      "at": "2026-10-18T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-18T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-97",
+      "vice": "vaping",
+      "at": "2026-10-18T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-18T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-98",
+      "vice": "vaping",
+      "at": "2026-10-19T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-19T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-99",
+      "vice": "vaping",
+      "at": "2026-10-19T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-19T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-100",
+      "vice": "smoking",
+      "at": "2026-10-20T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-20T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-101",
+      "vice": "smoking",
+      "at": "2026-10-20T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-20T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-102",
+      "vice": "smoking",
+      "at": "2026-10-20T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-20T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-103",
+      "vice": "vaping",
+      "at": "2026-10-20T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-20T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-104",
+      "vice": "vaping",
+      "at": "2026-10-20T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-20T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-105",
+      "vice": "vaping",
+      "at": "2026-10-20T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-20T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-106",
+      "vice": "vaping",
+      "at": "2026-10-20T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-20T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-107",
+      "vice": "smoking",
+      "at": "2026-10-21T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-21T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-108",
+      "vice": "smoking",
+      "at": "2026-10-21T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-21T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-109",
+      "vice": "vaping",
+      "at": "2026-10-21T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-21T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-110",
+      "vice": "vaping",
+      "at": "2026-10-21T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-21T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-111",
+      "vice": "vaping",
+      "at": "2026-10-21T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-21T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-112",
+      "vice": "smoking",
+      "at": "2026-09-14T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-14T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-113",
+      "vice": "smoking",
+      "at": "2026-09-14T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-14T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-114",
+      "vice": "smoking",
+      "at": "2026-09-14T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-14T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-115",
+      "vice": "smoking",
+      "at": "2026-09-14T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-14T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-116",
+      "vice": "vaping",
+      "at": "2026-09-14T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-14T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-117",
+      "vice": "vaping",
+      "at": "2026-09-14T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-14T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-118",
+      "vice": "vaping",
+      "at": "2026-09-14T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-14T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-119",
+      "vice": "vaping",
+      "at": "2026-09-14T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-14T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-120",
+      "vice": "smoking",
+      "at": "2026-09-15T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-15T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-121",
+      "vice": "smoking",
+      "at": "2026-09-15T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-15T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-122",
+      "vice": "smoking",
+      "at": "2026-09-15T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-15T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-123",
+      "vice": "vaping",
+      "at": "2026-09-15T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-15T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-124",
+      "vice": "vaping",
+      "at": "2026-09-15T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-15T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-125",
+      "vice": "vaping",
+      "at": "2026-09-15T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-15T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-126",
+      "vice": "vaping",
+      "at": "2026-09-15T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-15T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-drinking-127",
+      "vice": "drinking",
+      "at": "2026-09-15T20:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-15T20:30:00",
+      "productType": "Wine"
+    },
+    {
+      "id": "twin-smoking-128",
+      "vice": "smoking",
+      "at": "2026-09-16T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-129",
+      "vice": "smoking",
+      "at": "2026-09-16T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-130",
+      "vice": "smoking",
+      "at": "2026-09-16T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-131",
+      "vice": "smoking",
+      "at": "2026-09-16T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-132",
+      "vice": "smoking",
+      "at": "2026-09-16T21:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T21:10:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-133",
+      "vice": "vaping",
+      "at": "2026-09-16T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-134",
+      "vice": "vaping",
+      "at": "2026-09-16T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-135",
+      "vice": "vaping",
+      "at": "2026-09-16T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-136",
+      "vice": "vaping",
+      "at": "2026-09-16T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-16T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-137",
+      "vice": "smoking",
+      "at": "2026-09-17T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-138",
+      "vice": "smoking",
+      "at": "2026-09-17T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-139",
+      "vice": "smoking",
+      "at": "2026-09-17T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-140",
+      "vice": "smoking",
+      "at": "2026-09-17T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-141",
+      "vice": "vaping",
+      "at": "2026-09-17T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-142",
+      "vice": "vaping",
+      "at": "2026-09-17T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-143",
+      "vice": "vaping",
+      "at": "2026-09-17T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-144",
+      "vice": "vaping",
+      "at": "2026-09-17T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-drinking-145",
+      "vice": "drinking",
+      "at": "2026-09-17T20:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-17T20:30:00",
+      "productType": "Wine"
+    },
+    {
+      "id": "twin-smoking-146",
+      "vice": "smoking",
+      "at": "2026-09-18T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-18T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-147",
+      "vice": "smoking",
+      "at": "2026-09-18T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-18T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-148",
+      "vice": "smoking",
+      "at": "2026-09-18T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-18T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-149",
+      "vice": "vaping",
+      "at": "2026-09-18T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-18T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-150",
+      "vice": "vaping",
+      "at": "2026-09-18T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-18T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-151",
+      "vice": "vaping",
+      "at": "2026-09-18T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-18T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-152",
+      "vice": "vaping",
+      "at": "2026-09-18T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-18T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-153",
+      "vice": "smoking",
+      "at": "2026-09-19T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-154",
+      "vice": "smoking",
+      "at": "2026-09-19T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-155",
+      "vice": "smoking",
+      "at": "2026-09-19T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-156",
+      "vice": "smoking",
+      "at": "2026-09-19T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-157",
+      "vice": "vaping",
+      "at": "2026-09-19T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-158",
+      "vice": "vaping",
+      "at": "2026-09-19T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-159",
+      "vice": "vaping",
+      "at": "2026-09-19T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-160",
+      "vice": "vaping",
+      "at": "2026-09-19T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-drinking-161",
+      "vice": "drinking",
+      "at": "2026-09-19T20:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-19T20:30:00",
+      "productType": "Wine"
+    },
+    {
+      "id": "twin-smoking-162",
+      "vice": "smoking",
+      "at": "2026-09-20T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-20T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-163",
+      "vice": "smoking",
+      "at": "2026-09-20T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-20T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-164",
+      "vice": "smoking",
+      "at": "2026-09-20T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-20T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-165",
+      "vice": "vaping",
+      "at": "2026-09-20T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-20T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-166",
+      "vice": "vaping",
+      "at": "2026-09-20T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-20T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-167",
+      "vice": "vaping",
+      "at": "2026-09-20T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-20T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-168",
+      "vice": "vaping",
+      "at": "2026-09-20T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-20T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-169",
+      "vice": "smoking",
+      "at": "2026-09-21T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-21T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-170",
+      "vice": "smoking",
+      "at": "2026-09-21T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-21T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-171",
+      "vice": "vaping",
+      "at": "2026-09-21T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-21T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-172",
+      "vice": "vaping",
+      "at": "2026-09-21T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-21T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-173",
+      "vice": "vaping",
+      "at": "2026-09-21T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-21T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-174",
+      "vice": "vaping",
+      "at": "2026-09-21T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-21T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-drinking-175",
+      "vice": "drinking",
+      "at": "2026-09-21T20:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-21T20:30:00",
+      "productType": "Wine"
+    },
+    {
+      "id": "twin-smoking-176",
+      "vice": "smoking",
+      "at": "2026-09-22T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-22T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-177",
+      "vice": "smoking",
+      "at": "2026-09-22T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-22T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-178",
+      "vice": "smoking",
+      "at": "2026-09-22T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-22T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-179",
+      "vice": "smoking",
+      "at": "2026-09-22T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-22T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-180",
+      "vice": "vaping",
+      "at": "2026-09-22T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-22T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-181",
+      "vice": "vaping",
+      "at": "2026-09-22T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-22T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-182",
+      "vice": "vaping",
+      "at": "2026-09-22T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-22T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-183",
+      "vice": "vaping",
+      "at": "2026-09-22T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-22T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-184",
+      "vice": "smoking",
+      "at": "2026-09-23T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-23T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-185",
+      "vice": "smoking",
+      "at": "2026-09-23T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-23T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-186",
+      "vice": "smoking",
+      "at": "2026-09-23T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-23T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-187",
+      "vice": "vaping",
+      "at": "2026-09-23T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-23T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-188",
+      "vice": "vaping",
+      "at": "2026-09-23T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-23T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-189",
+      "vice": "vaping",
+      "at": "2026-09-23T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-23T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-190",
+      "vice": "vaping",
+      "at": "2026-09-23T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-23T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-drinking-191",
+      "vice": "drinking",
+      "at": "2026-09-23T20:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-23T20:30:00",
+      "productType": "Wine"
+    },
+    {
+      "id": "twin-smoking-192",
+      "vice": "smoking",
+      "at": "2026-09-24T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-193",
+      "vice": "smoking",
+      "at": "2026-09-24T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-194",
+      "vice": "smoking",
+      "at": "2026-09-24T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-195",
+      "vice": "smoking",
+      "at": "2026-09-24T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-196",
+      "vice": "smoking",
+      "at": "2026-09-24T21:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T21:10:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-197",
+      "vice": "vaping",
+      "at": "2026-09-24T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-198",
+      "vice": "vaping",
+      "at": "2026-09-24T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-199",
+      "vice": "vaping",
+      "at": "2026-09-24T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-200",
+      "vice": "vaping",
+      "at": "2026-09-24T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-24T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-201",
+      "vice": "smoking",
+      "at": "2026-09-25T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-25T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-202",
+      "vice": "smoking",
+      "at": "2026-09-25T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-25T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-203",
+      "vice": "smoking",
+      "at": "2026-09-25T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-25T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-204",
+      "vice": "vaping",
+      "at": "2026-09-25T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-25T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-205",
+      "vice": "vaping",
+      "at": "2026-09-25T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-25T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-206",
+      "vice": "vaping",
+      "at": "2026-09-25T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-25T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-207",
+      "vice": "vaping",
+      "at": "2026-09-25T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-25T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-drinking-208",
+      "vice": "drinking",
+      "at": "2026-09-25T20:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-25T20:30:00",
+      "productType": "Wine"
+    },
+    {
+      "id": "twin-smoking-209",
+      "vice": "smoking",
+      "at": "2026-09-26T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-26T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-210",
+      "vice": "smoking",
+      "at": "2026-09-26T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-26T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-211",
+      "vice": "vaping",
+      "at": "2026-09-26T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-26T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-212",
+      "vice": "vaping",
+      "at": "2026-09-26T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-26T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-213",
+      "vice": "vaping",
+      "at": "2026-09-26T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-26T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-214",
+      "vice": "vaping",
+      "at": "2026-09-26T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-26T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-215",
+      "vice": "smoking",
+      "at": "2026-09-27T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-216",
+      "vice": "smoking",
+      "at": "2026-09-27T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-217",
+      "vice": "smoking",
+      "at": "2026-09-27T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-218",
+      "vice": "smoking",
+      "at": "2026-09-27T19:45:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T19:45:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-219",
+      "vice": "vaping",
+      "at": "2026-09-27T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-220",
+      "vice": "vaping",
+      "at": "2026-09-27T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-221",
+      "vice": "vaping",
+      "at": "2026-09-27T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-222",
+      "vice": "vaping",
+      "at": "2026-09-27T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-drinking-223",
+      "vice": "drinking",
+      "at": "2026-09-27T20:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-27T20:30:00",
+      "productType": "Wine"
+    },
+    {
+      "id": "twin-smoking-224",
+      "vice": "smoking",
+      "at": "2026-09-28T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-28T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-225",
+      "vice": "smoking",
+      "at": "2026-09-28T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-28T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-226",
+      "vice": "smoking",
+      "at": "2026-09-28T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-28T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-227",
+      "vice": "vaping",
+      "at": "2026-09-28T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-28T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-228",
+      "vice": "vaping",
+      "at": "2026-09-28T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-28T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-229",
+      "vice": "vaping",
+      "at": "2026-09-28T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-28T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-230",
+      "vice": "vaping",
+      "at": "2026-09-28T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-28T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-231",
+      "vice": "smoking",
+      "at": "2026-09-29T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-29T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-232",
+      "vice": "smoking",
+      "at": "2026-09-29T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-29T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-233",
+      "vice": "vaping",
+      "at": "2026-09-29T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-29T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-234",
+      "vice": "vaping",
+      "at": "2026-09-29T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-29T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-235",
+      "vice": "vaping",
+      "at": "2026-09-29T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-29T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-236",
+      "vice": "vaping",
+      "at": "2026-09-29T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-29T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-237",
+      "vice": "smoking",
+      "at": "2026-09-30T10:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-30T10:30:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-238",
+      "vice": "smoking",
+      "at": "2026-09-30T13:15:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-30T13:15:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-smoking-239",
+      "vice": "smoking",
+      "at": "2026-09-30T17:20:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-30T17:20:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-240",
+      "vice": "vaping",
+      "at": "2026-09-30T08:10:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Social"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-30T08:10:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-241",
+      "vice": "vaping",
+      "at": "2026-09-30T11:50:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Tired"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-30T11:50:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-242",
+      "vice": "vaping",
+      "at": "2026-09-30T15:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Boredom"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-30T15:30:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-243",
+      "vice": "vaping",
+      "at": "2026-09-30T20:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-09-30T20:00:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-vaping-244",
+      "vice": "vaping",
+      "at": "2026-10-22T08:05:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Routine"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-22T08:05:00",
+      "productType": "Disposable"
+    },
+    {
+      "id": "twin-smoking-245",
+      "vice": "smoking",
+      "at": "2026-10-22T11:40:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-22T11:40:00",
+      "productType": "Cigarette"
+    },
+    {
+      "id": "twin-vaping-246",
+      "vice": "vaping",
+      "at": "2026-10-22T12:30:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Work"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-22T12:30:00",
+      "productType": "Disposable"
+    }
+  ],
+  "cravings": [
+    {
+      "id": "twin-wave-2026-10-03",
+      "vice": "smoking",
+      "at": "2026-10-03T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-10-06",
+      "vice": "smoking",
+      "at": "2026-10-06T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-10-09",
+      "vice": "smoking",
+      "at": "2026-10-09T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-10-12",
+      "vice": "smoking",
+      "at": "2026-10-12T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-10-15",
+      "vice": "smoking",
+      "at": "2026-10-15T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-10-18",
+      "vice": "smoking",
+      "at": "2026-10-18T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-10-21",
+      "vice": "smoking",
+      "at": "2026-10-21T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-09-15",
+      "vice": "smoking",
+      "at": "2026-09-15T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-09-18",
+      "vice": "smoking",
+      "at": "2026-09-18T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-09-21",
+      "vice": "smoking",
+      "at": "2026-09-21T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-09-24",
+      "vice": "smoking",
+      "at": "2026-09-24T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-09-27",
+      "vice": "smoking",
+      "at": "2026-09-27T16:40:00"
+    },
+    {
+      "id": "twin-wave-2026-09-30",
+      "vice": "smoking",
+      "at": "2026-09-30T16:40:00"
+    }
+  ],
+  "doses": {
+    "2026-10-01": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-01T15:04:00"
+        }
+      ]
+    },
+    "2026-10-02": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-02T15:04:00"
+        }
+      ]
+    },
+    "2026-10-03": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-03T15:04:00"
+        }
+      ]
+    },
+    "2026-10-04": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-04T15:04:00"
+        }
+      ]
+    },
+    "2026-10-05": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-05T15:04:00"
+        }
+      ]
+    },
+    "2026-10-06": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-06T15:04:00"
+        }
+      ]
+    },
+    "2026-10-07": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-07T15:04:00"
+        }
+      ]
+    },
+    "2026-10-08": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-08T15:04:00"
+        }
+      ]
+    },
+    "2026-10-09": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-09T15:04:00"
+        }
+      ]
+    },
+    "2026-10-11": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-11T15:04:00"
+        }
+      ]
+    },
+    "2026-10-12": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-12T15:04:00"
+        }
+      ]
+    },
+    "2026-10-13": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-13T15:04:00"
+        }
+      ]
+    },
+    "2026-10-14": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-14T15:04:00"
+        }
+      ]
+    },
+    "2026-10-15": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-15T15:04:00"
+        }
+      ]
+    },
+    "2026-10-16": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-16T15:04:00"
+        }
+      ]
+    },
+    "2026-10-18": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-18T15:04:00"
+        }
+      ]
+    },
+    "2026-10-19": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-19T15:04:00"
+        }
+      ]
+    },
+    "2026-10-20": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-20T15:04:00"
+        }
+      ]
+    },
+    "2026-10-21": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-10-21T15:04:00"
+        }
+      ]
+    },
+    "2026-09-24": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-09-24T15:04:00"
+        }
+      ]
+    },
+    "2026-09-25": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-09-25T15:04:00"
+        }
+      ]
+    },
+    "2026-09-26": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-09-26T15:04:00"
+        }
+      ]
+    },
+    "2026-09-27": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-09-27T15:04:00"
+        }
+      ]
+    },
+    "2026-09-28": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-09-28T15:04:00"
+        }
+      ]
+    },
+    "2026-09-29": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-09-29T15:04:00"
+        }
+      ]
+    },
+    "2026-09-30": {
+      "twin-bupropion": [
+        {
+          "slot": 0,
+          "at": "2026-09-30T15:04:00"
+        }
+      ]
+    },
+    "2026-10-22": {
+      "twin-lozenge": [
+        {
+          "slot": -1,
+          "at": "2026-10-22T10:15:00"
+        },
+        {
+          "slot": -1,
+          "at": "2026-10-22T13:50:00"
+        }
+      ]
+    }
+  },
+  "journal": {
+    "2026-10-01": {
+      "mood": 4,
+      "updatedAt": "2026-10-01T20:00:00"
+    },
+    "2026-10-02": {
+      "mood": 3,
+      "updatedAt": "2026-10-02T20:00:00"
+    },
+    "2026-10-04": {
+      "mood": 4,
+      "updatedAt": "2026-10-04T20:00:00"
+    },
+    "2026-10-05": {
+      "mood": 5,
+      "updatedAt": "2026-10-05T20:00:00"
+    },
+    "2026-10-06": {
+      "mood": 2,
+      "updatedAt": "2026-10-06T20:00:00"
+    },
+    "2026-10-07": {
+      "mood": 4,
+      "updatedAt": "2026-10-07T20:00:00"
+    },
+    "2026-10-08": {
+      "mood": 3,
+      "updatedAt": "2026-10-08T20:00:00",
+      "text": "First week of the new routine. Feels doable.",
+      "craving": 5,
+      "tags": [
+        "Work"
+      ],
+      "sleepQuality": 3,
+      "intention": "One thing at a time",
+      "sleepHours": 6.5
+    },
+    "2026-10-09": {
+      "mood": 4,
+      "updatedAt": "2026-10-09T20:00:00"
+    },
+    "2026-10-11": {
+      "mood": 5,
+      "updatedAt": "2026-10-11T20:00:00"
+    },
+    "2026-10-12": {
+      "mood": 4,
+      "updatedAt": "2026-10-12T20:00:00"
+    },
+    "2026-10-13": {
+      "mood": 3,
+      "updatedAt": "2026-10-13T20:00:00"
+    },
+    "2026-10-14": {
+      "mood": 4,
+      "updatedAt": "2026-10-14T20:00:00"
+    },
+    "2026-10-15": {
+      "mood": 1,
+      "text": "Rough one. Had three after work. Writing it down so I can see the pattern.",
+      "updatedAt": "2026-10-15T21:20:00",
+      "checkins": {
+        "evening": {
+          "mood": 1,
+          "text": "Rough one. Had three after work. Writing it down so I can see the pattern.",
+          "updatedAt": "2026-10-15T21:20:00",
+          "craving": 8,
+          "tags": [
+            "Stress",
+            "Work"
+          ]
+        }
+      }
+    },
+    "2026-10-16": {
+      "mood": 3,
+      "updatedAt": "2026-10-16T20:00:00"
+    },
+    "2026-10-17": {
+      "mood": 4,
+      "updatedAt": "2026-10-17T20:00:00"
+    },
+    "2026-10-18": {
+      "mood": 4,
+      "text": "",
+      "updatedAt": "2026-10-18T15:05:00",
+      "checkins": {
+        "afternoon": {
+          "mood": 4,
+          "text": "Lazy Sunday. The craving after lunch passed in about ten minutes.",
+          "updatedAt": "2026-10-18T15:05:00",
+          "craving": 5,
+          "tags": [
+            "Rest"
+          ]
+        }
+      }
+    },
+    "2026-10-20": {
+      "mood": 5,
+      "text": "Dinner with friends. Ordered sparkling water and nobody made it weird.",
+      "updatedAt": "2026-10-20T20:10:00",
+      "checkins": {
+        "morning": {
+          "mood": 4,
+          "text": "",
+          "updatedAt": "2026-10-20T07:55:00",
+          "sleepHours": 7.5,
+          "sleepQuality": 4,
+          "intention": "Walk at lunch"
+        },
+        "evening": {
+          "mood": 5,
+          "text": "Dinner with friends. Ordered sparkling water and nobody made it weird.",
+          "updatedAt": "2026-10-20T20:10:00",
+          "craving": 2,
+          "tags": [
+            "Social time",
+            "Rest"
+          ]
+        }
+      }
+    },
+    "2026-10-21": {
+      "mood": 3,
+      "text": "Long day. Went for a walk instead of the bar.",
+      "updatedAt": "2026-10-21T19:45:00",
+      "checkins": {
+        "morning": {
+          "mood": 2,
+          "text": "Woke up at 4 and couldn’t get back to sleep.",
+          "updatedAt": "2026-10-21T08:40:00",
+          "sleepHours": 5.5,
+          "sleepQuality": 2,
+          "intention": "Get through the deadline gently"
+        },
+        "afternoon": {
+          "mood": 1,
+          "text": "Deadline day. Stepped outside instead of buying a pack, but it was close.",
+          "updatedAt": "2026-10-21T14:30:00",
+          "craving": 7,
+          "tags": [
+            "Work",
+            "Stress"
+          ]
+        },
+        "evening": {
+          "mood": 3,
+          "text": "Long day. Went for a walk instead of the bar.",
+          "updatedAt": "2026-10-21T19:45:00",
+          "craving": 4,
+          "tags": [
+            "Time outside"
+          ]
+        }
+      }
+    },
+    "2026-09-14": {
+      "mood": 3,
+      "updatedAt": "2026-09-14T20:00:00"
+    },
+    "2026-09-16": {
+      "mood": 4,
+      "updatedAt": "2026-09-16T20:00:00"
+    },
+    "2026-09-17": {
+      "mood": 2,
+      "updatedAt": "2026-09-17T20:00:00"
+    },
+    "2026-09-18": {
+      "mood": 3,
+      "updatedAt": "2026-09-18T20:00:00"
+    },
+    "2026-09-19": {
+      "mood": 4,
+      "updatedAt": "2026-09-19T20:00:00"
+    },
+    "2026-09-20": {
+      "mood": 3,
+      "updatedAt": "2026-09-20T20:00:00"
+    },
+    "2026-09-22": {
+      "mood": 4,
+      "updatedAt": "2026-09-22T20:00:00"
+    },
+    "2026-09-23": {
+      "mood": 3,
+      "updatedAt": "2026-09-23T20:00:00"
+    },
+    "2026-09-24": {
+      "mood": 2,
+      "updatedAt": "2026-09-24T20:00:00"
+    },
+    "2026-09-25": {
+      "mood": 3,
+      "updatedAt": "2026-09-25T20:00:00"
+    },
+    "2026-09-26": {
+      "mood": 4,
+      "updatedAt": "2026-09-26T20:00:00"
+    },
+    "2026-09-28": {
+      "mood": 3,
+      "updatedAt": "2026-09-28T20:00:00"
+    },
+    "2026-09-29": {
+      "mood": 4,
+      "updatedAt": "2026-09-29T20:00:00"
+    },
+    "2026-09-30": {
+      "mood": 4,
+      "updatedAt": "2026-09-30T20:00:00"
+    },
+    "2026-10-22": {
+      "text": "",
+      "updatedAt": "2026-10-22T09:12:00",
+      "checkins": {
+        "morning": {
+          "mood": 4,
+          "text": "Slept okay. Coffee without a cigarette felt strange but fine.",
+          "updatedAt": "2026-10-22T09:12:00",
+          "sleepHours": 7,
+          "sleepQuality": 4,
+          "intention": "Coffee without a cigarette"
+        }
+      }
+    }
+  }
+}

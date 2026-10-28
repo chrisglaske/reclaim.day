@@ -90,7 +90,7 @@ Plain HTML, CSS and JavaScript: no frameworks, no CDNs, self-hosted fonts. One s
 | [`app/`](app) | The app. `Index.html` stitches in `styles/` and `scripts/` in load order: the data layer (`state`, `core`, `habits`, `meds`, `journal`, `insights`, …, read through `model`), then the screens (`ui-today`, `ui-tracking`, `ui-journal`, `ui-insights`, `ui-settings`, …), then `start`. `icons/` and `fonts/` hold the self-hosted icons and fonts. |
 | [`app-host/`](app-host) | app.reclaim.day: a Cloudflare Worker that only serves the built static files. |
 | [`site/`](site) | The website, reclaim.day: the landing page, [What's new](site/whats-new), the [FAQ](site/faq), [guides](site/guides) and the [privacy policy](site/privacy). A small Vite project, also served as static files by a Cloudflare Worker. The screenshots are real captures of the app on made-up sample data. |
-| [`tools/`](tools) | [`build-app.mjs`](tools/build-app.mjs), the build step that turns `app/` into the page app.reclaim.day serves, and [`verify-live.mjs`](tools/verify-live.mjs), which checks the live app against it. |
+| [`tools/`](tools) | [`build-app.mjs`](tools/build-app.mjs), the build step that turns `app/` into the page app.reclaim.day serves, [`verify-live.mjs`](tools/verify-live.mjs), which checks the live app against it, and the tests: [`roundtrip.mjs`](tools/roundtrip.mjs) (saved data from older versions loads and nothing is dropped, using the made-up files in [`fixtures/`](tools/fixtures)) and [`drive-adapter.mjs`](tools/drive-adapter.mjs) (the Drive code against a fake Drive). |
 
 ## 🚀 Build it
 

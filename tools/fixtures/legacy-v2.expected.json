@@ -1,0 +1,109 @@
+{
+  "version": 5,
+  "onboarded": true,
+  "createdAt": "2025-11-01T08:00:00.000Z",
+  "profile": {
+    "name": "Lee (fixture)",
+    "country": "",
+    "currency": "EUR",
+    "reasons": [
+      "Health"
+    ],
+    "goal": {
+      "name": "Trip",
+      "amount": 250
+    },
+    "companion": {
+      "toolkit": [],
+      "intentions": [],
+      "intentionDays": {},
+      "reflections": {},
+      "reminders": {},
+      "reminderActions": {},
+      "trackMedications": true,
+      "hideCounters": false,
+      "theme": "pine",
+      "autoLight": "pine"
+    }
+  },
+  "vices": {
+    "smoking": {
+      "enabled": true,
+      "perDay": 15,
+      "costPerDay": 7,
+      "phases": [
+        {
+          "mode": "quit",
+          "at": "2025-11-02T08:00:00.000Z",
+          "target": 0
+        }
+      ]
+    },
+    "vaping": {
+      "enabled": false,
+      "perDay": 0,
+      "costPerDay": 0,
+      "phases": []
+    },
+    "drinking": {
+      "enabled": true,
+      "perDay": 2,
+      "costPerDay": 6,
+      "phases": []
+    }
+  },
+  "meds": [
+    {
+      "id": "bupropion-1761984000000",
+      "catalogId": "bupropion-sr",
+      "name": "Bupropion",
+      "dose": 150,
+      "unit": "mg",
+      "freq": 2,
+      "slots": [
+        "Morning",
+        "Afternoon"
+      ],
+      "startDate": "2025-11-01T08:00:00.000Z",
+      "active": true,
+      "timeline": "bupropion",
+      "alcohol": "Alcohol with bupropion can lower the seizure threshold.",
+      "whyThisHelps": "",
+      "dailyLimit": null
+    }
+  ],
+  "slips": [
+    {
+      "id": "s1",
+      "vice": "smoking",
+      "at": "2025-11-05T20:00:00.000Z",
+      "amount": 2,
+      "cost": 1.2,
+      "triggers": [
+        "Social"
+      ],
+      "why": "Party",
+      "action": "log",
+      "kind": "slip",
+      "createdAt": ""
+    }
+  ],
+  "cravings": [
+    {
+      "id": "c1",
+      "vice": "drinking",
+      "at": "2025-11-06T19:00:00.000Z"
+    }
+  ],
+  "doses": {
+    "2025-11-03": {
+      "bupropion-1761984000000": [
+        {
+          "slot": 0,
+          "at": "2025-11-03T08:05:00.000Z"
+        }
+      ]
+    }
+  },
+  "journal": {}
+}

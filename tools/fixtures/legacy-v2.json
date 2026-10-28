@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "onboarded": true,
+  "createdAt": "2025-11-01T08:00:00.000Z",
+  "profile": { "name": "Lee (fixture)", "currency": "EUR", "reasons": ["Health"], "goal": { "name": "Trip", "amount": 250 } },
+  "vices": {
+    "smoking": { "enabled": true, "quitDate": "2025-11-02T08:00:00.000Z", "perDay": 15, "costPerDay": 7 },
+    "drinking": { "enabled": true, "quitDate": "", "perDay": 2, "costPerDay": 6 }
+  },
+  "med": { "enabled": true, "name": "Bupropion", "startDate": "2025-11-01T08:00:00.000Z", "doseMg": 150, "dosesPerDay": 2 },
+  "slips": [{ "id": "s1", "vice": "smoking", "at": "2025-11-05T20:00:00.000Z", "amount": 2, "cost": 1.2, "triggers": ["Social"], "why": "Party", "action": "log" }],
+  "cravings": [{ "id": "c1", "vice": "drinking", "at": "2025-11-06T19:00:00.000Z" }],
+  "doses": { "2025-11-03": [{ "slot": 0, "at": "2025-11-03T08:05:00.000Z" }] },
+  "journal": {}
+}

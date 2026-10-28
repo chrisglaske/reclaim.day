@@ -1,0 +1,52 @@
+{
+  "version": 5,
+  "onboarded": false,
+  "createdAt": "2026-02-01T10:00:00.000Z",
+  "profile": {
+    "name": "",
+    "country": "",
+    "currency": "USD",
+    "reasons": [],
+    "goal": {
+      "name": "",
+      "amount": 0
+    },
+    "companion": {
+      "toolkit": [],
+      "intentions": [],
+      "intentionDays": {},
+      "reflections": {},
+      "reminders": {},
+      "reminderActions": {},
+      "trackMedications": false,
+      "hideCounters": false,
+      "theme": "pine",
+      "autoLight": "pine"
+    }
+  },
+  "vices": {
+    "smoking": {
+      "enabled": false,
+      "perDay": 0,
+      "costPerDay": 0,
+      "phases": []
+    },
+    "vaping": {
+      "enabled": false,
+      "perDay": 0,
+      "costPerDay": 0,
+      "phases": []
+    },
+    "drinking": {
+      "enabled": false,
+      "perDay": 0,
+      "costPerDay": 0,
+      "phases": []
+    }
+  },
+  "meds": [],
+  "slips": [],
+  "cravings": [],
+  "doses": {},
+  "journal": {}
+}

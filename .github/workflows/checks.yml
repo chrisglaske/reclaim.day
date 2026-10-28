@@ -1,4 +1,4 @@
-# Builds the app and both Cloudflare Workers on every pull request, and on pushes that change them.
+# Runs the data tests and builds the app and both Cloudflare Workers on every pull request, and on pushes that change them.
 # Pull requests always run it, since "build" is their required check. Deploys stay manual.
 name: checks
 
@@ -28,6 +28,10 @@ jobs:
           cache-dependency-path: |
             app-host/package-lock.json
             site/package-lock.json
+      - name: Saved data round trip (old versions load, nothing is dropped)
+        run: node tools/roundtrip.mjs
+      - name: Drive storage against a fake Drive
+        run: node tools/drive-adapter.mjs
       - name: App build (fails on inline handlers or scripts)
         run: node tools/build-app.mjs
       - name: App host build

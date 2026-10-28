@@ -1,0 +1,118 @@
+{
+  "version": 5,
+  "onboarded": true,
+  "createdAt": "2026-01-05T09:00:00.000Z",
+  "profile": {
+    "name": "Sam (fixture)",
+    "country": "ca",
+    "currency": "CAD",
+    "reasons": [
+      "Breathe easier"
+    ],
+    "goal": {
+      "name": "New bike",
+      "amount": 400
+    },
+    "companion": {
+      "toolkit": [
+        "Drink water"
+      ],
+      "intentions": [],
+      "intentionDays": {},
+      "reflections": {},
+      "reminders": {},
+      "reminderActions": {},
+      "trackMedications": true,
+      "hideCounters": false,
+      "theme": "pine",
+      "autoLight": "pine"
+    }
+  },
+  "vices": {
+    "smoking": {
+      "enabled": true,
+      "perDay": 12,
+      "costPerDay": 9.5,
+      "phases": [
+        {
+          "mode": "reduce",
+          "at": "2026-01-05T09:00:00.000Z",
+          "target": 6
+        }
+      ]
+    },
+    "vaping": {
+      "enabled": false,
+      "perDay": 0,
+      "costPerDay": 0,
+      "phases": []
+    },
+    "drinking": {
+      "enabled": false,
+      "perDay": 0,
+      "costPerDay": 0,
+      "phases": []
+    }
+  },
+  "meds": [
+    {
+      "id": "med-1",
+      "catalogId": "bupropion-xl",
+      "name": "Bupropion XL",
+      "dose": 150,
+      "unit": "mg",
+      "freq": 1,
+      "slots": [
+        "Daily dose"
+      ],
+      "startDate": "2026-01-05T09:00:00.000Z",
+      "active": true,
+      "timeline": "bupropion",
+      "alcohol": null,
+      "whyThisHelps": "",
+      "dailyLimit": null
+    }
+  ],
+  "slips": [
+    {
+      "id": "slip-1",
+      "vice": "smoking",
+      "at": "2026-01-06T18:00:00.000Z",
+      "amount": 1,
+      "cost": "",
+      "triggers": [
+        "Stress"
+      ],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-01-06T18:01:00.000Z",
+      "productType": "Cigarette"
+    }
+  ],
+  "cravings": [
+    {
+      "id": "craving-1",
+      "vice": "smoking",
+      "at": "2026-01-07T12:00:00.000Z"
+    }
+  ],
+  "doses": {
+    "2026-01-06": {
+      "med-1": [
+        {
+          "slot": 0,
+          "at": "2026-01-06T08:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "journal": {
+    "2026-01-06": {
+      "morning": {
+        "mood": 4,
+        "note": "Fixture entry"
+      }
+    }
+  }
+}

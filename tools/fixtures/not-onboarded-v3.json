@@ -1,0 +1,12 @@
+{
+  "version": 3,
+  "onboarded": false,
+  "createdAt": "2026-02-01T10:00:00.000Z",
+  "profile": { "name": "", "country": "", "currency": "USD", "reasons": [], "goal": { "name": "", "amount": 0 } },
+  "vices": { "smoking": { "enabled": false, "perDay": 0, "costPerDay": 0, "phases": [] } },
+  "meds": [],
+  "slips": [],
+  "cravings": [],
+  "doses": {},
+  "journal": {}
+}

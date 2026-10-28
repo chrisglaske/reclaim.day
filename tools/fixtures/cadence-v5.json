@@ -1,0 +1,178 @@
+{
+  "version": 5,
+  "onboarded": true,
+  "createdAt": "2026-09-01T09:00:00.000Z",
+  "profile": {
+    "name": "Jo (fixture)",
+    "country": "ca",
+    "currency": "CAD",
+    "reasons": [
+      "Breathe easier"
+    ],
+    "goal": {
+      "name": "New bike",
+      "amount": 400
+    },
+    "companion": {
+      "toolkit": [
+        "Drink water"
+      ],
+      "intentions": [],
+      "intentionDays": {},
+      "reflections": {},
+      "reminders": {},
+      "reminderActions": {},
+      "trackMedications": true,
+      "hideCounters": false,
+      "theme": "ocean",
+      "lastAppointment": "2026-10-01",
+      "questions": [
+        {
+          "id": "q1",
+          "text": "Can I lower the dose?",
+          "at": "2026-10-10T09:00:00.000Z"
+        }
+      ]
+    }
+  },
+  "vices": {
+    "smoking": {
+      "enabled": true,
+      "perDay": 10,
+      "costPerDay": 8,
+      "unit": "cigarettes",
+      "phases": [
+        {
+          "mode": "reduce",
+          "at": "2026-10-05T09:00:00.000Z",
+          "target": 4,
+          "days": [
+            0,
+            6
+          ]
+        }
+      ]
+    },
+    "vaping": {
+      "enabled": true,
+      "perDay": 6,
+      "costPerDay": 3,
+      "unit": "puffs",
+      "phases": [
+        {
+          "mode": "track",
+          "at": "2026-10-05T09:00:00.000Z",
+          "target": 0
+        }
+      ]
+    },
+    "drinking": {
+      "enabled": true,
+      "perDay": 0.5,
+      "costPerDay": 1,
+      "usual": {
+        "amount": 3.5,
+        "per": "week"
+      },
+      "unit": "drinks",
+      "phases": [
+        {
+          "mode": "reduce",
+          "at": "2026-10-12T09:00:00.000Z",
+          "target": 3,
+          "per": "week"
+        }
+      ]
+    }
+  },
+  "meds": [],
+  "cravings": [],
+  "doses": {},
+  "journal": {},
+  "slips": [
+    {
+      "id": "a",
+      "vice": "drinking",
+      "at": "2026-10-10T20:00:00",
+      "amount": 2,
+      "cost": "",
+      "triggers": [],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-10T20:00:00"
+    },
+    {
+      "id": "b",
+      "vice": "drinking",
+      "at": "2026-10-16T20:00:00",
+      "amount": 2,
+      "cost": "",
+      "triggers": [],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-16T20:00:00"
+    },
+    {
+      "id": "c",
+      "vice": "drinking",
+      "at": "2026-10-17T21:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-17T21:00:00"
+    },
+    {
+      "id": "d",
+      "vice": "drinking",
+      "at": "2026-10-20T19:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-20T19:00:00"
+    },
+    {
+      "id": "e",
+      "vice": "smoking",
+      "at": "2026-10-17T10:00:00",
+      "amount": 3,
+      "cost": "",
+      "triggers": [],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-17T10:00:00"
+    },
+    {
+      "id": "f",
+      "vice": "smoking",
+      "at": "2026-10-19T10:00:00",
+      "amount": 1,
+      "cost": "",
+      "triggers": [],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-19T10:00:00"
+    },
+    {
+      "id": "g",
+      "vice": "vaping",
+      "at": "2026-10-19T11:00:00",
+      "amount": 5,
+      "cost": "",
+      "triggers": [],
+      "why": "",
+      "action": "log",
+      "kind": "use",
+      "createdAt": "2026-10-19T11:00:00"
+    }
+  ]
+}

@@ -21,6 +21,13 @@ The website:
 cd site && npm install && npm run dev       # http://localhost:5173/
 ```
 
+The tests need only Node.js, no browser or network:
+
+```sh
+node tools/roundtrip.mjs                    # saved files from older versions load, back up and restore, nothing dropped
+node tools/drive-adapter.mjs                # the Drive storage code against a fake Drive
+```
+
 [How Reclaim works](ARCHITECTURE.md) explains the pieces and the data format, and the [README](README.md) shows where things are.
 
 ## How Reclaim is built
@@ -28,7 +35,7 @@ cd site && npm install && npm run dev       # http://localhost:5173/
 - **Plain HTML, CSS and JavaScript.** No frameworks, no third-party scripts or CDNs, no new dependencies in the app.
 - **One page.** `app/Index.html` includes the files in `app/styles/` and `app/scripts/`, and the order matters: the data layer, then the screens, then `start`. A new script file needs its own include line there.
 - **No inline handlers.** Use `addEventListener`, not `onclick=` attributes. The build fails on them, so the Content Security Policy can block all inline scripts.
-- **Your data stays compatible.** Files saved by older versions must keep loading, and nothing a person saved may be dropped. A format change needs a new `version` and a step in `migrate` in [`state.html`](app/scripts/state.html).
+- **Your data stays compatible.** Files saved by older versions must keep loading, and nothing a person saved may be dropped. A format change needs a new `version`, a step in `migrate` in [`state.html`](app/scripts/state.html), and a new fixture in [`tools/fixtures/`](tools/fixtures). Only after a deliberate format change, refresh the expected results with `node tools/roundtrip.mjs --write-expected` and explain the difference in your pull request.
 - **No server, no tracking.** The app talks only to Google sign-in and the Drive API, with the `drive.file` scope. No analytics, ads or other network calls.
 
 ## How Reclaim sounds
@@ -41,7 +48,7 @@ cd site && npm install && npm run dev       # http://localhost:5173/
 
 ## Before you open a pull request
 
-- `node tools/build-app.mjs` finishes without errors (the `checks` workflow builds the app and the site on every pull request).
+- `node tools/roundtrip.mjs`, `node tools/drive-adapter.mjs` and `node tools/build-app.mjs` pass. The `checks` workflow runs them and builds the site on every pull request.
 - You've tried your change in the browser at phone and desktop width, and with the keyboard.
 - If it changes how the app looks, include before and after screenshots with made-up data.
 - If it changes saved data, describe how older files still load.
