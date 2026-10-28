@@ -1,0 +1,434 @@
+<script>
+  // Medications and their dose notes: per-day dose status, history, runs, and noting, skipping or removing a dose.
+  // Dose notes live in S.doses[day][medId] as { slot, at } (slot -1 is an as-needed dose). Relies on core (dateKey,
+  // logicDate, persistLogicState); read by model, today and appointment, and by the Today, Tracking, Journal and quick-log screens.
+  function medicationTrackingEnabled() {
+    return S.profile.companion.trackMedications === true;
+  }
+
+  // The medications still being taken (not archived); none at all while medication tracking is turned off in Settings.
+  function activeMedications() {
+    return medicationTrackingEnabled() ? S.meds.filter(medication => medication.active) : [];
+  }
+
+  // One day's (today by default) scheduled doses for one medication, each with its dose time (reminders are keyed "medId:slot") and a timing label.
+  // Sorted by time only when every dose has one. The first dose not yet noted or skipped is "next", and reads "Due" once its time
+  // has passed. As-needed medications have no schedule, so they get an empty list.
+  function trackingDoseSchedule(medication, day = dateKey(todayUI.now), at = todayUI.now) {
+    const med = resolveMedication(medication);
+    if (!med || med.freq === 'prn') return [];
+    const status = medDayStatus(med, day);
+    const reminders = S.profile.companion.reminders || {};
+    const slots = status.doses.map(dose => {
+      const reminder = reminders[med.id + ':' + dose.slot];
+      const time = reminder && typeof reminder.time === 'string' &&
+        /^([01]\d|2[0-3]):[0-5]\d$/.test(reminder.time) ? reminder.time : '';
+      return Object.assign({}, dose, { reminderTime: time });
+    });
+    const fullyTimed = slots.length > 0 && slots.every(dose => dose.reminderTime);
+    if (fullyTimed) {
+      slots.sort((left, right) => left.reminderTime.localeCompare(right.reminderTime));
+    }
+    const next = slots.find(dose => !dose.noted && !dose.skipped);
+    const now = logicDate(at);
+    const nowMinutes = now ? now.getHours() * 60 + now.getMinutes() : 0;
+    return slots.map(dose => {
+      const reminderMinutes = dose.reminderTime
+        ? Number(dose.reminderTime.slice(0, 2)) * 60 + Number(dose.reminderTime.slice(3))
+        : null;
+      const timeLabel = dose.reminderTime
+        ? new Date('2000-01-01T' + dose.reminderTime + ':00').toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+        : '';
+      return Object.assign({}, dose, {
+        next: !dose.noted && next === dose,
+        later: !dose.noted && next !== dose,
+        timeLabel: timeLabel,
+        timingLabel: !dose.reminderTime
+          ? (next === dose ? 'Next · no reminder set' : 'Later in schedule')
+          : (!dose.noted && next === dose
+            ? (reminderMinutes <= nowMinutes ? 'Due · ' : 'Next · ') + timeLabel
+            : (dose.noted ? timeLabel : 'Later · ' + timeLabel))
+      });
+    });
+  }
+
+  // Accepts a medication or its id; null when it's neither.
+  function resolveMedication(medication) {
+    if (typeof medication === 'string') return S.meds.find(med => med.id === medication) || null;
+    return logicObject(medication) ? medication : null;
+  }
+
+  // The dose notes saved for one medication on one day, skipping anything that isn't an object (hand-edited or damaged data).
+  function medicationEvents(medication, day) {
+    const med = resolveMedication(medication);
+    const key = dateKey(day);
+    const all = key && logicObject(S.doses[key]) ? S.doses[key][med && med.id] : null;
+    return Array.isArray(all) ? all.filter(event => logicObject(event)) : [];
+  }
+
+  // How a medication stands on one day. Scheduled: one entry per dose slot, noted, skipped or still to come. As-needed: one entry
+  // per dose noted, with nothing expected. Days before the start date have nothing scheduled. "settled" means every dose is noted or skipped.
+  function medDayStatus(medication, day = localToday()) {
+    const med = resolveMedication(medication);
+    const key = dateKey(day);
+    if (!med || !key) {
+      return { day: key, medicationId: '', expected: 0, noted: 0, remaining: 0, complete: false, doses: [] };
+    }
+
+    const dateEligible = !med.startDate || key >= dateKey(med.startDate);
+    const events = dateEligible ? medicationEvents(med, key) : [];
+    const slots = med.freq === 'prn' || !dateEligible
+      ? []
+      : (Array.isArray(med.slots) ? med.slots : []).map((label, index) => {
+          const event = events.find(item => Number(item.slot) === index);
+          // A dose saved as "Not taking it today" is handled, but not taken.
+          const skipped = !!(event && event.skipped);
+          return {
+            slot: index,
+            label: label,
+            noted: !!event && !skipped,
+            skipped: skipped,
+            reason: skipped && typeof event.reason === 'string' ? event.reason : '',
+            at: event && typeof event.at === 'string' ? event.at : null,
+            amount: event ? Number(med.dose) || 0 : 0,
+            unit: med.unit || ''
+          };
+        });
+    const prnEvents = med.freq === 'prn'
+      ? events.filter(event => Number(event.slot) === -1 && !event.skipped).map(event => ({
+          slot: -1,
+          label: 'As needed',
+          noted: true,
+          at: typeof event.at === 'string' ? event.at : null,
+          amount: Number(med.dose) || 0,
+          unit: med.unit || ''
+        }))
+      : [];
+    const doses = med.freq === 'prn' ? prnEvents : slots;
+    const expected = slots.length;
+    const noted = med.freq === 'prn' ? prnEvents.length : slots.filter(slot => slot.noted).length;
+    const skipped = slots.filter(slot => slot.skipped).length;
+    return {
+      day: key,
+      medicationId: med.id,
+      expected: expected,
+      noted: noted,
+      remaining: Math.max(0, expected - noted - skipped),
+      complete: expected > 0 && noted >= expected,
+      skipped: skipped,
+      settled: expected > 0 && noted + skipped >= expected,
+      hasDoseNoted: noted > 0,
+      prn: med.freq === 'prn',
+      doses: doses
+    };
+  }
+
+  // The date range the 30-day history covers, ending today; the first date shows its year only when it differs.
+  function medicationHistoryRange() {
+    const end = new Date(localToday() + 'T12:00:00');
+    const start = new Date(end);
+    start.setDate(start.getDate() - 29);
+    const monthDay = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+    const first = monthDay.format(start) +
+      (start.getFullYear() === end.getFullYear() ? '' : ', ' + start.getFullYear());
+    const last = new Intl.DateTimeFormat(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric'
+    }).format(end);
+    return first + ' – ' + last;
+  }
+
+  // The 30-day history calendar: one cell per day, padded with blanks so weeks start on Sunday and the last row fills.
+  // A day with any dose noted counts as taken, even if some scheduled doses weren't.
+  function medicationHistoryDays(medication) {
+    const end = new Date(localToday() + 'T12:00:00');
+    const start = new Date(end);
+    start.setDate(start.getDate() - 29);
+    const days = Array.from({ length: start.getDay() }, (_, index) => ({
+      key: 'blank-' + index,
+      empty: true
+    }));
+    for (let offset = 0; offset < 30; offset += 1) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + offset);
+      const key = dateKey(date);
+      const status = medDayStatus(medication, key);
+      const category = status.hasDoseNoted
+        ? 'taken'
+        : status.expected > 0 ? 'scheduled' : 'unscheduled';
+      const fullDate = new Intl.DateTimeFormat(undefined, {
+        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+      }).format(date);
+      const detail = category === 'taken'
+        ? status.expected > 0
+          ? status.noted + ' of ' + status.expected + ' scheduled doses noted'
+          : status.noted + ' as-needed dose' + (status.noted === 1 ? '' : 's') + ' noted'
+        : category === 'scheduled' ? 'Scheduled; no doses noted' : 'Not scheduled';
+      days.push({
+        key: key,
+        empty: false,
+        number: date.getDate(),
+        monthLabel: offset === 0 || date.getDate() === 1
+          ? new Intl.DateTimeFormat(undefined, { month: 'short' }).format(date)
+          : '',
+        category: category,
+        indicator: category === 'taken' ? '✓' : category === 'scheduled' ? '·' : '',
+        label: fullDate + ': ' + detail,
+        expected: status.expected,
+        noted: status.noted,
+        complete: status.complete
+      });
+    }
+    while (days.length % 7) days.push({ key: 'blank-end-' + days.length, empty: true });
+    return days;
+  }
+
+  // Days with every scheduled dose noted, out of the scheduled days in the 30-day history.
+  function medicationHistorySummary(medication) {
+    const scheduledDays = medicationHistoryDays(medication)
+      .filter(day => !day.empty && day.expected > 0);
+    return {
+      complete: scheduledDays.filter(day => day.complete).length,
+      scheduled: scheduledDays.length
+    };
+  }
+
+  // Counts from the start date to asOf: days with any dose noted, days fully noted (scheduled only), each dose's noted times,
+  // and the current run of fully noted days. A today that isn't finished yet doesn't end the run. Archived medications, and ones
+  // without a start date, get zeros.
+  function medAdherence(medication, asOf = localToday()) {
+    const med = resolveMedication(medication);
+    const endKey = dateKey(asOf);
+    if (!med || !endKey || !med.active || !med.startDate) {
+      return {
+        medicationId: med ? med.id : '',
+        daysWithDosesNoted: 0,
+        daysFullyNoted: 0,
+        daysExpected: 0,
+        currentRun: 0,
+        runStartedAt: null,
+        notedLabel: '0 of 0 days noted',
+        perDose: []
+      };
+    }
+
+    const startKey = dateKey(med.startDate);
+    if (!startKey || startKey > endKey) {
+      return {
+        medicationId: med.id,
+        daysWithDosesNoted: 0,
+        daysFullyNoted: 0,
+        daysExpected: 0,
+        currentRun: 0,
+        runStartedAt: null,
+        notedLabel: '0 of 0 days noted',
+        perDose: []
+      };
+    }
+
+    const scheduled = med.freq !== 'prn';
+    const perDose = (scheduled ? (Array.isArray(med.slots) ? med.slots : []) : ['As needed'])
+      .map((label, slot) => ({
+        slot: scheduled ? slot : -1,
+        label: label,
+        amount: Number(med.dose) || 0,
+        unit: med.unit || '',
+        times: [],
+        timesNoted: 0
+      }));
+    let daysWithDosesNoted = 0;
+    let daysFullyNoted = 0;
+    let daysExpected = 0;
+    const completeDays = [];
+    let day = startKey;
+    while (day <= endKey) {
+      const status = medDayStatus(med, day);
+      if (status.hasDoseNoted) daysWithDosesNoted += 1;
+      if (scheduled) {
+        daysExpected += 1;
+        if (status.complete) {
+          daysFullyNoted += 1;
+          completeDays.push(day);
+        }
+      }
+      status.doses.forEach(dose => {
+        if (!dose.noted) return;
+        const index = perDose.findIndex(item => item.slot === dose.slot);
+        if (index < 0) return;
+        perDose[index].timesNoted += 1;
+        if (dose.at) perDose[index].times.push({ day: day, at: dose.at, amount: dose.amount, unit: dose.unit });
+      });
+      day = dayOffset(day, 1);
+    }
+
+    // A day with a dose skipped ("Not taking it today") neither ends the run nor counts toward it.
+    let currentRun = 0;
+    let runDay = endKey;
+    if (scheduled && !medDayStatus(med, endKey).settled) runDay = dayOffset(endKey, -1);
+    while (runDay >= startKey && medDayStatus(med, runDay).settled) {
+      if (medDayStatus(med, runDay).complete) currentRun += 1;
+      runDay = dayOffset(runDay, -1);
+    }
+    const runStartedAt = currentRun ? dayOffset(runDay, 1) : null;
+    return {
+      medicationId: med.id,
+      daysWithDosesNoted: daysWithDosesNoted,
+      daysFullyNoted: daysFullyNoted,
+      daysExpected: daysExpected,
+      currentRun: currentRun,
+      runStartedAt: runStartedAt,
+      notedLabel: scheduled
+        ? daysWithDosesNoted + ' of ' + daysExpected + ' days noted'
+        : daysWithDosesNoted + (daysWithDosesNoted === 1
+          ? ' day with an as-needed dose noted'
+          : ' days with as-needed doses noted'),
+      perDose: perDose
+    };
+  }
+
+  // medAdherence for every active medication, plus combined totals; currentRun is the longest run among them.
+  function medSummary(asOf = localToday()) {
+    const medications = activeMedications().filter(med => med).map(med => {
+      const adherence = medAdherence(med, asOf);
+      return {
+        id: med.id,
+        name: med.name,
+        dose: med.dose,
+        unit: med.unit,
+        freq: med.freq,
+        slots: med.slots,
+        dayStatus: medDayStatus(med, asOf),
+        adherence: adherence
+      };
+    });
+    const daysWithDosesNoted = medications.reduce((total, med) => total + med.adherence.daysWithDosesNoted, 0);
+    const daysExpected = medications.reduce((total, med) => total + med.adherence.daysExpected, 0);
+    return {
+      day: dateKey(asOf),
+      medications: medications,
+      daysWithDosesNoted: daysWithDosesNoted,
+      daysExpected: daysExpected,
+      notedLabel: daysExpected
+        ? daysWithDosesNoted + ' of ' + daysExpected + ' days noted'
+        : daysWithDosesNoted + (daysWithDosesNoted === 1
+          ? ' day with an as-needed dose noted'
+          : ' days with as-needed doses noted'),
+      currentRun: medications.reduce((longest, med) => Math.max(longest, med.adherence.currentRun), 0)
+    };
+  }
+
+  // Keeps the message for Today and shows it in Tracking's status line when that is on screen.
+  function announceDose(message) {
+    todayUI.message = message;
+    const status = document.getElementById('tracking-status');
+    if (status) status.textContent = message;
+  }
+
+  // Checks a dose note and adds it to S.doses, without saving. Returns the added event, or null.
+  // overLimitOk: the screen has already asked about going over the as-needed limit.
+  // Refuses a time in the future or before the start date, and a scheduled dose already noted or skipped that day.
+  function addDoseEvent(medId, slot, at = new Date(), overLimitOk = false) {
+    if (!medicationTrackingEnabled()) {
+      window.alert('Medication tracking is paused. Turn it on in Settings before noting a dose.');
+      return null;
+    }
+    const med = resolveMedication(medId);
+    const takenAt = logicDate(at);
+    const validSlot = med && (med.freq === 'prn' ? slot === -1 :
+      Number.isInteger(slot) && slot >= 0 && slot < med.slots.length);
+    const day = takenAt && dateKey(takenAt);
+    if (!med || !med.active || !validSlot || !day || takenAt > new Date() ||
+        (med.startDate && day < dateKey(med.startDate))) {
+      window.alert('Check the medication, dose slot, and time before saving.');
+      return null;
+    }
+    const dayEvents = medicationEvents(med, day);
+    if (slot !== -1 && dayEvents.some(event => Number(event.slot) === slot)) {
+      announceDose('This scheduled dose is already noted.');
+      return null;
+    }
+    const notedPrn = dayEvents.filter(event => Number(event.slot) === -1).length;
+    if (slot === -1 && med.dailyLimit && notedPrn >= med.dailyLimit && !overLimitOk) {
+      const confirmation = S.profile.companion.hideCounters
+        ? 'This dose note would be above your optional personal daily limit of ' + med.dailyLimit +
+          '. Save this additional dose note?'
+        : 'You have noted ' + notedPrn + ' as-needed dose' + (notedPrn === 1 ? '' : 's') +
+          ' today, above your optional personal limit of ' + med.dailyLimit +
+          '. Save this additional dose note?';
+      if (typeof window.confirm !== 'function' ||
+          !window.confirm(confirmation)) return null;
+    }
+    if (!S.doses[day]) S.doses[day] = {};
+    if (!Array.isArray(S.doses[day][medId])) S.doses[day][medId] = [];
+    const event = { slot: slot, at: takenAt.toISOString() };
+    S.doses[day][medId].push(event);
+    return event;
+  }
+
+  const SKIP_REASONS = ['Forgot', 'Side effects', 'Ran out', 'Told to stop or pause', 'Other'];
+
+  // "Not taking it today": saves today's scheduled dose as skipped, with an optional reason, without saving.
+  // Returns the added event, or null.
+  function skipDoseEvent(medId, slot, reason = '') {
+    const med = resolveMedication(medId), at = new Date(), day = dateKey(at);
+    if (!medicationTrackingEnabled() || !med || !med.active || med.freq === 'prn' ||
+        !Number.isInteger(slot) || slot < 0 || slot >= med.slots.length ||
+        (med.startDate && day < dateKey(med.startDate)) ||
+        medicationEvents(med, day).some(event => Number(event.slot) === slot)) return null;
+    if (!S.doses[day]) S.doses[day] = {};
+    if (!Array.isArray(S.doses[day][medId])) S.doses[day][medId] = [];
+    const event = { slot: slot, at: at.toISOString(), skipped: true };
+    if (SKIP_REASONS.includes(reason)) event.reason = reason;
+    S.doses[day][medId].push(event);
+    return event;
+  }
+
+  // Takes a dose note back out of S.doses (an Undo, or a failed save).
+  function removeDoseEvent(medId, event) {
+    const events = S.doses[dateKey(event.at)] && S.doses[dateKey(event.at)][medId];
+    const index = Array.isArray(events) ? events.indexOf(event) : -1;
+    if (index >= 0) events.splice(index, 1);
+    return index >= 0;
+  }
+
+  // Puts a removed dose note back on its day (undoing a removal, or rolling back after a failed save).
+  function restoreDoseEvent(medId, event) {
+    const day = dateKey(event.at);
+    if (!S.doses[day]) S.doses[day] = {};
+    if (!Array.isArray(S.doses[day][medId])) S.doses[day][medId] = [];
+    S.doses[day][medId].push(event);
+  }
+
+  // Notes a dose and saves; if the save fails, the note is taken back out and the error passed on.
+  async function noteDose(medId, slot, at = new Date()) {
+    const event = addDoseEvent(medId, slot, at);
+    if (!event) return false;
+    try {
+      await persistLogicState();
+    } catch (error) {
+      removeDoseEvent(medId, event);
+      throw error;
+    }
+    todayUI.now = new Date();
+    announceDose(resolveMedication(medId).name + ' dose noted.');
+    return true;
+  }
+
+  // Removes the latest note for this dose slot today and saves; if the save fails, the note goes back.
+  async function undoDose(medId, slot) {
+    if (!medicationTrackingEnabled()) return false;
+    const events = S.doses[localToday()] && S.doses[localToday()][medId];
+    if (!Array.isArray(events)) return;
+    const index = events.map((event, position) => ({ event: event, index: position }))
+      .filter(entry => Number(entry.event.slot) === slot).map(entry => entry.index).pop();
+    if (typeof index !== 'number') return;
+    const removed = events.splice(index, 1)[0];
+    try {
+      await persistLogicState();
+    } catch (error) {
+      events.splice(index, 0, removed);
+      throw error;
+    }
+    todayUI.now = new Date();
+    announceDose('Dose entry removed.');
+  }
+</script>

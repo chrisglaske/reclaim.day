@@ -1,0 +1,21 @@
+# Security headers for reclaim.day (Workers static assets). The CSP is report-only until it has run clean;
+# X-Frame-Options enforces the no-framing rule meanwhile. Inline styles stay allowed for the style="--r:…" custom properties.
+/*
+  Content-Security-Policy-Report-Only: default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()
+
+# Vite hashes everything in /assets/, the fonts included (app/fonts).
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Screenshots and the social card keep their names, so they get a day plus a week of stale-while-revalidate.
+/shots/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/og.jpg
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800

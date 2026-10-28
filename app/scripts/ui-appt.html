@@ -1,0 +1,77 @@
+<script>
+/* The appointment page, opened from Insights › Overview and Settings › Your data. Data: scripts/appointment.
+   V.ap = {per, from, to, on:{glance, meds, habits, well, q, notes}, picked:Set of note ids}. Counters show here even when
+   hidden elsewhere: the page is made to be shown. Print or save as PDF prints only the summary (styles/app @media print). */
+const APSECS=[['glance','At a glance'],['meds','Medication'],['habits','Habits'],['well','Mood, cravings & sleep'],['q','Questions'],['notes','My notes']];
+const APPER=[['since','Since last appointment'],['14','2 weeks'],['30','30 days'],['90','3 months'],['custom','Custom']];
+function apState(){if(!V.ap)V.ap={per:apptLast()?'since':'30',from:addD(localToday(),-29),to:localToday(),on:{glance:true,meds:true,habits:true,well:true,q:true,notes:false},picked:new Set(),meds:null};return V.ap;}
+/* Which medications: All / Active / Archived, then each one to tick or untick. a.meds is null (the default) or a Set of ids. */
+function apMedPick(r){if(r.err)return '';const a=apState(),ch=apptMedChoices(r);if(!ch.length)return '';
+  const sel=a.meds||new Set(ch.filter(c=>c.on).map(c=>c.id)),act=ch.filter(c=>!c.archived),arc=ch.filter(c=>c.archived);
+  const same=list=>list.length===sel.size&&list.every(c=>sel.has(c.id));
+  const grp=[['all','All',ch],['active','Active only',act],['archived','Archived only',arc]].filter(([k,,l])=>l.length&&(k==='all'||act.length&&arc.length));
+  const pick=(title,list)=>list.length?`<div><span class="lbl">${title}</span><div class="chips" role="group" aria-label="${title}">${list.map(c=>`<button class="chip ${sel.has(c.id)?'on':''}" data-act="apmed:${esc(c.id)}" aria-pressed="${sel.has(c.id)}"><span class="ck">${I('check')}</span>${esc(c.name)}</button>`).join('')}</div></div>`:'';
+  return `<div class="apmeds"><span class="lbl" id="apmedl">Which medications?</span>${grp.length>1?`<div class="chips" role="group" aria-labelledby="apmedl">${grp.map(([k,l,list])=>`<button class="chip ${same(list)?'on':''}" data-act="apmeds:${k}" aria-pressed="${same(list)}">${l}</button>`).join('')}</div>`:''}
+    ${pick('Active',act)}${pick('Archived',arc)}<p class="help" style="margin:0">Archived ones are medications you stopped. Tick any you want the summary to include.</p></div>`;}
+/* the chosen range, or {err} when it can't be used yet */
+function apRange(){const a=apState();
+  if(a.per==='since')return apptLast()?apptRange('since'):{err:'Add the date of your last appointment above to see what changed since then.'};
+  if(a.per==='custom'){const e=appointmentRangeError(a.from,a.to);return e?{err:e}:apptRange({start:a.from,end:a.to});}
+  return apptRange(a.per);}
+const apTable=(head,rows)=>`<div class="aptw"><table class="aptab"><thead><tr>${head.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>i?`<td>${c}</td>`:`<th scope="row">${c}</th>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+const apSec=(k,title,body)=>`<section class="card apsec" id="ap-${k}"><div class="ctitle"><h2>${title}</h2></div>${body}</section>`;
+function apDoc(d){const a=apState(),on=a.on,out=[];
+  if(on.glance)out.push(apSec('glance','At a glance',d.glance.length?`<ul class="apglance">${d.glance.map(g=>`<li>${esc(g)}</li>`).join('')}</ul>`:`<p class="empty">Nothing noted in this period.</p>`));
+  if(on.meds)out.push(apSec('meds','Medication',d.meds.length?`<div class="aprows">${d.meds.map(m=>`<div class="aprow"><span class="itile peach">${I('pill')}</span><div><b>${esc(m.title)}${m.archived?' <span class="muted">· stopped</span>':''}</b><small>${esc(m.plan)}</small><p>${esc(m.line)}</p></div></div>`).join('')}</div>`:`<p class="empty">No medications tracked.</p>`));
+  if(on.habits)out.push(apSec('habits','Habits',d.habits.length?d.habits.map(h=>`<div class="aphab"><h3>${esc(h.name)} <span class="muted">· ${esc(h.plan)}</span></h3>${
+    h.quit?apTable(['Week','Moments','Days without'],h.rows.map(r=>[r.label,r.n,r.free]))
+      :apTable(['Week',cap(h.unit),'Per day',...(h.reduce?['Within limit']:[])],h.rows.map(r=>[r.label,r.amt,r.perDay,...(h.reduce?[r.within]:[])]))}</div>`).join(''):`<p class="empty">No habits tracked.</p>`));
+  if(on.well)out.push(apSec('well','Mood, cravings & sleep',d.well.any?`${apTable(['Week','Mood','Craving /10','Sleep','Waves'],d.well.rows.map(r=>[r.label,r.mood,r.craving,r.sleep,r.waves]))}${d.well.patterns.length?`<h3 class="aph3">Patterns</h3><ul class="apglance">${d.well.patterns.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>`:''}`:`<p class="empty">Nothing noted in this period.</p>`));
+  if(on.q)out.push(apSec('q','Questions for my doctor',`${d.questions.length?`<ol class="apq">${d.questions.map((q,i)=>`<li><span class="apn">${i+1}.</span><span>${esc(q.text)}</span><button class="iconbtn jrm noprint" data-act="apqrm:${esc(q.id)}" aria-label="Remove question: ${esc(q.text.slice(0,60))}">${I('x')}</button></li>`).join('')}</ol>`:`<p class="empty">No questions yet. Add anything you want to ask so you don’t forget it in the room.</p>`}
+    <div class="apqadd noprint"><label class="vh" for="apqin">New question</label><input class="field" id="apqin" maxlength="300" placeholder="Add a question…" autocomplete="off"><button class="btn" data-act="apqadd">${I('plus')}Add</button></div>`));
+  if(on.notes)out.push(apSec('notes','My notes',d.notes.length?`<p class="muted noprint" style="margin:0 0 10px;font-size:13px">Only the notes you tick are shown and printed. <button class="link" data-act="apnall">${d.notes.every(n=>a.picked.has(n.id))?'Untick all':'Tick all'}</button></p><div class="apnotes">${d.notes.map(n=>{const p=a.picked.has(n.id);return `<div class="apnote ${p?'on':''}"><button class="check noprint ${p?'on':''}" data-act="apnote:${esc(n.id)}" aria-pressed="${p}" aria-label="Include the ${esc(n.label.toLowerCase())} from ${insightsDateLabel(n.day)}">${CHECK}</button><div><small>${insightsDateLabel(n.day)} · ${esc(n.label)}</small><p>${esc(n.text)}</p></div></div>`;}).join('')}</div>`:`<p class="empty">No notes in this period.</p>`));
+  return out.join('');}
+function appt(){const a=apState(),r=apRange(),d=r.err?null:apptData(r,a.meds),last=apptLast(),nm=S.profile.name.trim();
+  return `<div class="hello"><div><div class="eyebrow">Insights · Appointment</div><h1>For your appointment</h1><div class="lead">What changed, sorted the way a doctor tends to ask. Nothing is sent anywhere.</div></div><button class="btn ghost apback" data-act="nav:insights">${I('back')}Insights</button></div>
+    <section class="card apctl"><div class="apf"><div><span class="lbl" id="apperl">Period</span><div class="chips" role="group" aria-labelledby="apperl">${APPER.map(([k,l])=>`<button class="chip ${a.per===k?'on':''}" data-act="apper:${k}" aria-pressed="${a.per===k}">${l}</button>`).join('')}</div></div>
+      <div class="aplast"><div><label class="lbl" for="aplast">Last appointment</label><input type="date" class="field" id="aplast" data-ap="last" value="${last}" max="${localToday()}"></div><button class="btn sm" data-act="apmark">Mark today</button></div>
+      ${a.per==='custom'?`<div class="ffl"><div><label class="lbl" for="apfrom">From</label><input type="date" class="field" id="apfrom" data-ap="from" value="${a.from}" max="${localToday()}"></div><div><label class="lbl" for="apto">Through</label><input type="date" class="field" id="apto" data-ap="to" value="${a.to}" max="${localToday()}"></div></div>`:''}
+      <div><span class="lbl" id="apsecl">Show</span><div class="chips" role="group" aria-labelledby="apsecl">${APSECS.map(([k,l])=>`<button class="chip ${a.on[k]?'on':''}" data-act="apsec:${k}" aria-pressed="${a.on[k]}"><span class="ck">${I('check')}</span>${l}</button>`).join('')}</div></div>
+      ${a.on.meds?apMedPick(r):''}</div>
+      <div class="exrow"><button class="btn" data-act="apcopy" ${d?'':'disabled'}>Copy text</button><button class="btn primary" data-act="apprint" ${d?'':'disabled'}>Print or save as PDF</button></div></section>
+    ${d?`<article class="apdoc" id="apdoc" aria-label="Appointment summary"><header class="aphead"><h2>Appointment summary${nm?' · '+esc(nm):''}</h2><p>${esc(r.label)} · ${insightsDateLabel(r.start)} – ${insightsDateLabel(r.end)}</p></header>
+      ${apDoc(d)||`<p class="empty">Choose at least one section to show.</p>`}
+      <p class="apfoot">From notes kept in Reclaim. Times and amounts are self-reported; this is not a medical record.</p></article>`
+      :`<p class="aperr" role="alert">${esc(r.err)}</p>`}`;}
+VIEWS.appt=appt;
+/* redraw in place, keeping the scroll and the focused control */
+function apDraw(){const m=$('#main'),y=m.scrollTop,f=document.activeElement,k=f?.dataset?.act||f?.id;$('#view').innerHTML=appt();m.scrollTop=y;
+  if(k)(document.getElementById(k)||$(`#view [data-act="${k}"]`))?.focus({preventScroll:true});}
+function apSave(back){saveInBackground(()=>{back();if(V.view==='appt')apDraw();});}
+Object.assign(ACT,{
+  apopen:()=>{closeSheet();V.view='appt';$$('.nv',app).forEach(n=>n.classList.toggle('on',n.dataset.act==='nav:insights'));renderView();$('#view h1')?.setAttribute('tabindex','-1');$('#view h1')?.focus({preventScroll:true});},
+  apper:(b,e,x)=>{apState().per=x;apDraw();},
+  apmeds:(b,e,x)=>{const ch=apptMedChoices(apRange()),a=apState();a.meds=new Set(ch.filter(c=>x==='all'||(x==='active')===!c.archived).map(c=>c.id));apDraw();},
+  apmed:(b,e,x)=>{const r=apRange(),a=apState(),ch=apptMedChoices(r),s=a.meds||new Set(ch.filter(c=>c.on).map(c=>c.id));s.has(x)?s.delete(x):s.add(x);a.meds=s;apDraw();},
+  apsec:(b,e,x)=>{const a=apState();a.on[x]=!a.on[x];apDraw();},
+  apmark:()=>{const was=apptLast(),t=localToday();if(was===t){toast('Today is already your last appointment.');return;}const back=setApptLast(t);apState().per='since';apDraw();
+    toast('Appointment marked for today',()=>{back();apDraw();saveInBackground(()=>{setApptLast(t);apDraw();});});apSave(back);},
+  apqadd:()=>{const i=$('#apqin'),r=addApptQuestion(i.value);if(typeof r==='string'){toast(r);i.focus();return;}
+    const back=removeApptQuestion.bind(null,r.id);apDraw();$('#apqin')?.focus();toast('Question added');saveInBackground(()=>{back();apDraw();});},
+  apqrm:(b,e,x)=>{const back=removeApptQuestion(x);if(!back)return;apDraw();$('#apqin')?.focus({preventScroll:true});
+    toast('Question removed',()=>{back();apDraw();saveInBackground(()=>{removeApptQuestion(x);apDraw();});});apSave(back);},
+  /* note ids are '<day>:<kind>', so the verb gets them in two parts */
+  apnote:(b,e,x,y)=>{const id=y?x+':'+y:x,p=apState().picked;p.has(id)?p.delete(id):p.add(id);apDraw();},
+  apnall:()=>{const a=apState(),ns=apptNotes(apRange());const all=ns.every(n=>a.picked.has(n.id));ns.forEach(n=>all?a.picked.delete(n.id):a.picked.add(n.id));apDraw();},
+  apprint:()=>{window.print();},
+  apcopy:()=>{const r=apRange();if(r.err)return;const a=apState(),t=apptText(apptData(r,a.meds),a.on,a.picked);
+    const sheet=()=>{openSheet(`<div class="grab"></div><h3>Copy your summary</h3><p class="muted" style="margin:0 0 10px">Copying isn’t allowed here. The text is selected: press Ctrl+C or ⌘C, or hold to copy.</p><textarea id="apcp" style="min-height:220px" readonly>${esc(t)}</textarea>`);const x=$('#apcp');x.focus();x.select();};
+    const old=()=>{const x=document.createElement('textarea');x.value=t;x.setAttribute('readonly','');x.style.cssText='position:fixed;opacity:0';document.body.appendChild(x);x.select();let ok=false;try{ok=document.execCommand('copy');}catch(error){ok=false;}x.remove();return ok;};
+    (navigator.clipboard?.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(()=>toast('Summary copied'),()=>{if(old())toast('Summary copied');else sheet();});}
+});
+/* the date fields: last appointment saves straight away (with rollback); custom From / Through redraw */
+app.addEventListener('change',e=>{const k=e.target.dataset?.ap;if(!k||V.view!=='appt')return;const v=e.target.value,a=apState();
+  if(k==='last'){if(v&&(dateKey(v)!==v||v>localToday())){toast('Choose a date that isn’t in the future.');return;}if(v===apptLast())return;const back=setApptLast(v);if(v)a.per='since';apDraw();toast(v?'Last appointment saved':'Last appointment cleared');apSave(back);return;}
+  a[k]=v;apDraw();});
+app.addEventListener('keydown',e=>{if(e.target.id==='apqin'&&e.key==='Enter'){e.preventDefault();ACT.apqadd(e.target,e);}});
+</script>

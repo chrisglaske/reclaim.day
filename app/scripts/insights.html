@@ -1,0 +1,92 @@
+<script>
+  // Insights data logic. The screen is scripts/ui-insights.html; its figures come from ins() in scripts/model.
+
+  // Overview "Showing up": five Monday-first weeks ending with this one. Each past day is shaded by how many
+  // notes it holds (check-ins, doses, waves, moments): 0, 1–2, 3–4, 5+. Days after today are left blank.
+  function insightsHeat() {
+    const today = dateKey(todayUI.now);
+    const monday = dayOffset(today, -((new Date(today + 'T12:00:00').getDay() + 6) % 7) - 28);
+    const levels = ['No notes', '1–2 notes', '3–4 notes', '5+ notes'];
+    const notes = day => Object.values(((S.journal[day] || {}).checkins) || {}).filter(item => item && item.updatedAt).length +
+      Object.values(S.doses[day] || {}).reduce((total, list) => total + (Array.isArray(list) ? list.length : 0), 0) +
+      S.cravings.filter(item => item && dateKey(item.at) === day).length +
+      S.slips.filter(item => item && dateKey(item.at) === day).length;
+    const cells = Array.from({ length: 35 }, (_, index) => {
+      const day = dayOffset(monday, index);
+      if (day > today) return { day: day, future: true };
+      const count = notes(day), level = count >= 5 ? 3 : count >= 3 ? 2 : count ? 1 : 0;
+      return { day: day, level: level, today: day === today,
+        title: new Date(day + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ': ' + levels[level] };
+    });
+    const past = cells.filter(cell => !cell.future);
+    return { cells: cells, days: past.length, active: past.filter(cell => cell.level).length };
+  }
+
+
+  // The live app's From / Through check for a custom summary range; '' when it is fine.
+  function appointmentRangeError(start, end) {
+    const valid = k => /^\d{4}-\d{2}-\d{2}$/.test(k) && dateKey(k) === k;
+    if (!valid(start) || !valid(end)) return 'Choose valid start and end dates.';
+    if (start > end || end > localToday()) return 'Choose a range ending today or earlier, with the start before the end.';
+    if (dayDistance(new Date(start + 'T12:00:00'), new Date(end + 'T12:00:00')) > 366) return 'Choose a range of one year or less.';
+    return '';
+  }
+
+  // A period key ('7', '14', '30', '90', 'all') or a checked custom range { start, end }.
+  function insightsDateRange(period) {
+    if (period && typeof period === 'object') {
+      const error = appointmentRangeError(period.start, period.end);
+      if (error) throw new Error(error);
+      return { start: period.start, end: period.end, label: 'Chosen dates' };
+    }
+    const end = localToday();
+    const periods = {
+      '7': 'Last 7 days',
+      '14': 'Last 2 weeks',
+      '30': 'Last 30 days',
+      '90': 'Last 90 days',
+      all: 'All available notes'
+    };
+    if (!Object.prototype.hasOwnProperty.call(periods, period)) {
+      throw new Error('Choose a valid summary date period.');
+    }
+    if (period !== 'all') {
+      const days = Number(period);
+      return {
+        start: dayOffset(end, -(days - 1)),
+        end: end,
+        label: periods[period]
+      };
+    }
+
+    const dates = [
+      ...Object.keys(S.journal),
+      ...Object.keys(S.profile.companion.reflections),
+      ...Object.keys(S.doses),
+      ...S.slips.map(item => dateKey(item.at)),
+      ...S.cravings.map(item => dateKey(item.at)),
+      ...S.meds.map(item => dateKey(item.startDate)),
+      ...VICE_KEYS.flatMap(name =>
+        S.vices[name].phases.map(phase => dateKey(phase.at)))
+    ].filter(day => dateKey(day) === day && day <= end).sort();
+    return {
+      start: dates[0] || end,
+      end: end,
+      label: periods.all
+    };
+  }
+
+  function insightsDateLabel(day) {
+    return new Date(day + 'T12:00:00').toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric'
+    });
+  }
+
+  // Weeks start on Monday; older reflections saved under a Sunday still show in the Journal.
+  function weeklyReflectionKey(date = new Date()) {
+    const weekStart = logicDate(date);
+    if (!weekStart) return '';
+    weekStart.setDate(weekStart.getDate() - (weekStart.getDay() + 6) % 7);
+    return dateKey(weekStart);
+  }
+</script>

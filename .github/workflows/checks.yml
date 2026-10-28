@@ -1,0 +1,32 @@
+# Builds the app and both Cloudflare Workers on every push and pull request.
+# Deploys stay manual.
+name: checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: |
+            app-host/package-lock.json
+            site/package-lock.json
+      - name: App build (fails on inline handlers or scripts)
+        run: node tools/build-app.mjs
+      - name: App host build
+        working-directory: app-host
+        run: npm ci && npm run build
+      - name: Site build
+        working-directory: site
+        run: npm ci && npm run build

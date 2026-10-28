@@ -1,0 +1,422 @@
+<script>
+  // Shared constants (habits, moods, the medicine catalog, icons), the date helpers every data file uses, and
+  // saving: it wraps saveState (state.html) with the save notice and retries of offline or busy
+  // saves. Loads right after state and storage, so habits, meds, journal, the ui-* screens and start can use it.
+  // Runs after the next paint.
+  const nextTick = fn => new Promise(resolve => requestAnimationFrame(() => resolve(fn ? fn() : undefined)));
+  const LOGIC_DAY_MS = 24 * 60 * 60 * 1000;
+  const JOURNAL_TAGS = ['Stress', 'Exercise', 'Time outside', 'Social time', 'Rest', 'Illness', 'Work', 'Travel'];
+  const CHECKIN_SLOTS = ['morning', 'afternoon', 'evening'];
+  // The mockup's mood words and faces; saved moods stay 1–5 (0 is not noted), so MOOD_WORDS[mood - 1].
+  const MOOD_WORDS = ['Struggling', 'Heavy', 'Getting by', 'Doing okay', 'Going well'];
+  const MOOD_FACES = ['😣', '🙁', '😐', '🙂', '😄'];
+  const SLEEP_WORDS = ['Very poor', 'Poor', 'Fair', 'Good', 'Very good'];
+  const CHECKIN_PROMPTS = ['What helped today?', 'What felt hard?', 'One thing I’m glad I did', 'What do I need tonight?'];
+  const HABIT_MILESTONES = [1, 3, 7, 14, 30, 60, 90, 180, 365];
+  // One entry per habit, in display order. `emoji` marks a moment, `freeEmoji` a quit day, and
+  // `planEmoji` / `planTint` the setup and Settings cards. `units` follow the mockup's HUNITS:
+  // `as` / `ls` are the amount and limit steps, `max` the largest amount, `def` a suggested day.
+  // `track` is the setup tile's subtitle, `note` the measure note on plan cards and `amountHelp`
+  // the moment dialog's hint ({many} is the chosen unit). Only `shown` habits appear in the UI.
+  const VICES = [
+    { key: 'smoking', label: 'Smoking', emoji: '🚬', freeEmoji: '🚭', recoveryEmoji: '🚭', tint: 'mint',
+      planEmoji: '🚭', planTint: 'peach', shown: true, kinds: ['Cigarette', 'Vape', 'Other'],
+      track: 'Cigarettes, roll-ups or cigars',
+      note: 'Count one {one} as one. Keep the measure consistent.',
+      amountHelp: 'Count {many} consistently with your usual daily amount. For Other, use a consistent count; products are not converted.', units: [
+        { v: 'cigarettes', l: 'Cigarettes', one: 'cigarette', many: 'cigarettes', as: 0.5, ls: 1, max: 60 },
+        { v: 'rollups', l: 'Roll-ups', one: 'roll-up', many: 'roll-ups', as: 0.5, ls: 1, max: 60 },
+        { v: 'cigars', l: 'Cigars', one: 'cigar', many: 'cigars', as: 0.5, ls: 1, max: 20 }
+      ] },
+    { key: 'vaping', label: 'Vaping', emoji: '💨', freeEmoji: '🫁', recoveryEmoji: '🫁', tint: 'butter',
+      planEmoji: '💨', planTint: 'butter', shown: true, kinds: ['Disposable', 'Pod', 'Refillable', 'Other'],
+      track: 'Sessions, puffs, pods or e-liquid',
+      note: 'Pick one way to count and keep it consistent.',
+      amountHelp: 'Count {many} consistently with your usual daily amount. For Other, use a consistent count; products are not converted.', units: [
+        { v: 'sessions', l: 'Sessions', one: 'session', many: 'sessions', help: 'One sitting, however many puffs. The easiest to keep up with.', as: 1, ls: 1, max: 60, def: 4 },
+        { v: 'puffs', l: 'Puffs', one: 'puff', many: 'puffs', help: 'Handy if your device counts them for you.', as: 5, ls: 10, max: 999, def: 100 },
+        { v: 'pods', l: 'Pods', one: 'pod', many: 'pods', help: 'Pods or cartridges finished.', as: 0.5, ls: 0.5, max: 10, def: 1 },
+        { v: 'ml', l: 'Millilitres', one: 'ml', many: 'ml', help: 'E-liquid used, for refillable tanks.', as: 0.5, ls: 0.5, max: 30, def: 2 }
+      ] },
+    { key: 'drinking', label: 'Drinking', emoji: '🍷', freeEmoji: '🥤', recoveryEmoji: '🍃', tint: 'sky',
+      planEmoji: '🍷', planTint: 'lilac', shown: true, kinds: ['Wine', 'Beer', 'Spirits', 'Other'],
+      track: 'Quit or cut down, at your own pace',
+      note: 'Count drink servings consistently. Drink size and strength vary, so servings are not standardized alcohol units.',
+      amountHelp: 'Count servings consistently with your usual daily amount. Serving size and strength vary; this is not a standardized alcohol measure.', units: [
+        { v: 'drinks', l: 'Drinks', one: 'drink serving', many: 'drink servings', as: 0.5, ls: 1, max: 40 }
+      ] }
+  ];
+  const VICE_KEYS = VICES.filter(vice => vice.shown).map(vice => vice.key);
+  const VICE_BY_KEY = Object.fromEntries(VICES.map(vice => [vice.key, vice]));
+
+  function viceInfo(key) {
+    return VICE_BY_KEY[key] || VICE_BY_KEY.drinking;
+  }
+
+  // The habit's chosen count unit; the first one is the default.
+  function viceUnit(key) {
+    const units = viceInfo(key).units;
+    const record = S.vices[key];
+    return units.find(unit => record && unit.v === record.unit) || units[0];
+  }
+
+  function viceCopy(key, field) {
+    const unit = viceUnit(key);
+    return viceInfo(key)[field].replace('{one}', unit.one).replace('{many}', unit.many);
+  }
+  // Alcohol notes shown when a drink is logged while one of these medicines is active.
+  const MEDICATION_ALCOHOL = {
+    ad: 'Alcohol can worsen side effects and blunt the benefits.',
+    sed: 'Alcohol adds to the sedation and can be dangerous.',
+    bup: 'Alcohol with bupropion can lower the seizure threshold.',
+    dis: 'Any alcohol on disulfiram can cause a severe reaction.',
+    stim: 'Alcohol can mask stimulant effects and strain your heart.'
+  };
+  // "What to expect" timelines for a medicine's catalog `timeline` key, shown in Insights › Recovery (ms from the start date).
+  const MED_DAY = 864e5, MED_WEEK = 7 * MED_DAY, MED_MO = 30 * MED_DAY;
+  const MED_TIMELINES = {
+    bupropion: [
+      { label: 'Days 1–3', ms: 3 * MED_DAY, desc: 'Begins adjusting dopamine and norepinephrine reuptake.' },
+      { label: '1 week', ms: MED_WEEK, desc: 'Early side effects often ease. Some notice more energy and fewer nicotine cravings.' },
+      { label: '2 weeks', ms: 2 * MED_WEEK, desc: 'Urges may noticeably drop. Early signs of mood lift.' },
+      { label: '4 weeks', ms: 4 * MED_WEEK, desc: 'Steady-state levels reached. Mood benefits often become clear.' },
+      { label: '6 weeks', ms: 6 * MED_WEEK, desc: 'Full effect for most people. Motivation and focus tend to peak.' },
+      { label: '3 months', ms: 3 * MED_MO, desc: 'New habits solidify with less chemical pull. Emotional baseline steadies.' },
+      { label: '6 months+', ms: 6 * MED_MO, desc: 'Long-term stability and lower relapse risk.' }
+    ],
+    antidepressant: [
+      { label: 'Weeks 1–2', ms: 2 * MED_WEEK, desc: 'Sleep, energy, or appetite may improve first. Early side effects usually fade.' },
+      { label: 'Weeks 2–4', ms: 4 * MED_WEEK, desc: 'Early improvements in mood and anxiety often begin.' },
+      { label: 'Weeks 4–6', ms: 6 * MED_WEEK, desc: 'Many people feel the full effect around here.' },
+      { label: 'Weeks 8–12', ms: 12 * MED_WEEK, desc: "A good point to review how it's working with your prescriber." },
+      { label: '6 months+', ms: 6 * MED_MO, desc: 'Staying on treatment after feeling better lowers the chance of relapse.' }
+    ],
+    stimulant: [
+      { label: 'Day 1', ms: MED_DAY, desc: 'Effects typically start within 30–60 minutes of a dose.' },
+      { label: 'Week 1', ms: MED_WEEK, desc: 'Notice how focus, appetite and sleep respond. Jot it in your journal.' },
+      { label: 'Weeks 2–4', ms: 4 * MED_WEEK, desc: 'Dose adjustments usually settle into a steady routine.' },
+      { label: '3 months', ms: 3 * MED_MO, desc: 'Good time to review benefits and side effects with your prescriber.' }
+    ],
+    nonstimulant: [
+      { label: 'Weeks 1–2', ms: 2 * MED_WEEK, desc: 'Early effects may be subtle; consistency matters most.' },
+      { label: 'Weeks 4–6', ms: 6 * MED_WEEK, desc: 'Meaningful improvement in focus often appears.' },
+      { label: 'Weeks 8–12', ms: 12 * MED_WEEK, desc: 'Full effect for most people.' }
+    ],
+    varenicline: [
+      { label: 'Days 1–7', ms: MED_WEEK, desc: 'Dose ramps up. Smoking is still OK; set your quit date for day 8.' },
+      { label: 'Week 2', ms: 2 * MED_WEEK, desc: 'Quit week. Cigarettes feel less satisfying and cravings are blunted.' },
+      { label: 'Week 4', ms: 4 * MED_WEEK, desc: 'Withdrawal is easing. Keep taking every dose.' },
+      { label: 'Week 12', ms: 12 * MED_WEEK, desc: 'Standard course complete. Another 12 weeks can help prevent relapse.' }
+    ],
+    recovery: [
+      { label: 'Week 1', ms: MED_WEEK, desc: 'Begins reducing the reward and urge to drink.' },
+      { label: 'Month 1', ms: MED_MO, desc: 'Cravings are often noticeably lower. Pair with support for best results.' },
+      { label: 'Month 3', ms: 3 * MED_MO, desc: 'Consistent use is linked to fewer heavy-drinking days.' },
+      { label: 'Month 6+', ms: 6 * MED_MO, desc: 'Long-term use supports lasting change.' }
+    ],
+    nicotine: [
+      { label: 'Week 1', ms: MED_WEEK, desc: 'Replaces some nicotine so withdrawal is gentler.' },
+      { label: 'Weeks 2–6', ms: 6 * MED_WEEK, desc: 'Stay on your starting dose while new habits form.' },
+      { label: 'Weeks 6–10', ms: 10 * MED_WEEK, desc: 'Typical point to step down to a lower dose.' },
+      { label: 'Week 12', ms: 12 * MED_WEEK, desc: 'Most courses taper off around here.' }
+    ]
+  };
+
+  const MEDICATION_CATALOG = [
+    { group: 'Antidepressants', items: [
+      { id: 'sertraline', name: 'Sertraline', brand: 'Zoloft', dose: 50, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'fluoxetine', name: 'Fluoxetine', brand: 'Prozac', dose: 20, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'escitalopram', name: 'Escitalopram', brand: 'Lexapro', dose: 10, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'citalopram', name: 'Citalopram', brand: 'Celexa', dose: 20, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'paroxetine', name: 'Paroxetine', brand: 'Paxil', dose: 20, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'venlafaxine', name: 'Venlafaxine XR', brand: 'Effexor XR', dose: 75, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'desvenlafaxine', name: 'Desvenlafaxine', brand: 'Pristiq', dose: 50, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'duloxetine', name: 'Duloxetine', brand: 'Cymbalta', dose: 60, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'bupropion-xl', name: 'Bupropion XL', brand: 'Wellbutrin XL', dose: 150, unit: 'mg', freq: 1, timeline: 'bupropion', alcohol: MEDICATION_ALCOHOL.bup },
+      { id: 'bupropion-sr', name: 'Bupropion SR', brand: 'Wellbutrin SR / Zyban', dose: 150, unit: 'mg', freq: 2, timeline: 'bupropion', alcohol: MEDICATION_ALCOHOL.bup },
+      { id: 'mirtazapine', name: 'Mirtazapine', brand: 'Remeron', dose: 15, unit: 'mg', freq: 1, bedtime: true, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'trazodone', name: 'Trazodone', brand: 'Desyrel', dose: 50, unit: 'mg', freq: 1, bedtime: true, alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'vortioxetine', name: 'Vortioxetine', brand: 'Trintellix', dose: 10, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'vilazodone', name: 'Vilazodone', brand: 'Viibryd', dose: 20, unit: 'mg', freq: 1, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'amitriptyline', name: 'Amitriptyline', brand: 'Elavil', dose: 25, unit: 'mg', freq: 1, bedtime: true, timeline: 'antidepressant', alcohol: MEDICATION_ALCOHOL.sed }
+    ] },
+    { group: 'ADHD', items: [
+      { id: 'adderall-xr', name: 'Amphetamine salts XR', brand: 'Adderall XR', dose: 20, unit: 'mg', freq: 1, timeline: 'stimulant', alcohol: MEDICATION_ALCOHOL.stim },
+      { id: 'adderall', name: 'Amphetamine salts IR', brand: 'Adderall', dose: 10, unit: 'mg', freq: 2, timeline: 'stimulant', alcohol: MEDICATION_ALCOHOL.stim },
+      { id: 'vyvanse', name: 'Lisdexamfetamine', brand: 'Vyvanse', dose: 30, unit: 'mg', freq: 1, timeline: 'stimulant', alcohol: MEDICATION_ALCOHOL.stim },
+      { id: 'ritalin', name: 'Methylphenidate IR', brand: 'Ritalin', dose: 10, unit: 'mg', freq: 2, timeline: 'stimulant', alcohol: MEDICATION_ALCOHOL.stim },
+      { id: 'concerta', name: 'Methylphenidate ER', brand: 'Concerta', dose: 36, unit: 'mg', freq: 1, timeline: 'stimulant', alcohol: MEDICATION_ALCOHOL.stim },
+      { id: 'focalin', name: 'Dexmethylphenidate XR', brand: 'Focalin XR', dose: 10, unit: 'mg', freq: 1, timeline: 'stimulant', alcohol: MEDICATION_ALCOHOL.stim },
+      { id: 'strattera', name: 'Atomoxetine', brand: 'Strattera', dose: 40, unit: 'mg', freq: 1, timeline: 'nonstimulant' },
+      { id: 'intuniv', name: 'Guanfacine ER', brand: 'Intuniv', dose: 1, unit: 'mg', freq: 1, timeline: 'nonstimulant', alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'qelbree', name: 'Viloxazine', brand: 'Qelbree', dose: 200, unit: 'mg', freq: 1, timeline: 'nonstimulant' },
+      { id: 'clonidine', name: 'Clonidine ER', brand: 'Kapvay', dose: 0.1, unit: 'mg', freq: 2, timeline: 'nonstimulant', alcohol: MEDICATION_ALCOHOL.sed }
+    ] },
+    { group: 'Quit smoking & alcohol recovery', items: [
+      { id: 'varenicline', name: 'Varenicline', brand: 'Chantix', dose: 1, unit: 'mg', freq: 2, timeline: 'varenicline' },
+      { id: 'nic-patch', name: 'Nicotine patch', brand: '', dose: 21, unit: 'mg', freq: 1, timeline: 'nicotine' },
+      { id: 'nic-gum', name: 'Nicotine gum', brand: '', dose: 4, unit: 'mg', freq: 'prn', timeline: 'nicotine' },
+      { id: 'nic-lozenge', name: 'Nicotine lozenge', brand: '', dose: 4, unit: 'mg', freq: 'prn', timeline: 'nicotine' },
+      { id: 'naltrexone', name: 'Naltrexone', brand: 'Revia', dose: 50, unit: 'mg', freq: 1, timeline: 'recovery' },
+      { id: 'acamprosate', name: 'Acamprosate', brand: 'Campral', dose: 666, unit: 'mg', freq: 3, timeline: 'recovery' },
+      { id: 'disulfiram', name: 'Disulfiram', brand: 'Antabuse', dose: 250, unit: 'mg', freq: 1, alcohol: MEDICATION_ALCOHOL.dis },
+      { id: 'gabapentin', name: 'Gabapentin', brand: 'Neurontin', dose: 300, unit: 'mg', freq: 3, alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'topiramate', name: 'Topiramate', brand: 'Topamax', dose: 25, unit: 'mg', freq: 2, alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'baclofen', name: 'Baclofen', brand: 'Lioresal', dose: 10, unit: 'mg', freq: 3, alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'suboxone', name: 'Buprenorphine/naloxone', brand: 'Suboxone', dose: 8, unit: 'mg', freq: 1, alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'methadone', name: 'Methadone', brand: '', dose: 30, unit: 'mg', freq: 1, alcohol: MEDICATION_ALCOHOL.sed }
+    ] },
+    { group: 'Anxiety, mood & sleep', items: [
+      { id: 'buspirone', name: 'Buspirone', brand: 'Buspar', dose: 10, unit: 'mg', freq: 2, alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'hydroxyzine', name: 'Hydroxyzine', brand: 'Vistaril / Atarax', dose: 25, unit: 'mg', freq: 'prn', alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'propranolol', name: 'Propranolol', brand: 'Inderal', dose: 10, unit: 'mg', freq: 'prn' },
+      { id: 'lamotrigine', name: 'Lamotrigine', brand: 'Lamictal', dose: 100, unit: 'mg', freq: 1 },
+      { id: 'lithium', name: 'Lithium', brand: 'Lithobid', dose: 300, unit: 'mg', freq: 2, alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'quetiapine', name: 'Quetiapine', brand: 'Seroquel', dose: 50, unit: 'mg', freq: 1, bedtime: true, alcohol: MEDICATION_ALCOHOL.sed },
+      { id: 'aripiprazole', name: 'Aripiprazole', brand: 'Abilify', dose: 5, unit: 'mg', freq: 1, alcohol: MEDICATION_ALCOHOL.ad },
+      { id: 'melatonin', name: 'Melatonin', brand: '', dose: 3, unit: 'mg', freq: 1, bedtime: true }
+    ] },
+    { group: 'Everyday maintenance', items: [
+      { id: 'levothyroxine', name: 'Levothyroxine', brand: 'Synthroid', dose: 50, unit: 'mcg', freq: 1 },
+      { id: 'lisinopril', name: 'Lisinopril', brand: 'Zestril', dose: 10, unit: 'mg', freq: 1 },
+      { id: 'amlodipine', name: 'Amlodipine', brand: 'Norvasc', dose: 5, unit: 'mg', freq: 1 },
+      { id: 'atorvastatin', name: 'Atorvastatin', brand: 'Lipitor', dose: 20, unit: 'mg', freq: 1 },
+      { id: 'metformin', name: 'Metformin', brand: 'Glucophage', dose: 500, unit: 'mg', freq: 2 },
+      { id: 'omeprazole', name: 'Omeprazole', brand: 'Prilosec', dose: 20, unit: 'mg', freq: 1 },
+      { id: 'vitamin-d', name: 'Vitamin D3', brand: '', dose: 1000, unit: 'IU', freq: 1 },
+      { id: 'multivitamin', name: 'Multivitamin', brand: '', dose: 1, unit: 'pill', freq: 1 },
+      { id: 'fish-oil', name: 'Fish oil', brand: '', dose: 1000, unit: 'mg', freq: 1 }
+    ] }
+  ];
+  // The clock Today's data functions read, and the last dose message for screen readers.
+  const todayUI = ({ now: new Date(), message: '' });
+  // Line icons (24px grid) rendered with <svg class="ic" viewBox="0 0 24 24" v-html="icons.name">.
+  const ICONS = {
+    book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
+    pill: '<path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z"/><path d="m8.5 8.5 7 7"/>',
+    wave: '<path d="M2 7c2.5-2 5-2 7.5 0s5 2 7.5 0 3.5-1 5-.5"/><path d="M2 12c2.5-2 5-2 7.5 0s5 2 7.5 0 3.5-1 5-.5"/><path d="M2 17c2.5-2 5-2 7.5 0s5 2 7.5 0 3.5-1 5-.5"/>',
+    wallet: '<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
+    pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+    chev: '<path d="m9 6 6 6-6 6"/>',
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    leaf: '<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.2-6.1C9.5 14.4 12 13 13 12"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    spark: '<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/>',
+    heart: '<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>',
+    life: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.9 4.9 4.3 4.3M14.8 14.8l4.3 4.3M14.8 9.2l4.3-4.3M4.9 19.1l4.3-4.3"/>',
+    palette: '<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1.1 0-.8.7-1.5 1.5-1.5H16a6 6 0 0 0 6-6c0-4.9-4.5-8.8-10-8.8Z"/>',
+    db: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
+    up: '<path d="m6 11 6-6 6 6M12 19V5"/>',
+    back: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    flag: '<path d="M4 22V4a1 1 0 0 1 1-1h12l-2 4 2 4H5"/>',
+    cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    bulb: '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/>'
+  };
+
+  // saveState below replaces the one in state.html, which it still calls (as persistState) to do the actual write.
+  // Saves wait for the one-time pre-upgrade backup (backup.html). A stale save (another device or tab changed the
+  // file) is not retried: the save notice offers Load latest. Other failures show the "Not saved" notice.
+  const persistState = saveState;
+  // The "Saving…" toast waits a moment so quick saves don't flash it.
+  let pendingSaves = 0;
+  let savingTimer;
+  // A save that couldn't reach Drive (offline, busy) keeps the change on screen; the next save carries it,
+  // and Reclaim tries again every half minute, on getting back online and on returning to the tab.
+  const SAVE_RETRY_MS = 30000;
+  let unsavedChanges = false;
+  let saveRetryTimer;
+  let leaving = false;
+  saveState = async function() {
+    pendingSaves += 1;
+    saveNotice.failed = false;
+    window.clearTimeout(savingTimer);
+    savingTimer = window.setTimeout(() => { saveNotice.saving = pendingSaves > 0; }, 400);
+    try {
+      await upgradeBackup;
+      const result = await persistState();
+      const time = new Date(result && result.savedAt ? result.savedAt : Date.now())
+        .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      unsavedChanges = false;
+      window.clearTimeout(saveRetryTimer);
+      saveNotice.queued = false;
+      return result;
+    } catch (error) {
+      if (isStaleSaveError(error)) {
+        saveNotice.stale = true;
+      } else if (error && error.retryable) {
+        console.warn('Reclaim will try saving again:', error);
+        unsavedChanges = true;
+        saveNotice.queued = navigator.onLine === false ? 'offline' : 'busy';
+        window.clearTimeout(saveRetryTimer);
+        saveRetryTimer = window.setTimeout(retryUnsaved, SAVE_RETRY_MS);
+        return { queued: true };
+      } else {
+        saveNotice.failed = error && error.reason === 'storageQuotaExceeded' ? 'full' : true;
+      }
+      throw error;
+    } finally {
+      pendingSaves -= 1;
+      if (!pendingSaves) {
+        window.clearTimeout(savingTimer);
+        saveNotice.saving = false;
+      }
+    }
+  };
+
+  function retrySave() {
+    saveState().catch(error => console.warn('Reclaim could not save on retry:', error));
+  }
+
+  // Only when a change is waiting, no save is already running and the file isn't stale (retrying would fail again).
+  function retryUnsaved() {
+    if (unsavedChanges && !pendingSaves && !saveNotice.stale) retrySave();
+  }
+
+  // A change that hasn't reached storage yet, or a save still on its way; used before leaving or signing out.
+  function hasUnsavedChanges() {
+    return unsavedChanges || pendingSaves > 0;
+  }
+
+  // Resolves true once no save is running, or false if one is still going after timeoutMs (waiting for sign-in).
+  function savesSettled(timeoutMs = 15000) {
+    const until = Date.now() + timeoutMs;
+    return new Promise(resolve => {
+      const check = () => {
+        if (!pendingSaves) resolve(true);
+        else if (Date.now() > until) resolve(false);
+        else window.setTimeout(check, 200);
+      };
+      check();
+    });
+  }
+
+  // start.html asks before the page closes on unsaved changes; sign-out reloads without asking.
+  function leavingAllowed() {
+    return leaving;
+  }
+
+  function allowLeaving() {
+    leaving = true;
+  }
+
+  function dismissSaveFailed() {
+    saveNotice.failed = false;
+  }
+
+  // Storage rejects a save when the file changed since this tab last loaded or saved it; matched by its message.
+  function isStaleSaveError(error) {
+    return String(error && error.message ? error.message : error).includes(STATE_STALE_MESSAGE);
+  }
+
+  // After a stale save the newer data loads in place: a page reload would ask to sign in again.
+  function forgetUnsavedChanges() {
+    unsavedChanges = false;
+    window.clearTimeout(saveRetryTimer);
+    saveNotice.queued = false;
+    saveNotice.stale = false;
+  }
+
+  function logicObject(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  // Parses a Date, timestamp or ISO string; a bare YYYY-MM-DD becomes local noon on that day, so time zone
+  // and daylight-saving shifts can't move it to a neighboring day. Returns null for anything invalid.
+  function logicDate(value) {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : new Date(value.getTime());
+    }
+    if (typeof value !== 'string' && typeof value !== 'number') return null;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const parts = value.split('-').map(Number);
+      const date = new Date(parts[0], parts[1] - 1, parts[2], 12);
+      return date.getFullYear() === parts[0] &&
+        date.getMonth() === parts[1] - 1 &&
+        date.getDate() === parts[2] ? date : null;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  function dateKey(value) {
+    const date = logicDate(value);
+    if (!date) return '';
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0')
+    ].join('-');
+  }
+
+  function dayDate(value) {
+    const date = logicDate(value);
+    return date ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12) : null;
+  }
+
+  function dayOffset(value, amount) {
+    const date = dayDate(value);
+    if (!date) return '';
+    date.setDate(date.getDate() + amount);
+    return dateKey(date);
+  }
+
+  // Whole calendar days from one date to the next (never negative), counted in UTC so a DST change doesn't drop a day.
+  function dayDistance(from, to) {
+    const start = dayDate(from);
+    const end = dayDate(to);
+    if (!start || !end) return 0;
+    return Math.max(0, Math.floor((Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) -
+      Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) / LOGIC_DAY_MS));
+  }
+
+  function localToday() {
+    return dateKey(new Date());
+  }
+
+  // Accepts a habit key or its record in S.vices.
+  function viceRecord(vice) {
+    if (typeof vice === 'string') return S.vices[vice] || null;
+    return logicObject(vice) ? vice : null;
+  }
+
+  function viceName(vice) {
+    if (typeof vice === 'string' && S.vices[vice]) return vice;
+    return Object.keys(S.vices).find(key => S.vices[key] === vice) || '';
+  }
+
+  function formatQuantity(amount) {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
+      .format(Math.max(0, Number(amount) || 0));
+  }
+
+  function habitUnitLabel(vice, amount) {
+    const unit = viceUnit(vice);
+    return Number(amount) === 1 ? unit.one : unit.many;
+  }
+
+  function formatCurrency(amount) {
+    const currency = STATE_CURRENCIES.includes(S.profile.currency) ? S.profile.currency : 'USD';
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency })
+      .format(Math.max(0, Number(amount) || 0));
+  }
+
+  // Saves for doses and daily intentions: alerts when a save fails outright, then rethrows so the caller can react.
+  // A stale save skips the alert (the save notice covers it), and a queued (offline) save counts as success.
+  async function persistLogicState() {
+    try {
+      return await saveState();
+    } catch (error) {
+      console.error('Could not save Reclaim data:', error);
+      if (!isStaleSaveError(error) && typeof window !== 'undefined' && typeof window.alert === 'function') {
+        window.alert('Your changes could not be saved. Please try again before leaving this page.');
+      }
+      throw error;
+    }
+  }
+</script>

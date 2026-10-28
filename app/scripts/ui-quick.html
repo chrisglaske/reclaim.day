@@ -1,0 +1,118 @@
+<script>
+  // Quick log and Support, from the design mockup (its QUICK / ckQuick / qtiles / qrows / qFire, the Quick log popover,
+  // "Support (the Need support? screen)" and their act() cases and keys). Made-up fields are read through scripts/model:
+  // waves(), mlist(k), track(k), prnMeds(), ckDay(), curSlot(); helplines come from SUPPORT_RESOURCES (scripts/helplines).
+
+/* the fourth tile: one as-needed medicine = one tap, several = "Which one?", none or medication off = the next scheduled dose */
+function qDoseTile(){
+  const on=medicationTrackingEnabled(),ps=on?prnMeds():[];
+  if(ps.length)return [ps.length>1?'qprn':'prn:'+ps[0].id,'pill','sky','As-needed dose','Note an extra dose'];
+  const nx=on?quickDoseOptions(new Date()).find(d=>d.slot>=0):null;
+  if(nx){const m=resolveMedication(nx.medId);return ['qdose:'+nx.medId+'-'+nx.slot,'pill','sky','Next dose',esc(m.name+' · '+nx.label.split(' · ').pop())];}
+  return on?['nav:tracking','pill','sky','Doses','All of today’s doses are noted']:['sosset:meds','pill','sky','Medication','Turn it on in Settings'];
+}
+const QUICK=()=>[['wave','wave','peach','Rode out a wave','A craving came and went'],['moment','leaf','mint','Log a moment',HK.filter(k=>track(k).on).map((k,i)=>i?HB[k].v:HB[k].n).join(', ').replace(/, (?=[^,]*$)/,' or ')||'Turn on a habit in Settings'],ckQuick(),qDoseTile()];
+/* Quick log check-in: once this period's check-in is saved, show it as done with the next time, and open it for review */
+function ckQuick(){const sl=curSlot(),c=ckDay(localToday())[sl];
+  if(!c)return ['flow:now','pen','lilac','Check in','Mood and a few words, step by step'];
+  const nx=quickLogCounts(new Date()).next;
+  return [`flowrev:${sl}`,'check','mint',`${slotL(sl)} check-in`,`<span class="nw">Next: ${nx}</span><span class="qedit">${I('pen')}Tap to view or edit</span>`,'<span class="qdone">Done</span>'];}
+const qprnN=()=>sum(prnMeds().map(p=>p.n));
+/* Quick log: four bright tiles that pop in one after another. Each shows today's count, and a tap gives instant feedback. */
+function qtiles(kb){const q=QUICK(),tot=HK.reduce((n,k)=>n+mlist(k).length,0),dn=q[3][0].startsWith('qdose')||q[3][0].startsWith('nav');
+  const stat={wave:waves()+' today',moment:tot+' today',prn:(dn?quickLogCounts(new Date()).doses:qprnN())+' today'};
+  return `<div class="qgrid" ${kb?'':'role="menu" aria-label="Quick log"'}>${q.map(([a,i,t,l,sub,bd],n)=>{const k=n===3?'prn':a,st=bd?`<span class="qts ok">${I('check')}Done</span>`:a.startsWith('flow')?'<span class="qts now">Now</span>':hide()||!stat[k]||a.startsWith('sosset')?'':`<span class="qts">${stat[k]}</span>`;
+    return `<button class="qt ${t} ${bd?'isdone':''}" role="menuitem" data-act="${a}" style="--i:${n}"><span class="qti">${I(i)}</span>${st}<span class="qtl">${l}</span><small>${sub}</small>${kb?`<span class="kbd" aria-hidden="true">${n+1}</span>`:''}</button>`;}).join('')}</div>`;}
+const qrows=()=>`<div class="qhd"><b>Quick log</b><span>${new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span></div>${qtiles(1)}<div class="qhint">Press <b>N</b> anywhere to open, then a number.</div>`;
+/* a tile pulses, its count ticks up, then the panel closes and the action runs */
+function qFire(b,next){if(!b?.classList.contains('qt'))return false;if(b.dataset.go){delete b.dataset.go;return false;}if(b.dataset.fired)return true;b.dataset.fired=1;b.classList.add('fired');
+  const st=$('.qts',b);if(st&&!hide()){st.textContent=next()+' today';bump(st);}sparks($('.qti',b),12);
+  setTimeout(()=>{closeQ();delete b.dataset.fired;b.dataset.go=1;b.click();},520);return true;}
+
+/* ---------- Quick log popover (desktop) ---------- */
+function openQ(){const p=$('#qpop'),q=$('.qlog',app);if(!p||!q?.offsetParent)return;p.innerHTML=qrows();const a=app.getBoundingClientRect(),r=q.getBoundingClientRect();
+  p.style.left=r.right-a.left+12+'px';p.style.top=r.top-a.top+'px';p.classList.add('open');q.setAttribute('aria-expanded','true');setTimeout(()=>$('.qt',p)?.focus({focusVisible:kbd}),60);}
+function closeQ(){$('#qpop')?.classList.remove('open');$('.qlog',app)?.setAttribute('aria-expanded','false');}
+
+/* ---------- Support (the "Need support?" screen) ---------- */
+/* the mockup's inline card with real call / text / website links, plus an emergency row */
+const EMERG={uk:'999',us:'911',ca:'911',au:'000',nz:'111',...Object.fromEntries(Object.keys(STATE_EU_COUNTRIES).map(k=>[k,'112']))};
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const hresRow=(n,d,num,btns)=>`<div class="hres"><div><b>${esc(n)}</b><small>${d}</small></div><span class="num">${esc(num)}</span>${btns}</div>`;
+const hlink=(href,l,ext)=>`<a class="btn sm" href="${esc(href)}"${ext?' target="_blank" rel="noopener"':''}>${l}</a>`;
+function helpList(){const c=V.hc,all=SUPPORT_RESOURCES[c]||[],em=EMERG[c];
+  const rows=all.filter(r=>r.href!=='tel:112'&&r.href).map(r=>{const d=r.detail.includes(' · ')&&/^Call/.test(r.detail)?cap(r.detail.split(' · ').slice(1).join(' · ')):r.detail;
+    return hresRow(r.name,`${esc(d)}${r.external?` · <a href="${esc(r.external)}" target="_blank" rel="noopener">Website</a>`:''}`,r.callLabel.replace(/^Call /,''),hlink(r.href,'Call')+(r.messageHref?hlink(r.messageHref,'Text'):''));});
+  /* the emergency number is shown without a Call link (user, 2026-10-24), so it can't be dialled by a stray tap */
+  if(em)rows.push(hresRow('Emergency services','If you may be in immediate danger',em,''));
+  const dir=all.find(r=>!r.href&&r.external)?.external||(!em?'https://findahelpline.com/':'');
+  if(dir)rows.push(hresRow(em?'Find more support':'Find a helpline in your area','Browse free, confidential support by country','findahelpline.com',hlink(dir,'Open',1)));
+  return rows.join('');}
+const countryOpts=sel=>`<option value="" ${sel?'':'selected'}>Prefer not to choose</option>`+Object.entries(STATE_SUPPORT_COUNTRIES).map(([k,n])=>`<option value="${k}" ${k===sel?'selected':''}>${n}</option>`).join('');
+function sosHTML(){
+  return `<div class="glow"><i></i><i></i><i></i></div>
+  <div class="fltop"><button class="iconbtn" data-act="sosclose" aria-label="Close support">${I('x')}</button><div class="flmid"><div class="eyebrow">A moment for you</div></div><button class="btn sm lifebtn" data-act="help" aria-controls="helpc" aria-expanded="false">${I('heart')}Helplines</button></div>
+  <div class="sosbody"><div class="soscol">
+    <div class="flq"><h2>Let’s ride this wave together</h2><p>Urges rise, crest and pass. Nothing needs solving right now. Choose one small thing that feels supportive.</p></div>
+    <section class="card helpc" id="helpc" hidden><div class="ctitle"><h2>Support & crisis helplines</h2></div><p class="muted" style="margin:0 0 12px;font-size:14px">If you may be in immediate danger, contact your local emergency services.</p>
+      <label class="lbl" for="hcountry">Country or region</label><select class="field" id="hcountry">${countryOpts(V.hc)}</select>
+      <div id="hlist" style="margin-top:6px">${helpList()}</div><p class="muted" style="font-size:12.5px;margin:10px 0 0">Your saved country is preselected; your location is not detected or tracked.</p></section>
+    <div class="sosgrid">
+      <section class="card breathc">${seg('sosm',[['box','Box breathing'],['pause','15-minute pause']],'box')}
+        <div id="sbox" class="breathc" style="gap:16px"><div class="boxb" id="boxb"><span class="bdot"></span><div><div class="bcnt" id="bcnt">4·4·4·4</div><div class="bword" id="bword">Ready when you are</div></div></div>
+          <p class="muted" style="margin:0;font-size:14px;max-width:320px">In for 4, hold for 4, out for 4, hold for 4. Follow the dot, or simply watch the shape.</p><button class="btn primary" data-act="bstart" id="bbtn">Begin</button></div>
+        <div id="spause" class="breathc" style="gap:16px;width:100%" hidden><div class="ptime" id="ptime">15:00</div><div class="pbar" role="progressbar" aria-label="Time through the 15-minute pause" aria-valuemin="0" aria-valuemax="900" aria-valuenow="0" id="pbarw"><i id="pbar" style="width:0"></i></div>
+          <p class="muted" style="margin:0;font-size:14px">Let the time pass with you. You can stop whenever you like.</p><div style="display:flex;gap:8px"><button class="btn primary" data-act="pstart" id="pbtn">Begin</button><button class="iconbtn" data-act="preset" aria-label="Reset timer">${I('back')}</button></div></div>
+      </section>
+      <div class="col">
+        <section class="card"><div class="ctitle"><h2>Your coping toolkit</h2><button class="link" data-act="sosset:ideas">Edit</button></div>${cope().length?cope().map(c=>`<div class="tool"><span class="itile mint" style="width:36px;height:36px">${I('spark')}</span><b>${esc(c)}</b></div>`).join(''):'<div class="empty">Your toolkit is empty for now. You can add personal ideas in Settings.</div>'}</section>
+        <section class="card"><div class="ctitle"><h2>Remember why</h2><button class="link" data-act="sosset:why">Edit</button></div>${why().length?why().map(w=>`<div class="why">${I('heart')}<span>${esc(w)}</span></div>`).join(''):'<div class="empty">No reasons saved yet. You can add what matters to you in Settings.</div>'}</section>
+      </div></div></div></div>
+  <div class="flfoot"><div class="inner"><button class="btn lg" data-act="sosclose">Close</button><button class="btn primary lg" data-act="sosdone">${I('wave')}I rode it out</button></div></div>`;
+}
+let bT=null,pT=null,pLeft=900;
+const stopTimers=()=>{clearInterval(bT);clearInterval(pT);bT=pT=null;};
+const pShow=()=>{const t=$('#ptime');if(!t)return;t.textContent=String(Math.floor(pLeft/60)).padStart(2,'0')+':'+String(pLeft%60).padStart(2,'0');$('#pbar').style.width=(900-pLeft)/9+'%';$('#pbarw').setAttribute('aria-valuenow',900-pLeft);};
+/* Support always opens fresh at 15:00; the country chosen here is for this visit only */
+function openSos(){V.sosFrom=document.activeElement;V.hc=S.profile.country;closeSheet();closeQ();stopTimers();pLeft=900;const s=$('#sos');s.innerHTML=sosHTML();s.classList.add('open');s.tabIndex=-1;s.focus({preventScroll:true});requestAnimationFrame(placeSeg);}
+function closeSos(){const s=$('#sos');if(!s?.classList.contains('open'))return;s.classList.remove('open');stopTimers();
+  const from=V.sosFrom;V.sosFrom=null;if(from?.isConnected&&from!==document.body)from.focus({preventScroll:true});else $('#main')?.focus({preventScroll:true});}
+
+/* doses noted from Quick log redraw whichever screen shows them */
+const qDoseRedraw=()=>{if(V.view==='tracking')refreshMeds();else if(V.view==='today')refreshHero();};
+Object.assign(ACT,{
+  quick:b=>{if($('#sheet').classList.contains('open')){closeSheet();return;}b.classList.add('open');openSheet(`<div class="grab"></div><div class="qhd"><h3>Quick log</h3><span>Takes a second. Every note counts.</span></div>${qtiles()}`);},
+  qpop:()=>{$('#qpop').classList.contains('open')?closeQ():openQ();},
+  /* "Which habit?" only when more than one habit is on */
+  moment:(b,e)=>{const on=HK.filter(k=>track(k).on);if(on.length===1)return ACT.mlog(b,e,on[0]);
+    openSheet(`<div class="grab"></div><h3>Log a moment</h3><p class="muted" style="margin:0">A moment captured is information, not a verdict.</p><div class="bigopts">${on.map(k=>`<button class="qbtn" data-act="mlog:${k}"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><span>${HB[k].n}<small>${hsum(k)}</small></span></button>`).join('')||`<p class="empty">Nothing is being tracked right now. You can turn habits on in Settings.</p>`}</div>`);},
+  prn:(b,e,x)=>{if(qFire(b,()=>qprnN()+1))return;closeSheet();ACT.prnadd(b,e,x,'q');},
+  qprn:b=>{if(qFire(b,()=>qprnN()+1))return;openSheet(`<div class="grab"></div><h3>Which one?</h3><p class="muted" style="margin:0">Each one counts toward its own limit.</p><div class="bigopts">${prnMeds().map(p=>`<button class="qbtn" data-act="prn:${p.id}"><span class="itile sky">${I('pill')}</span><span>${esc(p.title)}<small>${hide()?'As needed':p.n+' today'+(p.limit?' · personal limit '+p.limit:'')}</small></span></button>`).join('')}</div>`);},
+  qdose:(b,e,x)=>{if(qFire(b,()=>quickLogCounts(new Date()).doses+1))return;const i=x.lastIndexOf('-'),medId=x.slice(0,i),slot=+x.slice(i+1),ev=addDoseEvent(medId,slot);if(!ev)return;closeSheet();qDoseRedraw();
+    toast(resolveMedication(medId).name+' taken',()=>{removeDoseEvent(medId,ev);qDoseRedraw();saveInBackground(()=>{restoreDoseEvent(medId,ev);qDoseRedraw();});});
+    saveInBackground(()=>{removeDoseEvent(medId,ev);qDoseRedraw();});},
+  sos:()=>openSos(),
+  sosclose:()=>closeSos(),
+  /* "I rode it out" counts a wave and closes */
+  sosdone:()=>{closeSos();const c=makeCraving(waveVice());S.cravings.push(c);setC('waves',waves());toast('Wave ridden out. That took strength.');
+    saveInBackground(()=>{const i=S.cravings.indexOf(c);if(i>=0)S.cravings.splice(i,1);setC('waves',waves());});},
+  help:b=>{const h=$('#helpc');h.hidden=!h.hidden;b.setAttribute('aria-expanded',!h.hidden);if(!h.hidden)h.scrollIntoView({behavior:'smooth',block:'nearest'});},
+  bstart:b=>{const bx=$('#boxb');if(bT){clearInterval(bT);bT=null;bx.classList.remove('run');$('#bword').textContent='Ready when you are';$('#bcnt').textContent='4·4·4·4';b.textContent='Begin';return;}
+    let t=0;const W=['Breathe in','Hold','Breathe out','Hold'],tick=()=>{$('#bword').textContent=W[Math.floor(t/4)%4];$('#bcnt').textContent=4-t%4;t++;};
+    bx.classList.remove('run');void bx.offsetWidth;bx.classList.add('run');tick();bT=setInterval(tick,1000);b.textContent='Stop';},
+  /* the pause ends on the app's "Complete" state */
+  pstart:b=>{if(pT){clearInterval(pT);pT=null;b.textContent='Resume';return;}
+    b.textContent='Pause';pT=setInterval(()=>{pLeft=Math.max(0,pLeft-1);pShow();if(!pLeft){clearInterval(pT);pT=null;const p=$('#pbtn');p.textContent='✓ Complete';p.disabled=true;toast('Fifteen minutes. The wave has had time to pass.');}},1000);},
+  preset:()=>{clearInterval(pT);pT=null;pLeft=900;pShow();const p=$('#pbtn');p.textContent='Begin';p.disabled=false;}
+});
+app.addEventListener('input',e=>{const t=e.target;if(t.id==='hcountry'){V.hc=t.value;$('#hlist').innerHTML=helpList();}});
+app.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!e.target.closest('#qpop,.qlog')||b?.closest('#qpop'))closeQ();},true);
+/* N opens and closes, 1–4 picks a tile, arrows wrap; focus stays inside Support while it is open */
+app.addEventListener('keydown',e=>{const fo=$('#flow.open'),q=$('#qpop.open'),so=$('#sos.open');
+  if(so&&!$('#sheet.open')&&e.key==='Tab'){const f=$$('button,select,[href]',so).filter(x=>!x.disabled&&x.offsetParent),a=f[0],z=f[f.length-1];
+    if(e.shiftKey&&(document.activeElement===a||document.activeElement===so)){e.preventDefault();z?.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a?.focus();}return;}
+  if(q&&/^[1-4]$/.test(e.key)){e.preventDefault();$$('.qt',q)[e.key-1].click();return;}
+  if(q&&/^Arrow(Up|Down|Left|Right)$/.test(e.key)){e.preventDefault();const r=$$('.qt',q),i=r.indexOf(document.activeElement),d={ArrowDown:2,ArrowUp:-2,ArrowRight:1,ArrowLeft:-1}[e.key];r[((i<0?0:i+d)+r.length)%r.length].focus();return;}
+  if(/^[nN]$/.test(e.key)&&!e.metaKey&&!e.ctrlKey&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&!fo&&!so&&!$('#sheet.open')){e.preventDefault();q?closeQ():openQ();}});
+document.addEventListener('keydown',e=>{if(/^[nN]$/.test(e.key)&&e.target===document.body&&!$('#flow.open')&&!$('#sos.open')&&!$('#sheet.open')){e.preventDefault();$('#qpop.open')?closeQ():openQ();}});
+</script>

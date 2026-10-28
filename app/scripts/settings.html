@@ -1,0 +1,210 @@
+<script>
+  // A new unit makes the old range meaningless, so a reduce plan starts again at the unit's usual day.
+  function setHabitUnit(vice, value) {
+    const unit = VICE_KEYS.includes(vice) && viceInfo(vice).units.find(item => item.v === value);
+    if (!unit) return null;
+    S.vices[vice].unit = value;
+    const current = viceAt(vice);
+    if (unit.def && current && current.mode === 'reduce' && current.target !== unit.def) setReduceLimit(vice, unit.def);
+    return unit;
+  }
+
+  // A quit day may be up to six months ahead; other plans start today or earlier.
+  function habitDateMax(vice, mode) {
+    const plan = vicePlan(vice);
+    if ((mode || (plan && plan.mode)) !== 'quit') return localToday();
+    const limit = new Date();
+    limit.setDate(limit.getDate() + 180);
+    return dateKey(limit);
+  }
+
+  function settingsHabitPhaseDate(vice, phase, requestedDay, mode) {
+    const day = requestedDay;
+    const date = logicDate(day);
+    const quit = (phase ? phase.mode : mode) === 'quit';
+    if (!date || dateKey(date) !== day || day > habitDateMax(vice, quit ? 'quit' : 'reduce')) {
+      return { error: quit ? 'Choose a valid quit day, up to six months ahead.' : 'Choose a valid plan date that is today or earlier.' };
+    }
+    const reference = phase ? logicDate(phase.at) : new Date();
+    // A quit day ahead starts at the beginning of that day.
+    const candidate = day > localToday()
+      ? new Date(date.getFullYear(), date.getMonth(), date.getDate())
+      : new Date(
+        date.getFullYear(), date.getMonth(), date.getDate(),
+        reference.getHours(), reference.getMinutes(), reference.getSeconds(), reference.getMilliseconds()
+      );
+    if (phase && day === dateKey(phase.at)) return { at: logicDate(phase.at) };
+    if (phase && day <= localToday() && logicDate(phase.at) > new Date()) {
+      // A quit day brought forward to today or earlier starts now.
+      const now = new Date();
+      candidate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+      if (candidate > now) candidate.setTime(now.getTime());
+    }
+    const phases = S.vices[vice].phases
+      .slice()
+      .sort((left, right) => new Date(left.at) - new Date(right.at));
+    if (phase) {
+      const index = phases.indexOf(phase);
+      const previous = index > 0 ? new Date(phases[index - 1].at) : null;
+      const next = index >= 0 && index + 1 < phases.length ? new Date(phases[index + 1].at) : null;
+      if ((previous && candidate <= previous) || (next && candidate >= next)) {
+        return { error: 'Choose a date that keeps this plan in order with your earlier and later plans.' };
+      }
+    } else {
+      const latest = phases.length ? new Date(phases[phases.length - 1].at) : null;
+      if (latest && candidate <= latest) {
+        return { error: 'Choose a date after your most recently saved plan.' };
+      }
+    }
+    return { at: candidate };
+  }
+
+  // Ease-in steps are fixed when saved: one reduce phase a week from today to
+  // the quit day, stepping down from the usual amount. Steps that started
+  // before today stay as history.
+  function clearEaseIn(record) {
+    const today = logicDate(localToday());
+    const now = new Date();
+    record.phases = record.phases.filter(phase => {
+      const at = logicDate(phase.at);
+      return !(phase.ease && at >= today) && !(phase.mode !== 'quit' && at > now);
+    });
+  }
+
+  function addEaseIn(record, quit) {
+    const today = logicDate(localToday());
+    const quitDay = logicDate(dateKey(quit.at));
+    const days = Math.round((quitDay - today) / 86400000);
+    if (days <= 0) return;
+    const weeks = Math.max(1, Math.ceil(days / 7));
+    // A weekly usual amount eases in with weekly caps, a daily one with daily caps.
+    const weekly = !!(record.usual && record.usual.per === 'week');
+    const from = Math.max(1, Math.round(weekly ? Number(record.usual.amount) : Number(record.perDay)) || 1);
+    for (let week = 0; week < weeks; week++) {
+      const at = week ? new Date(today.getFullYear(), today.getMonth(), today.getDate() + week * 7) : new Date();
+      const step = { mode: 'reduce', at: at.toISOString(), target: Math.max(1, Math.round(from * (weeks - week) / (weeks + 0.5))), ease: true };
+      if (weekly) step.per = 'week';
+      record.phases.push(step);
+    }
+    record.phases.sort((left, right) => new Date(left.at) - new Date(right.at));
+  }
+
+  // Settings › Habits (the mockup's htog, hmodego, qsave, hunit, lim, hsave) take values and change
+  // S.vices[vice] directly, returning '' or a message to show; the screen saves in the background.
+
+  // A habit turned on with no plan yet starts a quit journey now.
+  function setHabitOn(vice, on) {
+    const record = S.vices[vice];
+    record.enabled = on;
+    if (on && !record.phases.length) record.phases.push({ mode: 'quit', at: new Date().toISOString(), target: 0 });
+  }
+
+  function sortPhases(record) {
+    record.phases.sort((left, right) => new Date(left.at) - new Date(right.at));
+  }
+
+  // Quit plan { start, ease, from }: a quit day up to six months ahead, or today or earlier when already
+  // stopped. A quit plan already in place is moved, so switching back and forth adds no entries; ease-in
+  // steps (from the usual amount a day) replace any still ahead.
+  function setQuitPlan(vice, plan) {
+    const record = S.vices[vice];
+    clearEaseIn(record);
+    const current = vicePlan(vice);
+    const result = current && current.mode === 'quit'
+      ? settingsHabitPhaseDate(vice, current, plan.start)
+      : settingsHabitPhaseDate(vice, null, plan.start, 'quit');
+    if (result.error) return result.error;
+    let quit = current;
+    if (current && current.mode === 'quit') current.at = result.at.toISOString();
+    else record.phases.push(quit = { mode: 'quit', at: result.at.toISOString(), target: 0 });
+    sortPhases(record);
+    if (plan.ease && logicDate(quit.at) > new Date()) {
+      setUsual(vice, Math.max(1, Math.round(Number(plan.from)) || 1), plan.usualPer);
+      addEaseIn(record, quit);
+    }
+    return '';
+  }
+
+  // A limit's cadence: { per: 'week' } or { days: [0..6] } (Sunday = 0). A daily plan on every day has neither field.
+  function setCadence(entry, cadence) {
+    delete entry.per;
+    delete entry.days;
+    const days = cadence && Array.isArray(cadence.days)
+      ? Array.from(new Set(cadence.days.filter(day => Number.isInteger(day) && day >= 0 && day <= 6))).sort((a, b) => a - b)
+      : [];
+    if (days.length && days.length < 7) entry.days = days;
+    else if (cadence && cadence.per === 'week') entry.per = 'week';
+    return entry;
+  }
+
+  // The cadence of the plan in force, to carry into the next entry of the same plan.
+  function currentCadence(vice) {
+    const current = viceAt(vice);
+    return current && current.mode === 'reduce' ? { per: current.per, days: current.days } : {};
+  }
+
+  // A reduce plan (or, with mode 'track', a just-track plan) from now; it replaces a quit day still ahead
+  // and its ease-in.
+  function setReducePlan(vice, target, cadence, mode) {
+    const record = S.vices[vice];
+    clearEaseIn(record);
+    record.phases = record.phases.filter(phase => logicDate(phase.at) <= new Date());
+    const result = settingsHabitPhaseDate(vice, null, localToday(), 'reduce');
+    if (result.error) return result.error;
+    if (mode === 'track') record.phases.push({ mode: 'track', at: result.at.toISOString(), target: 0 });
+    else record.phases.push(setCadence({ mode: 'reduce', at: result.at.toISOString(), target: target }, cadence));
+    sortPhases(record);
+    return '';
+  }
+
+  // The limit: taps in a row change the entry the first tap made. Returns that entry. A new
+  // entry keeps the cadence of the plan in force unless one is given.
+  function setReduceLimit(vice, target, phase, cadence) {
+    if (phase && viceAt(vice) === phase && dateKey(phase.at) === localToday()) {
+      phase.target = target;
+      if (cadence) setCadence(phase, cadence);
+      return phase;
+    }
+    const entry = setCadence({ mode: 'reduce', at: new Date().toISOString(), target: target }, cadence || currentCadence(vice));
+    S.vices[vice].phases.push(entry);
+    sortPhases(S.vices[vice]);
+    return entry;
+  }
+
+  // The usual amount with its cadence; perDay stays its daily average (a daily amount is just perDay).
+  function setUsual(vice, amount, per) {
+    const record = S.vices[vice];
+    const value = Math.max(0, Number(amount) || 0);
+    if (per === 'week' && value > 0) {
+      record.usual = { amount: value, per: 'week' };
+      record.perDay = value / 7;
+    } else {
+      delete record.usual;
+      record.perDay = value;
+    }
+  }
+
+  // The entry a reduce plan began with: limit changes since then are later entries of the same plan.
+  function reducePlanStart(vice) {
+    const now = new Date(), phases = S.vices[vice].phases.filter(phase => logicDate(phase.at) <= now)
+      .sort((left, right) => new Date(left.at) - new Date(right.at));
+    let i = phases.length - 1;
+    if (i < 0 || phases[i].mode !== 'reduce') return null;
+    while (i > 0 && phases[i - 1].mode === 'reduce' && !phases[i - 1].ease) i--;
+    return phases[i];
+  }
+
+  // "Plan started" (reduce plans only) and the usual daily spend.
+  function setHabitDetails(vice, start, costPerDay) {
+    if (!Number.isFinite(costPerDay) || costPerDay < 0) return 'Enter a usual daily spend of 0 or more.';
+    const current = reducePlanStart(vice);
+    if (start && current && start !== dateKey(current.at)) {
+      const result = settingsHabitPhaseDate(vice, current, start);
+      if (result.error) return result.error;
+      current.at = result.at.toISOString();
+      sortPhases(S.vices[vice]);
+    }
+    S.vices[vice].costPerDay = Math.round(costPerDay * 10000) / 10000;
+    return '';
+  }
+</script>

@@ -1,0 +1,458 @@
+<script>
+  // The mockup's made-up fields and constants, each replaced by a function that reads the saved data (S).
+  // One function per mockup field; the comment names the field it replaces.
+
+  // S.hide: the hide-counters switch.
+  function hide() { return !!S.profile.companion.hideCounters; }
+  function setHide(value) { S.profile.companion.hideCounters = !!value; }
+
+  // The avatar's "C": the first letter of the saved name.
+  function initial() { return (S.profile.name.trim()[0] || '·').toUpperCase(); }
+  // The mockup's habit keys (smoke, vape, drink) → the saved vice names.
+  const VK = { smoke: 'smoking', vape: 'vaping', drink: 'drinking' };
+  const tstr = at => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+  // S.ob.track[k]: a habit's plan in the mockup's shape. A quit day ahead is mode 'quit' with its day as start;
+  // the reduce limit in force before it (an ease-in step or a plain limit) is its one taper step.
+  function track(k) {
+    if (V.screen === 'onboard' && V.ob) return V.ob.track[k]; // Guided setup shows its draft plan
+    const v = VK[k], r = S.vices[v] || {}, cur = viceAt(v), ahead = viceQuitAhead(v);
+    const reduce = cur && cur.mode === 'reduce';
+    const justTrack = !ahead && cur && cur.mode === 'track';
+    // how often: 'day' (every day), 'days' (chosen weekdays) or 'week' (a total for the week)
+    const days = reduce && Array.isArray(cur.days) && cur.days.length && cur.days.length < 7 ? cur.days.slice() : [];
+    return {
+      on: !!r.enabled && !!(cur || ahead),
+      mode: ahead ? 'quit' : reduce ? 'reduce' : justTrack ? 'track' : 'quit',
+      limit: reduce ? Math.max(0, Number(cur.target) || 0) : 0,
+      how: days.length ? 'days' : reduce && cur.per === 'week' ? 'week' : 'day',
+      days: days,
+      start: ahead ? dateKey(ahead.at) : reduce ? dateKey(reducePlanStart(v).at) : cur ? dateKey(cur.at) : localToday(),
+      unit: r.unit,
+      ease: !!ahead && viceEaseSteps(v).length > 0,
+      steps: ahead && reduce ? [{ v: Math.max(0, Number(cur.target) || 0), per: cur.per === 'week' ? 'week' : 'day' }] : []
+    };
+  }
+  // taper(t): the mockup's ease-in steps; today's step is the first. A saved plan has its steps; a quit-day
+  // draft ({ start, ease, from }) works them out as addEaseIn will save them.
+  function taper(t) {
+    if (t.steps) return t.steps;
+    const n = dBetween(localToday(), t.start);
+    if (n <= 0 || !t.ease) return [];
+    const w = Math.max(1, Math.ceil(n / 7)), f = Math.max(1, +t.from || 1), out = [];
+    for (let i = 0; i < w; i++) out.push({ a: addD(localToday(), i * 7), b: addD(localToday(), Math.min(i * 7 + 6, n - 1)), v: Math.max(1, Math.round(f * (w - i) / (w + .5))), per: t.usualPer === 'week' ? 'week' : 'day' });
+    return out;
+  }
+  // hday(k) / S.qday: days into the quit journey.
+  function hday(k) { return streakHistory(VK[k]).days; }
+  // S.moments[k]: the amount logged today.
+  function moments(k) { return dailyUse(VK[k], localToday()); }
+  // The live app's "7-day avg": the amount per day over the 7 days before today, counting only days since
+  // tracking began (today's amount when there are none), and its fmtNum (whole, else one decimal).
+  function avg7(k) {
+    const v = VK[k], t0 = viceTrackStart(v), from = t0 ? dateKey(t0) : localToday();
+    let sum = 0, n = 0;
+    for (let i = 1; i <= 7; i++) { const d = addD(localToday(), -i); if (d < from) break; sum += dailyUse(v, d); n++; }
+    return n ? sum / n : moments(k);
+  }
+  const fmtNum = n => { n = Number(n) || 0; return Number.isInteger(n) ? String(n) : n.toFixed(1); };
+  // The live app's "Slips": slips since the current quit plan began (0 outside a quit plan).
+  function slipCount(k) { const h = streakHistory(VK[k]); return h.mode === 'quit' ? h.slips.filter(s => s.kind !== 'use').length : 0; }
+  // S.waves: waves ridden out today.
+  function waves() { return S.cravings.filter(item => item && dateKey(item.at) === localToday()).length; }
+  // S.pocket: today's estimated amount kept in pocket.
+  function pocket() { return dailyEstimatedSavings(new Date()); }
+  // "Toward New Computer · 38%": the savings goal and how far total savings have come, or null with no goal.
+  function goal() {
+    const amount = Number(S.profile.goal.amount);
+    if (!(amount > 0)) return null;
+    return { name: S.profile.goal.name || 'your savings goal', pct: Math.min(100, Math.round(totals().estimatedSavings / amount * 100)) };
+  }
+
+  // FOCUSL: the focus list, keyed by position.
+  function focusList() { return S.profile.companion.intentions.map((label, i) => [String(i), label]); }
+  // S.focus[k]: whether today's focus k is ticked.
+  function focusOn(k) {
+    const label = S.profile.companion.intentions[k], done = S.profile.companion.intentionDays[localToday()];
+    return Array.isArray(done) && done.includes(label);
+  }
+  function setFocus(k, on) {
+    const label = S.profile.companion.intentions[k], days = S.profile.companion.intentionDays, key = localToday();
+    const done = (Array.isArray(days[key]) ? days[key] : []).filter(item => item !== label).concat(on ? [label] : []);
+    if (done.length) days[key] = done; else delete days[key];
+  }
+
+  // S.amood: today's mood as the mockup's 0–4, or null. S.amsrc: the check-in it came from.
+  function amood() { const m = (S.journal[localToday()] || {}).mood; return Number.isInteger(m) && m >= 1 && m <= 5 ? m - 1 : null; }
+  function amsrc() { return (S.journal[localToday()] || {}).moodFrom || null; }
+  // Picked on Today, so it no longer names a check-in.
+  function setAmood(i) {
+    const day = localToday(), updated = Object.assign({}, S.journal[day] || {}, { mood: i + 1, updatedAt: new Date().toISOString() });
+    delete updated.moodFrom;
+    S.journal[day] = updated;
+  }
+
+  // curSlot(): the time of day now.
+  function curSlot() { const h = new Date().getHours(); return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'; }
+
+  // S.tasks: today's check-ins and every scheduled dose, due now or done, in the mockup's shape.
+  function tasks() {
+    todayUI.now = new Date();
+    const a = todayActions();
+    return a.visibleTasks.map(t => {
+      const dose = t.kind === 'dose';
+      return {
+        id: dose ? t.medId + '-' + t.slot : t.slot, kind: t.kind, medId: t.medId, slot: t.slot,
+        icon: dose ? 'pill' : 'book', tint: dose ? 'peach' : 'lilac', short: todayTaskShort(t), title: t.title,
+        detail: dose && t.timed ? t.detail.split(' · ')[0] + ' · due ' + todayTimeLabel(t.time) : t.detail,
+        dueAt: dose && t.timed ? todayTimeLabel(t.time) : undefined,
+        done: !!(t.noted || t.skipped), skipped: !!t.skipped, reason: t.reason || '', at: t.at ? tstr(t.at) : '', mood: t.mood ? t.mood - 1 : null, due: !t.noted && !t.skipped && t.timed
+      };
+    });
+  }
+  // S.later: the next thing due today, or tomorrow morning's check-in once the day is done.
+  function later() {
+    todayUI.now = new Date();
+    const t = todayActions().upcoming[0];
+    if (!t) return { short: 'Morning', time: 'tomorrow', title: 'Morning check-in', tomorrow: true };
+    return { short: todayTaskShort(t), time: todayTimeLabel(t.due), title: t.title };
+  }
+  // A scheduled dose's latest note today (to take back out).
+  function doseEvent(t) {
+    const events = (S.doses[localToday()] || {})[t.medId];
+    return Array.isArray(events) ? events.filter(event => Number(event.slot) === t.slot && !event.skipped).pop() || null : null;
+  }
+
+  // ckOf()[k]: a day's saved check-ins by time of day, each in the mockup's shape (mood 0–4 or null).
+  function ckDay(k) {
+    const saved = (S.journal[k] || {}).checkins, out = {};
+    if (!logicObject(saved)) return out;
+    CHECKIN_SLOTS.forEach(sl => { if (logicObject(saved[sl])) out[sl] = Object.assign(checkinAnswers(saved[sl]), { at: saved[sl].createdAt || saved[sl].updatedAt ? tstr(saved[sl].createdAt || saved[sl].updatedAt) : '' }); });
+    return out;
+  }
+
+  // storyItems(): everything saved today (S.tasks, S.prnlist, S.mlist, S.wlist), oldest first.
+  function storyItems() {
+    return todayStoryItems(localToday()).map(x => ({ at: x.time, ic: x.icon || x.emoji, tint: x.tint, t: x.title, d: x.detail }));
+  }
+  // S.mlist[k]: today's moments for habit k, oldest first, in the mockup's shape ({w, kind, amt, trig}) plus the saved record.
+  function mlist(k) {
+    const day = localToday();
+    return S.slips.filter(m => m && m.vice === VK[k] && dateKey(m.at) === day)
+      .sort((a, b) => new Date(a.at) - new Date(b.at))
+      .map(m => ({ w: tstr(m.at), kind: m.productType || HB[k].n, amt: Number(m.amount) || 0, trig: Array.isArray(m.triggers) ? m.triggers : [], rec: m }));
+  }
+  // S.mlist[k].at(-1): the moment for habit k noted most recently today (the one "Undo latest" removes).
+  function latestMoment(k) {
+    const noted = m => new Date(m.rec.createdAt || m.rec.at);
+    return mlist(k).reduce((last, m) => !last || noted(m) >= noted(last) ? m : last, null);
+  }
+  // The habit a wave from Tracking is quietly linked to: the first one being tracked.
+  function waveVice() { const k = HK.find(h => track(h).on); return VK[k || 'smoke']; }
+  // "1 month in ${30-d} days": the quit journey's next milestone.
+  const MARKW = { 1: '1 day', 3: '3 days', 7: '1 week', 14: '2 weeks', 30: '1 month', 60: '2 months', 90: '3 months', 180: '6 months', 365: '1 year' };
+  function nextMark(k) {
+    const m = nextMilestone(VK[k]);
+    return m ? `${MARKW[m.days]} in ${m.daysRemaining} day${m.daysRemaining === 1 ? '' : 's'}` : 'More than a year in';
+  }
+
+  // The mockup's Bupropion: today's scheduled medicines (started, active, tracking on).
+  function schedMeds() {
+    const day = localToday();
+    return activeMedications().filter(med => med.freq !== 'prn' && (!med.startDate || dateKey(med.startDate) <= day));
+  }
+  const medTitle = med => med.name + (med.dose ? ' · ' + med.dose + ' ' + med.unit : '');
+  // T('bup') on Tracking: every scheduled dose today, one row per dose slot.
+  function trackDoses() {
+    const now = new Date(), nowM = now.getHours() * 60 + now.getMinutes();
+    return schedMeds().flatMap(med => trackingDoseSchedule(med, localToday(), now).map((d, i, all) => ({
+      id: med.id + '-' + d.slot, medId: med.id, slot: d.slot, name: med.name, title: medTitle(med), label: d.label, multi: all.length > 1,
+      dueAt: d.timeLabel || undefined, done: d.noted, at: d.at ? tstr(d.at) : '', skipped: d.skipped, reason: d.reason,
+      due: !d.noted && !d.skipped && (d.reminderTime ? Number(d.reminderTime.slice(0, 2)) * 60 + Number(d.reminderTime.slice(3)) <= nowM : d.next),
+      late: !d.skipped && trackingDoseLate(d, now)
+    })));
+  }
+  // The mockup's nicotine lozenge and S.prnlist: each as-needed medicine with today's count and its personal limit.
+  function prnMeds() {
+    const day = localToday();
+    return activeMedications().filter(med => med.freq === 'prn' && (!med.startDate || dateKey(med.startDate) <= day))
+      .map(med => ({ id: med.id, title: medTitle(med), limit: Number(med.dailyLimit) || 0, n: medDayStatus(med, day).noted }));
+  }
+  // S.prnlist.at(-1): the latest as-needed note today for a medicine.
+  function prnLatest(medId) {
+    return medicationEvents(medId, localToday()).filter(e => Number(e.slot) === -1).sort((a, b) => new Date(a.at) - new Date(b.at)).pop() || null;
+  }
+  // S.cope: the coping toolkit. S.why: the reasons to remember.
+  function cope() { return S.profile.companion.toolkit; }
+  function why() { return S.profile.reasons; }
+  // hist: whether a dose was noted on each of the last 7 days, oldest first.
+  function medWeek(med) { return Array.from({ length: 7 }, (_, i) => medDayStatus(med, addD(localToday(), i - 6)).hasDoseNoted ? 1 : 0); }
+
+  // DAYDATA / dayInfo(k): a day's mood (the latest check-in with one, else the day's own),
+  // its moments per habit and whether a scheduled dose was noted; null when nothing was saved.
+  function dayInfo(k) {
+    const ck = ckDay(k), last = ['evening', 'afternoon', 'morning'].map(s => ck[s]).find(c => c && c.mood != null);
+    const dm = (S.journal[k] || {}).mood, mood = last ? last.mood : Number.isInteger(dm) && dm >= 1 && dm <= 5 ? dm - 1 : null;
+    const o = { mood, dose: journalDoseNoted(k) };
+    HK.forEach(h => { o[h] = S.slips.filter(m => m && m.vice === VK[h] && dateKey(m.at) === k).length; });
+    return mood == null && !o.dose && !HK.some(h => o[h]) ? null : o;
+  }
+  // dayEvents(k) (S.mlist, S.wlist, S.prnlist and the dose on Today; made up for other days): [time, type, text, triggers],
+  // then the moment id, or for a dose note '<medId>:<index>' (its place among the day's notes for that medicine), then a wave's id.
+  function dayEvents(k) {
+    const ty = { smoking: 's', vaping: 'v', drinking: 'd' };
+    return journalDayEvents(k).map(e => {
+      if (e.type === 'wave') return [e.time, 'w', 'Rode out a wave', [], null, null, e.id.slice(5)];
+      if (e.type === 'dose') return [e.time, 'm', e.text, [], null, e.medId + ':' + e.index];
+      const m = S.slips.find(x => 'moment-' + x.id === e.id), h = HK.find(x => VK[x] === m.vice), amt = Number(m.amount) || 0;
+      return [e.time, ty[m.vice], `${m.productType || HB[h].n} · ${amt}${h === 'vape' ? ' ' + uw('vape', amt) : ''}`, Array.isArray(m.triggers) ? m.triggers : [], m.id];
+    });
+  }
+  // A day's doses in the Journal (live app: the day's Medications block): every medicine active and started by day k,
+  // scheduled ones with each dose slot, as-needed ones with that day's count and personal limit.
+  function dayMeds(k) {
+    if (!medicationTrackingEnabled()) return [];
+    return activeMedications().filter(med => !med.startDate || dateKey(med.startDate) <= k).map(med => {
+      const st = medDayStatus(med, k), rem = S.profile.companion.reminders || {};
+      return med.freq === 'prn'
+        ? { id: med.id, name: med.name, title: medTitle(med), prn: true, limit: Number(med.dailyLimit) || 0, n: st.noted }
+        : { id: med.id, name: med.name, title: medTitle(med), prn: false, multi: st.doses.length > 1, doses: st.doses.map(d => ({ slot: d.slot, label: d.label, noted: d.noted, skipped: d.skipped, reason: d.reason, at: d.at ? tstr(d.at) : '', time: (rem[med.id + ':' + d.slot] || {}).time || '' })) };
+    });
+  }
+  // The latest note on day k for a medicine's dose slot (-1: as needed), to take back out.
+  function dayDoseEvent(k, medId, slot) {
+    return medicationEvents(medId, k).filter(e => Number(e.slot) === slot).sort((a, b) => new Date(a.at) - new Date(b.at)).pop() || null;
+  }
+  // S.nohist[k]: a habit that is off and has nothing saved, so the calendar legend leaves it out.
+  function nohist(k) { return !(S.vices[VK[k]] || {}).enabled && !S.slips.some(m => m && m.vice === VK[k]); }
+  // LEGACY[k]: an old-style day summary, or null. Older check-in saves copied the note, sleep, focus, craving and
+  // context onto the day; a value that only repeats one of the day's check-ins is that copy, not a summary.
+  // The sleep hours saved on day k itself (Insights' sleep chips, or an old-style day) for the night before,
+  // unless it only repeats one of the day's check-ins; null when there is none. The Journal shows it on its own line.
+  function daySleep(k) {
+    const d = S.journal[k];
+    if (!logicObject(d) || d.sleepHours == null || d.sleepHours === '' || !isFinite(d.sleepHours)) return null;
+    return Object.values(d.checkins || {}).filter(logicObject).some(c => JSON.stringify(c.sleepHours) === JSON.stringify(d.sleepHours)) ? null : Number(d.sleepHours);
+  }
+  function earlierDay(k) {
+    const d = S.journal[k];
+    if (!logicObject(d)) return null;
+    const cks = Object.values(d.checkins || {}).filter(logicObject), same = (f, v) => cks.some(c => JSON.stringify(c[f]) === JSON.stringify(v));
+    const o = {
+      text: typeof d.text === 'string' && !same('text', d.text) ? d.text.trim() : '',
+      sq: Number.isInteger(d.sleepQuality) && d.sleepQuality > 0 && !same('sleepQuality', d.sleepQuality) ? d.sleepQuality : null,
+      focus: d.intention && !same('intention', d.intention) ? d.intention : '',
+      craving: Number.isInteger(d.craving) && !same('craving', d.craving) ? d.craving : null,
+      tags: Array.isArray(d.tags) && d.tags.length && !same('tags', d.tags) ? d.tags : []
+    };
+    if (!o.text && !o.sq && !o.focus && o.craving == null && !o.tags.length) return null;
+    o.mood = !d.moodFrom && Number.isInteger(d.mood) && d.mood >= 1 && d.mood <= 5 ? d.mood - 1 : null;
+    return o;
+  }
+  // jNotes(): every saved note (CKSEED texts and LEGACY), with what search also looks at (tags)
+  // and the weekly reflections, newest day first, a day's notes evening → morning.
+  function noteList() {
+    const out = [];
+    Object.keys(S.journal).filter(dateKey).forEach(k => {
+      const d = S.journal[k], cks = (logicObject(d) && logicObject(d.checkins)) ? d.checkins : {};
+      SLOTS.forEach(([sl, , , l]) => { const c = cks[sl]; if (logicObject(c) && typeof c.text === 'string' && c.text.trim()) out.push({ k, sl: l, t: c.text, s: [c.text, ...(Array.isArray(c.tags) ? c.tags : [])].join(' ') }); });
+      const lg = earlierDay(k); if (lg && lg.text) out.push({ k, sl: '', t: lg.text, s: [lg.text, lg.focus, ...lg.tags].join(' ') });
+    });
+    Object.entries(S.profile.companion.reflections || {}).forEach(([k, t]) => { if (dateKey(k) && typeof t === 'string' && t.trim()) out.push({ k, sl: 'Weekly reflection', t, s: t }); });
+    const ord = sl => SLOTS.findIndex(s => s[3] === sl);
+    return out.sort((a, b) => a.k < b.k ? 1 : a.k > b.k ? -1 : ord(b.sl) - ord(a.sl));
+  }
+  // The calendar's months as one number (year × 12 + month); the first is the earliest month with anything saved.
+  const monthNo = k => pd(k).getFullYear() * 12 + pd(k).getMonth();
+  function firstMonth() {
+    const days = [...Object.keys(S.journal), ...Object.keys(S.doses), ...S.slips.map(m => m && dateKey(m.at)), ...S.cravings.map(c => c && dateKey(c.at))].filter(k => k && dateKey(k));
+    return monthNo(days.reduce((a, b) => b < a ? b : a, localToday()));
+  }
+  // curSym(): the saved currency's symbol, for the mockup's whole-number amounts ("€52").
+  function curSym() {
+    const c = STATE_CURRENCIES.includes(S.profile.currency) ? S.profile.currency : 'USD';
+    return (new Intl.NumberFormat(undefined, { style: 'currency', currency: c }).formatToParts(0).find(x => x.type === 'currency') || {}).value || '';
+  }
+  // INS / freshIns(S.log): the Insights figures for the last n days, in the mockup's shape.
+  // Hours 6 AM–11 PM as the mockup draws them; moments and waves before 6 AM count in the 11 PM column.
+  function ins(n = 7) {
+    todayUI.now = new Date();
+    const td = localToday(), days = Array.from({ length: n }, (_, i) => addD(td, i - n + 1)), inP = (at, ds = days) => ds.includes(dateKey(at));
+    const prev = Array.from({ length: n }, (_, i) => addD(td, i - 2 * n + 1));
+    const used = m => m && ['use', 'slip'].includes(m.kind || 'slip');
+    const mo = S.slips.filter(m => used(m) && inP(m.at)), wv = S.cravings.filter(c => c && inP(c.at));
+    const col = at => { const h = new Date(at).getHours(); return h < 6 ? 17 : h - 6; };
+    const use = Array(18).fill(0), wave = Array(18).fill(0);
+    mo.forEach(m => use[col(m.at)]++); wv.forEach(c => wave[col(c.at)]++);
+    // The busiest 3-hour stretch; null when nothing was noted.
+    let bi = -1, bv = 0;
+    for (let i = 0; i <= 15; i++) { const v = sum(use.slice(i, i + 3)) + sum(wave.slice(i, i + 3)); if (v > bv) { bv = v; bi = i; } }
+    const pu = S.slips.filter(m => used(m) && inP(m.at, prev)).length, pw = S.cravings.filter(c => c && inP(c.at, prev)).length;
+    // Days when every habit on a reduce plan stayed within its limit.
+    const red = day => VICE_KEYS.filter(v => S.vices[v] && S.vices[v].enabled && (viceAt(v, day) || {}).mode === 'reduce');
+    const limitDays = days.filter(day => red(day).length && red(day).every(v => limitStatus(v, day).within)).length;
+    // The steadiest weekday: fewest moments on average; a tie means none.
+    const wd = {}; days.forEach(day => { const w = pd(day).getDay(); (wd[w] = wd[w] || [0, 0])[1]++; });
+    mo.forEach(m => wd[pd(dateKey(m.at)).getDay()][0]++);
+    const avg = Object.entries(wd).map(([w, [c, k]]) => [+w, c / k]).sort((a, b) => a[1] - b[1]);
+    const best = mo.length && avg.length > 1 && avg[0][1] < avg[1][1] ? dlab(days.find(day => pd(day).getDay() === avg[0][0]), { weekday: 'long' }) : null;
+    const tc = {}; mo.forEach(m => (Array.isArray(m.triggers) ? m.triggers : []).forEach(x => { tc[x] = (tc[x] || 0) + 1; }));
+    const trig = Object.entries(tc).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    // Moments still to tag, newest first, offered until three moments carry a trigger.
+    const untagged = sum(trig.map(x => x[1])) >= 3 ? [] : mo.filter(m => !(Array.isArray(m.triggers) && m.triggers.length))
+      .sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 3)
+      .map(m => ({ id: m.id, v: HB[HK.find(k => VK[k] === m.vice)] ? HB[HK.find(k => VK[k] === m.vice)].n : m.vice, w: pd(dateKey(m.at)).toLocaleDateString('en-US', { weekday: 'short' }) + ' · ' + tstr(m.at) }));
+    const hm = insightsHeat(), past = hm.cells.filter(c => !c.future);
+    const moods = { n: 0 }, k3 = { morning: 'm', afternoon: 'a', evening: 'e' };
+    CHECKIN_SLOTS.forEach(sl => {
+      const v = days.map(day => (((S.journal[day] || {}).checkins || {})[sl] || {}).mood).filter(x => Number.isInteger(x) && x >= 1 && x <= 5);
+      moods.n += v.length; if (v.length) moods[k3[sl]] = sum(v) / v.length;
+    });
+    // Nights with sleep noted: a morning check-in's or the day's own (the sleep chips); the night before day k.
+    const slp = day => { const j = S.journal[day] || {}, c = ((j.checkins || {}).morning || {}).sleepHours, h = c != null && c !== '' ? c : j.sleepHours; return h != null && h !== '' && isFinite(h) ? Number(h) : null; };
+    const nights = days.filter(day => slp(day) != null);
+    const next = (lo, hi) => { const ds = nights.filter(day => slp(day) >= lo && slp(day) < hi); return ds.length ? sum(ds.map(day => S.slips.filter(m => used(m) && dateKey(m.at) === day).length)) / ds.length : null; };
+    const ask = [...days].reverse().find(day => slp(day) == null);
+    const med = schedMeds().map(m => ({ id: m.id, name: m.name, s: Array.from({ length: 30 }, (_, i) => { const st = medDayStatus(m, addD(td, i - 29)); return st.hasDoseNoted ? '1' : st.skipped ? '2' : '0'; }).join(''), start: addD(td, -29) }));
+    const fm = schedMeds()[0];
+    return {
+      n, days, use, wave, band: bi < 0 ? null : [bi + 6, bi + 8],
+      lastPct: pu + pw ? Math.round(pw / (pu + pw) * 100) : null, limitDays, reduce: VICE_KEYS.filter(v => red(td).includes(v)),
+      kept: Math.round(sum(days.map(day => dailyEstimatedSavings(day)))), med, medName: fm ? fm.name : '', medDays: fm ? days.filter(day => medDayStatus(fm, day).hasDoseNoted).length : 0,
+      best, trig, untagged, heat: past.map(c => c.level), heatStart: hm.cells[0].day,
+      moods, sleep: nights.length, short: next(0, 6), long: next(7, 99), ask: ask ? (ask === td ? 'last night' : 'on ' + dlab(addD(ask, -1), { weekday: 'long' }) + ' night') : 'that night', askDay: ask
+    };
+  }
+  // Settings (M5). S.ob.name, S.cur, S.goal ({name, amt}), S.country: the saved profile.
+  function obName() { return S.profile.name; }
+  function cur() { return S.profile.currency; }
+  function goalInfo() { return { name: S.profile.goal.name || '', amt: S.profile.goal.amount ? String(S.profile.goal.amount) : '' }; }
+  function country() { return S.profile.country || ''; }
+  // S.foc: the daily focus ideas (S.cope is cope() above).
+  function foc() { return S.profile.companion.intentions; }
+  // IDEAS[k]: the list behind ideaBlock(k), so Settings can change it in place.
+  const IDEAS = { foc: () => S.profile.companion.intentions, cope: () => S.profile.companion.toolkit };
+  // S.theme: the saved look.
+  function theme() { return S.profile.companion.theme; }
+  // S.meds / S.marc: active and archived medicines (the list stays when tracking is off).
+  function medsList() { return S.meds.filter(med => med.active); }
+  // Active medicines already started whose catalog entry has an alcohol note (the live app's alcoholWarnings).
+  function alcoholWarnings() {
+    const now = Date.now();
+    return medsList().filter(med => med.alcohol && (!med.startDate || new Date(med.startDate).getTime() <= now));
+  }
+  // The moment sheet's guidance (live slipAdvice, slipCostEstimate, slipError), for an amount at a time.
+  function slipAdvice(k, amt, at = new Date()) {
+    const v = VK[k], p = viceAt(v, at);
+    if (p && p.mode !== 'quit') return null;
+    const h = streakHistory(v), r = S.vices[v] || {};
+    const days = h.mode === 'quit' && h.streakStartedAt ? (Date.now() - new Date(h.streakStartedAt)) / 864e5 : 0;
+    const per = Number(r.perDay) || 0, ratio = per > 0 ? amt / per : 1, n = Number.isInteger(amt) ? String(amt) : amt.toFixed(1);
+    if (ratio <= 0.5 && days >= 3) return { action: 'log', text: n + ' ' + uw(k, amt) + ' after ' + Math.floor(days) + ' days is a lapse, not a relapse. Your body keeps nearly all the progress it has made.' };
+    if (ratio < 1) return { action: 'streak', text: 'Restarting the streak keeps you honest, but there\'s no reason to erase your body\'s recovery over this.' };
+    return { action: 'full', text: 'That\'s at or above your old daily amount. A full fresh start is the honest call. If quitting outright isn\'t working right now, cutting back is a valid path too.' };
+  }
+  function slipCost(k, amt) {
+    const r = S.vices[VK[k]] || {}, per = Number(r.perDay) || 0;
+    return per > 0 ? amt * (Number(r.costPerDay) || 0) / per : 0;
+  }
+  function slipTimeError(k, at) {
+    const t0 = viceTrackStart(VK[k]);
+    return t0 && t0 <= new Date() && at < t0 ? 'That\'s before you started tracking (' + t0.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ').' : '';
+  }
+  function archivedMeds() { return S.meds.filter(med => !med.active && !med.deletedAt); }
+  // Deleted from the lists but kept so they can be restored (Settings › Medication schedule).
+  function deletedMeds() { return S.meds.filter(med => med.deletedAt); }
+
+  // Recovery extras (M8c), from the live app's shortDur, streakHistory, timeline and achievements.
+  const RDAY = 864e5, RWEEK = 7 * RDAY, RYR = 365 * RDAY;
+  const FREE = { smoking: 'Smoke-free', vaping: 'Vape-free', drinking: 'Alcohol-free' };
+  function shortDur(ms) {
+    ms = Math.max(0, ms);
+    const d = Math.floor(ms / RDAY), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60;
+    if (d >= 365) return Math.floor(d / 365) + 'y ' + Math.floor((d % 365) / 30) + 'mo';
+    if (d >= 1) return d + 'd ' + h + 'h';
+    if (h >= 1) return h + 'h ' + m + 'm';
+    return m + 'm';
+  }
+  const vPhases = v => ((S.vices[v] || {}).phases || []).filter(p => p && logicDate(p.at)).slice().sort((a, b) => logicDate(a.at) - logicDate(b.at));
+  // Every streak in every quit plan, oldest first: a slip that restarts the streak ("streak" or "full") ends one.
+  function streakRuns(v) {
+    const out = [], ph = vPhases(v), now = Date.now();
+    const restarts = S.slips.filter(s => s && s.vice === v && (s.action === 'streak' || s.action === 'full') && logicDate(s.at))
+      .map(s => logicDate(s.at).getTime()).sort((a, b) => a - b);
+    ph.forEach((p, i) => {
+      if (p.mode !== 'quit') return;
+      let start = logicDate(p.at).getTime();
+      const end = Math.min(i < ph.length - 1 ? logicDate(ph[i + 1].at).getTime() : now, now);
+      if (start > end) return;
+      restarts.filter(at => at >= start && at < end).forEach(at => { out.push({ start, ms: at - start }); start = at; });
+      out.push({ start, ms: end - start, current: i === ph.length - 1 });
+    });
+    return out;
+  }
+  const bestStreak = v => Math.max(0, ...streakRuns(v).map(h => h.ms));
+  // Habits that are on and have had a quit plan (the live app's streakVices).
+  const streakVices = () => VICE_KEYS.filter(v => S.vices[v] && S.vices[v].enabled && vPhases(v).some(p => p.mode === 'quit'));
+  // A medicine's "What to expect" markers, timed from its start date.
+  function medTimeline(med) {
+    const list = MED_TIMELINES[med.timeline];
+    if (!list) return null;
+    const el = Date.now() - (med.startDate ? new Date(med.startDate).getTime() : Date.now());
+    let found = false;
+    return list.map((b, i) => {
+      const done = el >= b.ms;
+      let current = false, pct = 0, note = '';
+      if (!done && !found) {
+        found = true; current = true;
+        const base = i > 0 ? list[i - 1].ms : 0;
+        pct = Math.max(0, (el - base) / (b.ms - base));
+        note = Math.floor(pct * 100) + '% · ' + shortDur(b.ms - el) + ' to go';
+      }
+      return Object.assign({}, b, { done, current, pct, note });
+    });
+  }
+  const timelineMeds = () => activeMedications().filter(med => MED_TIMELINES[med.timeline]);
+  // Zero days, best run on target and best 7-day cut for a habit with a reduce plan (the live app's reduceHistory).
+  function reduceHistory(v) {
+    const ph = vPhases(v), td = localToday(), base = Math.max(0, Number(S.vices[v].perDay) || 0);
+    let zero = 0, run = 0, bestRun = 0, bestRed = 0;
+    const win = [];
+    for (let k = ph.length ? dateKey(ph[0].at) : td; k < td; k = addD(k, 1)) {
+      const u = dailyUse(v, k), p = viceAt(v, new Date(pd(k).getTime() + RDAY - 1));
+      if (!u) zero++;
+      if (p && p.mode === 'reduce' && limitStatus(v, k).within) { run++; bestRun = Math.max(bestRun, run); } else run = 0;
+      win.push(u); if (win.length > 7) win.shift();
+      if (win.length === 7 && base > 0) bestRed = Math.max(bestRed, 1 - sum(win) / 7 / base);
+    }
+    return { zero, bestRun, bestRed };
+  }
+  // The live app's achievements, with its titles and wording.
+  function achievements() {
+    const list = [], name = v => HB[HK.find(k => VK[k] === v)].n;
+    const tiers = [[RDAY, '24 hours'], [3 * RDAY, '3 days'], [RWEEK, '1 week'], [2 * RWEEK, '2 weeks'], [30 * RDAY, '30 days'], [90 * RDAY, '90 days'], [180 * RDAY, '6 months'], [RYR, '1 year']];
+    streakVices().forEach(v => {
+      const best = bestStreak(v);
+      tiers.forEach(([ms, t]) => list.push({ id: v + ms, title: t, sub: FREE[v], earned: best >= ms, desc: t + ' ' + FREE[v].toLowerCase() }));
+    });
+    VICE_KEYS.filter(v => S.vices[v] && S.vices[v].enabled && vPhases(v).some(p => p.mode === 'reduce')).forEach(v => {
+      const h = reduceHistory(v), lbl = name(v);
+      list.push({ id: v + 'z1', title: 'First zero day', sub: lbl, earned: h.zero >= 1, desc: 'A full day with none' });
+      list.push({ id: v + 'z10', title: '10 zero days', sub: lbl, earned: h.zero >= 10, desc: '10 days with none' });
+      list.push({ id: v + 'r7', title: '7 on target', sub: lbl, earned: h.bestRun >= 7, desc: '7 days in a row at or under target' });
+      list.push({ id: v + 'r30', title: '30 on target', sub: lbl, earned: h.bestRun >= 30, desc: '30 days in a row at or under target' });
+      list.push({ id: v + 'half', title: 'Halved it', sub: lbl, earned: h.bestRed >= 0.5, desc: 'A week at half your usual amount' });
+    });
+    const saved = totals().estimatedSavings, c = STATE_CURRENCIES.includes(cur()) ? cur() : 'USD';
+    const money = n => new Intl.NumberFormat(undefined, { style: 'currency', currency: c }).format(n);
+    [100, 500, 1000, 5000].forEach(amt => list.push({ id: 'save' + amt, title: money(amt).replace(/\.00$/, ''), sub: 'Saved', earned: saved >= amt, desc: 'Save ' + money(amt) }));
+    const cn = S.cravings.length;
+    [1, 10, 50].forEach(n => list.push({ id: 'crav' + n, title: n + ' craving' + (n > 1 ? 's' : ''), sub: 'Beaten', earned: cn >= n, desc: 'Beat ' + n + ' cravings' }));
+    const j = Object.keys(S.journal).length;
+    [7, 30].forEach(n => list.push({ id: 'jr' + n, title: n + ' entries', sub: 'Journal', earned: j >= n, desc: 'Write ' + n + ' journal entries' }));
+    // Days in a row with every scheduled dose of every medicine noted.
+    const sm = schedMeds(), run = sm.length ? Math.min(...sm.map(m => medAdherence(m, localToday()).currentRun)) : 0;
+    if (sm.length) [7, 30].forEach(n => list.push({ id: 'med' + n, title: n + '-day', sub: 'All doses', earned: run >= n, desc: n + ' days in a row with every dose taken' }));
+    return list;
+  }
+</script>

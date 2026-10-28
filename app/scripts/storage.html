@@ -1,0 +1,46 @@
+<script>
+  // Where saved data lives. loadState/saveState (state.html) and the backup code (backup.html) talk
+  // to reclaimStorage() only. Both backends share one shape; all methods return promises:
+  //   label, hasDrive          a short name for the backend, and whether Drive backups are available
+  //   load()                   -> { state: string|null }
+  //   save(json)               -> { savedAt }; Drive rejects with STATE_STALE_MESSAGE if the file changed since
+  //                               this tab loaded or saved it. An error with retryable set (offline, busy) is
+  //                               kept and retried by core.html.
+  //   changed()                Drive only: has another device or tab saved since? (checked on returning to the tab)
+  //   saveBackup(json, stamp)  -> { name }        (Reclaim/Backups/)
+  //   saveUpgradeBackup(json, stamp)              (the untouched version 3 file, once)
+  //   clear()                  deletes the live data; backups stay. Absent when there is nothing to delete.
+  // Drive from the browser when window.reclaimDriveConfig is set (see storage-drive.html; the hosted
+  // app and the local preview set it), else this browser's localStorage (the site's demo).
+  const STATE_STORAGE_KEY = 'reclaim-state-dev';
+  let storageBackend;
+
+  function reclaimStorage() {
+    if (!storageBackend) storageBackend = window.reclaimDriveConfig ? driveStorage(window.reclaimDriveConfig) : browserStorage();
+    return storageBackend;
+  }
+
+  function browserStorage() {
+    return {
+      label: 'This browser',
+      hasDrive: false,
+      load() {
+        try {
+          return Promise.resolve({ state: localStorage.getItem(STATE_STORAGE_KEY) });
+        } catch (error) {
+          return Promise.reject(new Error('Could not load browser data: ' + error.message));
+        }
+      },
+      save(json) {
+        try {
+          localStorage.setItem(STATE_STORAGE_KEY, json);
+          return Promise.resolve({ savedAt: new Date().toISOString(), local: true });
+        } catch (error) {
+          return Promise.reject(new Error('Could not save on this device: ' + error.message));
+        }
+      },
+      saveBackup: () => Promise.reject(new Error('Saving a backup to Google Drive is available in the deployed app.')),
+      saveUpgradeBackup: () => Promise.resolve(null)
+    };
+  }
+</script>

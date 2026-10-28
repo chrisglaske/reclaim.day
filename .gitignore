@@ -1,0 +1,11 @@
+.DS_Store
+# Personal data and backups stay on this computer.
+local-data/
+__pycache__/
+site/node_modules/
+site/dist/
+site/.cloudflare/
+dist/
+app-host/node_modules/
+app-host/dist/
+app-host/.cloudflare/

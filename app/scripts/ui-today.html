@@ -1,0 +1,179 @@
+<script>
+  // Today, from the design mockup (its setC / refreshStory / refreshHero / complete and their act() cases).
+  // Made-up fields are read through scripts/model: tasks(), later(), moments(k), waves(), pocket(), goal(),
+  // focusList() / focusOn(k), amood() / amsrc(), track(k), hday(k), storyItems().
+const HEMO={smoke:['🚬','🚭'],vape:['💨','🫁'],drink:['🍷','🥤']};
+const hemo=k=>HEMO[k][track(k).mode==='quit'?1:0];
+const HK=['smoke','vape','drink'];
+const HB={smoke:{n:'Smoking',v:'smoking',tint:'mint',kinds:['Cigarette','Roll-up','Cigar','Other']},vape:{n:'Vaping',v:'vaping',tint:'butter',kinds:['Disposable','Pod','Refillable','Other']},drink:{n:'Drinking',v:'drinking',tint:'sky',kinds:['Wine','Beer','Spirits','Other']}};
+/* how each habit is counted. as = moment step, ls = range step, def = starting range, a0 = default moment amount */
+const HUNITS={
+  smoke:[{v:'cigarettes',l:'Cigarettes',one:'cigarette',many:'cigarettes',as:.5,ls:1,max:60,a0:1},{v:'rollups',l:'Roll-ups',one:'roll-up',many:'roll-ups',as:.5,ls:1,max:60,a0:1},{v:'cigars',l:'Cigars',one:'cigar',many:'cigars',as:.5,ls:1,max:20,a0:1}],
+  vape:[{v:'sessions',l:'Sessions',one:'session',many:'sessions',help:'One sitting, however many puffs. The easiest to keep up with.',as:1,ls:1,max:60,def:4,a0:1},
+    {v:'puffs',l:'Puffs',one:'puff',many:'puffs',help:'Handy if your device counts them for you.',as:5,ls:10,max:999,def:100,a0:10},
+    {v:'pods',l:'Pods',one:'pod',many:'pods',help:'Pods or cartridges finished.',as:.5,ls:.5,max:10,def:1,a0:1},
+    {v:'ml',l:'Millilitres',one:'ml',many:'ml',help:'E-liquid used, for refillable tanks.',as:.5,ls:.5,max:30,def:2,a0:1}],
+  drink:[{v:'drinks',l:'Drinks',one:'drink',many:'drinks',as:.5,ls:1,max:40,a0:1}]};
+const unitOf=k=>HUNITS[k].find(u=>u.v===track(k).unit)||HUNITS[k][0];
+const uw=(k,n)=>n===1?unitOf(k).one:unitOf(k).many;
+/* a habit shows on Today and Tracking when it is on, or when something was logged for it today */
+const hShown=k=>track(k).on||moments(k)>0;
+/* today's range: the reduce limit, or this week's ease-in step before a quit day */
+const hlim=k=>{const t=track(k);return t.mode==='reduce'?t.limit:t.mode==='track'?0:(taper(t)[0]?.v||0);};
+/* a total for the week, a rest day on chosen weekdays, and the words after a limit; daily plans read as before */
+const hwk=k=>{const t=track(k);return t.mode==='reduce'&&t.how==='week'&&V.screen!=='onboard';};
+const hrest=k=>{const t=track(k);return t.mode==='reduce'&&t.how==='days'&&V.screen!=='onboard'&&!limitStatus(VK[k]).allowedToday;};
+/* what counts against the limit: the rolling 7 days for a weekly total, else today */
+const hused=k=>hwk(k)?limitStatus(VK[k]).used:moments(k);
+const hphrase=k=>cadencePhrase(viceAt(VK[k]));
+/* minimized cards are kept on this device only */
+try{V.tmin=JSON.parse(localStorage.getItem('reclaim-today-min'))||{};}catch(error){V.tmin={};}
+
+/* ---------- Today ---------- */
+/* a check-in whose time of day has passed without being done is missed: it leaves "When you’re ready" and stays in the Journal as Missed */
+const missedT=t=>t.kind==='checkin'&&!t.done&&SLOTS.findIndex(s=>s[0]===t.id)<SLOTS.findIndex(s=>s[0]===curSlot());
+const live=()=>tasks().filter(t=>!missedT(t));
+const pending=()=>live().filter(t=>!t.done),done=()=>tasks().filter(t=>t.done);
+/* a scheduled dose is late once it is 30 minutes past its time and not yet noted */
+const doseLate=t=>t?.kind==='dose'&&!t.done&&mins(now())>=mins(t.dueAt||'11:59 PM')+30;
+const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
+/* "Taken earlier?" is Tracking's inline date-and-time field with Cancel */
+const earlVal=t=>{const at=new Date(),m=mins(t.dueAt||'');if(t.dueAt&&m<at.getHours()*60+at.getMinutes())at.setHours(Math.floor(m/60),m%60);
+  const p=n=>String(n).padStart(2,'0');return `${dk(at)}T${p(at.getHours())}:${p(at.getMinutes())}`;};
+const earlHTML=t=>`<div class="cfg" id="earl-${t.id}" inert><div><div class="earl"><label class="lbl" for="earlt-${t.id}">When did you take it?</label><input type="datetime-local" class="field" id="earlt-${t.id}" data-earl="${t.id}" value="${earlVal(t)}">
+        <div class="exrow"><button class="btn sm ghost" data-act="earlier:${t.id}">Cancel</button><button class="btn sm primary" data-act="earliersave:${t.id}">Save earlier</button></div></div></div></div>`;
+/* a scheduled dose row's text opens its options (y='t' on Tracking); the circle stays one tap = taken now */
+const doptBtn=(x,y,inner)=>`<button class="dopt" data-act="dopt:${x}${y?':'+y:''}" aria-haspopup="dialog">${inner}<span class="vh">, dose options</span></button>`;
+const doseT=(x,y)=>y==='t'?TD(x):T(x);
+function doptHTML(x,y){const t=doseT(x,y);if(!t)return '';const sub=y==='t'?t.label+(t.dueAt?' · due '+t.dueAt:''):t.detail,a=x+(y?':'+y:''),
+    row=(v,ic,tint,l,d)=>`<button class="lrow" data-act="${v}:${a}"><span class="itile ${tint}">${I(ic)}</span><span><b>${l}</b>${d?`<div class="muted" style="font-size:13px">${d}</div>`:''}</span>${I('chev','chev')}</button>`;
+  return `<div class="grab"></div><h3>${esc(t.title)}</h3><p class="muted" style="margin:0">${esc(sub)}</p>
+    <div class="lrows dopts">${row('dnow','check','peach','Taken now','')}${row('dearl','clock','sky','Taken earlier…','Choose the date and time')}${row('dskip','x','lilac','Not taking it today','Takes it off today’s list. A reason is optional.')}</div>`;}
+function dskipHTML(x,y){const t=doseT(x,y);if(!t)return '';const a=x+(y?':'+y:'');
+  return `<div class="grab"></div><h3>Not taking it today</h3><p class="muted" style="margin:0">${esc(t.title)}. Want to note why? It can help at appointments.</p>
+    <div class="chips dsr" role="group" aria-label="Reason, optional">${SKIP_REASONS.map((r,i)=>`<button class="chip ${V.dsr===r?'on':''}" data-act="dsr:${i}" aria-pressed="${V.dsr===r}"><span class="ck">${I('check')}</span>${r}</button>`).join('')}</div>
+    <div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="dopt:${a}">Back</button><button class="btn primary" data-act="dskipgo:${a}">Skip today</button></div>`;}
+function taskHTML(t){
+  let act;
+  if(t.done)act=t.kind==='dose'?`<div class="act round"><button class="check ${t.skipped?'':'on'}" data-act="dose:${t.id}" aria-label="${t.skipped?`Undo skipping ${esc(t.title.split(' ·')[0])}`:'Undo dose'}">${CHECK}</button></div>`:`<div class="act"><button class="btn sm" data-act="flowrev:${t.id}">Review</button></div>`;
+  else act=t.kind==='dose'?`<div class="act round"><button class="check" data-act="dose:${t.id}" aria-label="Mark ${esc(t.title)} taken">${CHECK}</button></div>`:`<div class="act"><button class="btn primary" data-act="flow:${t.id}">Check in</button></div>`;
+  /* a skipped dose sits in Done today as "Skipped", with the circle to undo the skip */
+  const sub=t.skipped?`Skipped${t.reason?' · '+esc(t.reason):''}`:t.done?`${t.kind==='dose'?'Taken':'Noted'} at ${t.at}${t.mood!=null?' · '+MOODS[t.mood][0]+' '+MOODS[t.mood][1]:''}`:esc(t.detail);
+  return `<div class="task ${t.done?'done':''} ${t.skipped?'skip':''} ${doseLate(t)?'late':''}" id="t-${t.id}">
+    <div class="itile ${t.tint}">${I(t.icon)}</div>
+    ${((tt,td)=>!t.done&&t.kind==='dose'?doptBtn(t.id,'',`<span class="tt">${tt}</span><span class="td">${td}<span class="dhint" aria-hidden="true">›</span></span>`):`<div><div class="tt">${tt}</div><div class="td">${td}</div></div>`)(`${esc(t.title)}${t.done||!t.due?'':doseLate(t)?`<span class="due late">${I('clock')}Late</span>`:`<span class="due">${t.kind==='dose'?'Due':'Now'}</span>`}`,doseLate(t)?sub.replace('due ','was due '):sub)}
+    ${act}${!t.done&&t.kind==='dose'?earlHTML(t):''}
+  </div>`;
+}
+function hero(){
+  const L=later(),p=pending(),d=done(),fs=`<button class="link" data-act="nav:tracking">Full schedule ${I('chev')}</button>`,
+    dg=d.length?`<details class="donegrp"><summary>${I('chev')}Done today (${d.length})</summary><div class="tasks">${d.map(taskHTML).join('')}</div></details>`:'',all=[...live().map(t=>({s:esc(t.short),st:t.skipped?'skip':t.done?'done':doseLate(t)?'late':'now'})),{s:esc(L.short)+'<i class="tlt"> · '+L.time+'</i>',st:''}];
+  return `<section class="hero ${p.length?'':'calm'}" id="now">
+    <div class="hhead"><div><h2>${p.length?'When you’re ready':'All caught up'}</h2><div class="hsub">${p.length?'Then you’re set until <span class="nw">'+L.time+'</span>.':`Next: ${esc(L.title)} · <span class="nw">${L.time}</span>`}</div></div><span class="count num">${d.length}/${live().length+(L.tomorrow?0:1)} done</span></div>
+    <div class="tl">${all.map(x=>`<div class="st ${x.st}"><span class="d">${x.st==='done'?I('check'):x.st==='skip'?I('x'):''}</span><span>${x.s}</span></div>`).join('')}</div>
+    ${p.length?`<div class="tasks">${p.map(taskHTML).join('')}</div>`:''}
+    ${p.length?`${dg}<div class="hfoot"><span><b>Later:</b> ${esc(L.title)} · ${L.time}</span>${fs}</div>`:`<div class="hfoot calmf">${dg}${fs}</div>`}
+  </section>`;
+}
+const minBtn=(k,l)=>`<button class="minbtn" data-act="tmin:${k}" aria-expanded="${!V.tmin[k]}" aria-label="${V.tmin[k]?'Show':'Minimize'} ${l}">${I('chev')}</button>`;
+const tcard=(k,title,sum,body,extra='',hint='')=>`<section class="card tcard ${V.tmin[k]?'min':''}" id="tc-${k}"><div class="ctitle"><div><h2>${title}</h2>${hint?`<span class="hint">${hint}</span>`:''}</div>${extra?`<span class="extra">${extra}</span>`:''}<span class="tsum">${sum}</span>${minBtn(k,title)}</div><div class="tbody"${V.tmin[k]?' inert':''}><div>${body}</div></div></section>`;
+function glRow(k){const u=hused(k),lim=hlim(k),t=track(k),n=dBetween(localToday(),t.start);
+  return `<div class="gl"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><div><div class="lbl">${HB[k].n} today</div><div class="sub">${t.mode==='track'?'Just tracking, no limit':hrest(k)?'Rest day, nothing planned':lim?`Up to ${lim} ${uw(k,lim)}${hwk(k)?' '+hphrase(k):''}`:n>0?`Quit day in ${n} day${n>1?'s':''}`:`Day ${hday(k)} of your quit journey`}</div></div><span class="v num"><span data-c="${k}">${blur(u)}</span>${lim?`<small>/${lim}</small>`:''}</span>${lim?`<div class="meter"><i id="meter-${k}" style="width:${Math.min(u/lim,1)*100}%"></i></div>`:''}</div>`;}
+function glance(){
+  const nk=['smoke','vape'].filter(hShown),G=goal();
+  return tcard('glance','Today at a glance',`${blur(formatCurrency(pocket()))} · ${blur(waves())} waves${nk.map(k=>` · ${HEMO[k][0]} ${blur(hused(k))}${hlim(k)&&!hrest(k)?'/'+hlim(k):''}`).join('')}`,`<div class="gls">
+    <div class="gl"><span class="itile sky">${I('wallet')}</span><div><div class="lbl">Kept in pocket</div><div class="sub">${G?`Toward ${esc(G.name)} · ${G.pct}%`:'Estimated from usual daily spend'}</div></div><span class="v num" data-c="pocket">${blur(formatCurrency(pocket()))}</span>${G?`<div class="meter"><i style="width:${G.pct}%"></i></div>`:''}</div>
+    <div class="gl"><span class="itile peach">${I('wave')}</span><div><div class="lbl">Waves ridden out</div><div class="sub">Cravings you resisted</div></div><span class="v num" data-c="waves">${blur(waves())}</span></div>
+    ${nk.map(glRow).join('')}</div>`);
+}
+const MOODFB=['You are meeting a hard moment. Thank you for noticing.','Low is welcome here; nothing needs to be fixed right now.','Okay is enough for this moment.','There is room to notice this good moment.','Glad there is some ease in this moment.'];
+function dMood(){
+  const m=amood(),src=amsrc();
+  if(m==null||V.amedit)return `<div class="dmood dmpick" id="dmood" role="group" aria-labelledby="dmq"><span class="q" id="dmq">How’s today going?</span>${MOODS.map(([e,l],i)=>`<button class="dm ${m===i?'on':''}" data-act="amood:${i}" aria-pressed="${m===i}" aria-label="${l}" title="${l}">${e}</button>`).join('')}</div>`;
+  return `<div class="dmood" id="dmood"><button class="dmpill${V.amfresh?' fresh':''}" data-act="amedit" title="Change today’s mood" aria-label="Today feels ${MOODS[m][1]}${src?', from your '+src+' check-in':''}. Change"><span class="em" aria-hidden="true">${MOODS[m][0]}</span><span class="dmt"><b>${MOODS[m][1]}</b> today${src?` <span class="src">· ${src} check-in</span>`:''}</span>${I('pen')}</button></div>`;
+}
+function tFocus(){
+  const FOCUSL=focusList(),fn=FOCUSL.filter(([k])=>focusOn(k)).length;
+  return tcard('focus','A small focus',`${fn} of ${FOCUSL.length} done`,`<div class="fsub"><div class="chips">${FOCUSL.map(([k,l])=>`<button class="chip ${focusOn(k)?'on':''}" data-act="focus:${k}" aria-pressed="${focusOn(k)}"><span class="ck">${I('check')}</span>${esc(l)}</button>`).join('')}<button class="chip" data-act="focusadd">${I('plus')}Add</button></div></div>`,'','Optional. Tick off anything that helps today.');
+}
+function tStory(){
+  const a=storyItems(),cut=V.sall||a.length<=5?0:a.length-4,shown=a.slice(cut);
+  return tcard('story','Day story',`${a.length} moment${a.length===1?'':'s'}${a.length?' · latest '+a[a.length-1].at:''}`,
+    a.length?`<ol class="dstory">${cut?`<li class="more"><button class="link" data-act="sall">Show ${cut} earlier</button></li>`:''}${shown.map((x,i)=>`<li class="${V.snew&&i===shown.length-1?'new':''}"><span class="itile ${x.tint}">${I(x.ic)}</span><div style="min-width:0"><b>${esc(x.t)}</b><small>${esc(x.d)}</small></div><time>${x.at}</time></li>`).join('')}</ol>`
+    :`<p class="empty">Nothing saved to today’s story yet. It will gather the moments you choose to note.</p>`,
+    `<span class="badge">${a.length}</span>`);
+}
+function tgridInner(){
+  return pending().length?`<div class="tcol">${hero()}${tStory()}</div><div class="tcol">${tFocus()}${glance()}</div>`
+    :`${hero()}<div class="tcol">${tFocus()}${glance()}</div><div class="tcol">${tStory()}</div>`;
+}
+function hval(k){const t=track(k),n=dBetween(localToday(),t.start),st=taper(t);
+  return t.mode==='track'?`<span class="hm">Tracking · </span>${moments(k)}<span class="hm"> today</span>`:hrest(k)?`<span class="hm">Reduce · </span>Rest day`:t.mode==='reduce'?`<span class="hm">Reduce · </span>${hused(k)}/${t.limit}${hwk(k)?'<span class="hm"> this week</span>':''}`:n>0?`<span class="hm">Quit day in </span>${n}d${st.length?'<span class="hm"> · up to '+st[0].v+'</span>':''}`:`Day ${hday(k)}`;}
+/* smoking and vaping share one chip when both are tracked, so drinking stays in view */
+function hchips(){const on=k=>track(k).on;
+  if(on('smoke')&&on('vape'))return `<span class="hchip duo" title="Smoking and vaping"><span class="itile hem ${HB.smoke.tint}" aria-hidden="true">${hemo('smoke')}</span><span class="vh">Smoking: </span><b>${hval('smoke')}</b><span class="hsep" aria-hidden="true"></span><span class="itile hem ${HB.vape.tint}" aria-hidden="true">${hemo('vape')}</span><span class="vh">Vaping: </span><b>${hval('vape')}</b></span>${hchip('drink')}`;
+  return HK.map(hchip).join('');}
+function hchip(k){const t=track(k);if(!t.on)return '';
+  const v=hval(k);
+  const nm=HB[k].n,em=hemo(k);
+  return `<span class="hchip" title="${nm} · ${t.mode==='reduce'?'cutting down':t.mode==='track'?'just tracking':'quitting'}"><span class="itile hem ${HB[k].tint}" aria-hidden="true">${em}</span><span class="vh">${nm}: </span><b>${v}</b></span>`;}
+function today(){
+  const h=new Date().getHours(),g=h<12?'Good morning':h<18?'Good afternoon':'Good evening',nm=S.profile.name.trim();
+  return `<div class="hello"><div><div class="eyebrow">${dlab(localToday())}</div><h1>${g}${nm?', '+esc(nm):''}</h1></div>
+    <div class="hstrip">${dMood()}${hchips()}</div></div>
+    <div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
+}
+VIEWS.today=today;
+
+function setC(k,v){$$(`[data-c="${k}"]`,app).forEach(el=>{el.textContent=blur(v);bump(el);});const m=$('#meter-'+k);if(m&&hlim(k))m.style.width=Math.min(hused(k)/hlim(k),1)*100+'%';if(['waves',...HK].includes(k))refreshStory();}
+function refreshStory(){if(V.view!=='today')return;V.snew=true;swap('tc-story',tStory());V.snew=false;}
+function refreshHero(){const g=$('#tgrid');if(!g)return;const y=$('#main').scrollTop,calm=!pending().length,flip=g.classList.contains('calm')!==calm;
+  const run=()=>{if(flip){g.classList.toggle('calm',calm);g.innerHTML=tgridInner();}else{$('#now').outerHTML=hero();swap('tc-story',tStory());}$('#main').scrollTop=y;};
+  if(flip&&document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.startViewTransition(run);else run();const l=$('.hello .lead');if(l){const p=pending().length;l.innerHTML=`${p?`<b>${p} thing${p>1?'s':''}</b> to do now`:'You’re all caught up'} · next at ${later().time}`;}}
+/* the dose is already noted in S; the row fades, then the hero redraws */
+function complete(t,el){
+  const row=$('#t-'+t.id);
+  setTimeout(()=>{(row?row.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(-8px) scale(.97)'}],{duration:260,easing:'ease-in'}).finished:Promise.resolve()).then(()=>{refreshHero();const nx=pending()[0];if(nx)$('#t-'+nx.id)?.classList.add('flash');else sparks($('#now .count'),18);});},el?450:0);
+}
+
+const T=id=>tasks().find(t=>t.id===id);
+Object.assign(ACT,{
+  dose:(b,e,x)=>{const t=T(x);if(!t)return;
+    if(t.skipped){const ev=dayDoseEvent(localToday(),t.medId,t.slot);if(!ev)return;removeDoseEvent(t.medId,ev);refreshHero();$(`#t-${x} .dopt`)?.focus({preventScroll:true});
+      toast('Skip removed',()=>{restoreDoseEvent(t.medId,ev);refreshHero();saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshHero();});});
+      saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});return;}
+    if(t.done){const ev=doseEvent(t);if(!ev)return;removeDoseEvent(t.medId,ev);refreshHero();toast('Dose unmarked');saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});return;}
+    const ev=addDoseEvent(t.medId,t.slot);if(!ev)return;
+    b.classList.add('on');sparks(b);complete(t,b);
+    toast(t.title.split(' ·')[0]+' taken',()=>{removeDoseEvent(t.medId,ev);refreshHero();saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});});
+    saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshHero();});},
+  dopt:(b,e,x,y)=>{const was=$('#sheet.open');if(!was)V.dsr='';const h=doptHTML(x,y);if(!h)return;openSheet(h);if(was)$('#sheet [data-act^="dskip:"]')?.focus({preventScroll:true});},
+  dnow:(b,e,x,y)=>{closeSheet();if(y==='t')ACT.tdose(b,e,x);else{const c=$(`#t-${x} .check`);if(c)ACT.dose(c,e,x);}},
+  dearl:(b,e,x,y)=>{closeSheet();const c=$('#earl-'+x);if(c&&!c.classList.contains('open'))(y==='t'?ACT.tearl:ACT.earlier)(b,e,x);else $('#earlt-'+x)?.focus({preventScroll:true});},
+  dskip:(b,e,x,y)=>{const h=dskipHTML(x,y);if(!h)return;openSheet(h);$('#sheet .dsr .chip')?.focus({preventScroll:true});},
+  dsr:(b,e,x)=>{const r=SKIP_REASONS[+x];V.dsr=V.dsr===r?'':r;$$('#sheet .dsr .chip').forEach((c,i)=>{const on=SKIP_REASONS[i]===V.dsr;c.classList.toggle('on',on);c.setAttribute('aria-pressed',on);});},
+  /* "Skipped today" with Undo: the dose leaves today's list, isn't counted as taken, and doesn't end a streak */
+  dskipgo:(b,e,x,y)=>{const t=doseT(x,y);if(!t)return;const ev=skipDoseEvent(t.medId,t.slot,V.dsr);closeSheet();if(!ev){toast('This dose is already noted.');return;}
+    const redraw=()=>{if(y==='t')refreshMeds();else refreshHero();},undo=()=>{removeDoseEvent(t.medId,ev);redraw();};
+    redraw();if(y!=='t'){const nx=$('#now .task .dopt,#now .task .btn');(nx||$('#now h2'))?.focus?.({preventScroll:true});}else $(`#d-${x} .check`)?.focus({preventScroll:true});
+    toast('Skipped today',()=>{undo();saveInBackground(()=>{restoreDoseEvent(t.medId,ev);redraw();});});
+    saveInBackground(undo);},
+  earlier:(b,e,x)=>{const c=$('#earl-'+x);if(!c)return;const open=c.classList.toggle('open');c.inert=!open;if(open)$('#earlt-'+x)?.focus({preventScroll:true});else $(`#t-${x} .dopt`)?.focus({preventScroll:true});},
+  earliersave:(b,e,x)=>{const t=T(x),v=$('#earlt-'+x)?.value,d=new Date(v);if(!t)return;if(!v||isNaN(d)){toast('Choose the time the dose was taken');return;}if(d>new Date()){toast('Choose a time in the past');return;}
+    const ev=addDoseEvent(t.medId,t.slot,d);if(!ev)return;
+    const c=$('#earl-'+x);c.classList.remove('open');c.inert=true;const btn=$('#t-'+x+' .check');btn?.classList.add('on');sparks(btn||b);complete(t,btn);toast('Dose noted for earlier');
+    saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshHero();});},
+  focus:(b,e,x)=>{const on=!focusOn(x);setFocus(x,on);b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);if(on)sparks(b,8);
+    saveInBackground(()=>{setFocus(x,!on);swap('tc-focus',tFocus());});},
+  /* Add opens Settings › Focus & coping */
+  focusadd:(b,e)=>{V.sset='ideas';V.sopen='ideas';ACT.nav(b,e,'settings');setTimeout(()=>mainTo($('#s-ideas')),120);},
+  tmin:(b,e,x)=>{V.tmin[x]=!V.tmin[x];try{localStorage.setItem('reclaim-today-min',JSON.stringify(V.tmin));}catch(error){/* device storage is optional */}
+    const c=$('#tc-'+x);c.classList.toggle('min',V.tmin[x]);$('.tbody',c).inert=!!V.tmin[x];b.setAttribute('aria-expanded',!V.tmin[x]);b.setAttribute('aria-label',(V.tmin[x]?'Show ':'Minimize ')+$('h2',c).textContent);if(V.tmin[x]){const d=document.createElement('div');d.innerHTML=({glance,focus:tFocus,story:tStory}[x])();$('.tsum',c).innerHTML=$('.tsum',d).innerHTML;}},
+  amood:(b,e,x)=>{const day=localToday(),before=S.journal[day],was=amood();setAmood(+x);V.amedit=false;V.amfresh=true;swap('dmood',dMood());V.amfresh=false;$('#dmood .dmpill')?.focus({focusVisible:kbd});if(was==null)sparks($('#dmood .em'),10);toast(MOODFB[+x]);
+    saveInBackground(()=>{if(before)S.journal[day]=before;else delete S.journal[day];swap('dmood',dMood());});},
+  amedit:()=>{V.amedit=true;swap('dmood',dMood());$('#dmood .dm.on')?.focus({focusVisible:kbd});},
+  sall:()=>{V.sall=true;swap('tc-story',tStory());}
+});
+/* Enter in the "Taken earlier?" field saves it, on Today or Tracking */
+app.addEventListener('keydown',e=>{const x=e.target.dataset?.earl;if(x&&e.key==='Enter'){e.preventDefault();(V.view==='tracking'?ACT.tearlsave:ACT.earliersave)(e.target,e,x);}});
+</script>

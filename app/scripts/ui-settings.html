@@ -1,0 +1,319 @@
+<script>
+/* ---------- Settings (from the design mockup, on the real data through scripts/model) ---------- */
+const SETSEC=[['profile','user','lilac','Profile'],['habits','leaf','mint','Habits'],['meds','pill','peach','Medication'],['ideas','spark','butter','Focus & coping'],['why','heart','peach','Remember why'],['support','life','sky','Support'],['look','palette','lilac','Look & feel'],['data','db','mint','Your data'],['about','smile','butter','About']];
+const CURS=[['USD','$'],['CAD','$'],['EUR','€'],['GBP','£'],['AUD','$'],['NZD','$']];
+const curOpts=()=>CURS.map(([c,y])=>`<option value="${c}" ${c===cur()?'selected':''}>${c} · ${y}</option>`).join('');
+/* why we ask for a country, said the same way in setup and Settings */
+const WHYCOUNTRY=`<div class="whyask">${I('life')}<div><b>Why we ask</b><p>So “Need support?” shows helplines and emergency numbers that work where you are. That’s all it’s used for. It doesn’t change your currency, and your location is never detected or tracked.</p></div></div>`;
+const THEMES=[['zine','Zine','Cobalt and butter with a pink pop. Bold and friendly.'],['pine','Pine','Forest green and apricot on warm paper. Calm and grounded.'],['ocean','Ocean','Cobalt and deep navy with a coral warm-up. Clear and fresh.'],['graphite','Graphite','Ink black with a lime spark. Crisp and minimal.'],['night','Night','Deep pine with mint light. Easy on the eyes.']];
+const pvHTML=k=>`<div class="pv" data-theme="${k}" aria-hidden="true"><span class="ph"><i></i><i></i><u></u></span><span class="pc"><s><i class="mint"></i><i class="peach"></i><i class="lilac"></i></s><b></b><b></b></span><span class="pb"></span></div>`;
+const swatches=()=>`<div class="swatches">${THEMES.map(([k,n,d])=>`<button class="sw ${theme()===k?'on':''}" data-act="otheme:${k}" aria-pressed="${theme()===k}">${pvHTML(k)}<span><span class="tn">${n}</span><span class="td">${d}</span></span></button>`).join('')}</div>`;
+
+/* Settings sections start closed, showing a one-line summary; one opens at a time */
+const sec=(k,title,sub,body)=>{const [,ic,tint]=SETSEC.find(x=>x[0]===k),o=V.sopen===k;
+  return `<section class="card sets ${o?'open':''}" id="s-${k}"><h2 class="shd"><button data-act="stog:${k}" aria-expanded="${o}" aria-controls="sb-${k}"><span class="itile ${tint}">${I(ic)}</span><span class="grow"><span class="st">${title}</span><span class="ssum">${SSUM[k]()}</span></span><span class="svd" aria-live="polite">${I('check')}Saved</span>${I('chev')}</button></h2>
+  <div class="tbody" id="sb-${k}" ${o?'':'inert'}><div><div class="sbin">${sub?`<p class="muted">${sub}</p>`:''}${body}</div></div></div></section>`;};
+const SSUM={
+  profile:()=>`${esc(obName())||'No name yet'} · ${cur()}${goalInfo().name?' · saving for '+esc(goalInfo().name):''}`,
+  habits:()=>HK.map(k=>{const t=track(k);return `${HB[k].n} ${t.on?(t.mode==='reduce'?'· reduce':'· quit'):'· off'}`;}).join(', '),
+  meds:()=>!medicationTrackingEnabled()?'Tracking off':medsList().length?medsList().map(m=>esc(m.name)).join(', '):'None added',
+  ideas:()=>`${foc().length} focus ${foc().length===1?'idea':'ideas'} · ${cope().length} coping ${cope().length===1?'idea':'ideas'}`,
+  why:()=>why().length?`${why().length} ${why().length===1?'reason':'reasons'} · “${esc(why()[0])}”`:'No reasons saved yet',
+  support:()=>country()&&STATE_SUPPORT_COUNTRIES[country()]?`Resources for ${STATE_SUPPORT_COUNTRIES[country()]}`:'No country chosen',
+  look:()=>`${THEMES.find(t=>t[0]===theme())?.[1]} · counters ${hide()?'hidden':'shown'}`,
+  data:()=>'Stored in your Google Drive · backup, restore, erase',
+  about:()=>'A note from Chris · links · support Reclaim'};
+const tm=t=>{const [h,m]=t.split(':').map(Number);return new Date(2000,0,1,h,m).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});};
+/* "Daily · 9:00 AM": how often, and each dose's time where one is set */
+const medTimes=m=>m.slots.map((s,i)=>((S.profile.companion.reminders||{})[m.id+':'+i]||{}).time).filter(Boolean).map(tm);
+const medSub=m=>m.freq==='prn'?`As needed${m.dailyLimit?' · personal limit '+m.dailyLimit:''}`:`${m.freq===1?'Daily':m.freq+' times a day'}${medTimes(m).length?' · '+medTimes(m).join(', '):''}`;
+const medName=m=>`${esc(m.name)}${m.dose?' · '+esc(m.dose+' '+m.unit):''}`;
+const IDB={foc:['Daily focus ideas','e.g. Stretch for five minutes','No focus ideas saved yet. Add a few that feel supportive to you.','daily focus idea'],cope:['Coping toolkit','e.g. Splash cold water on your face','Your toolkit is empty for now.','coping idea']};
+const ideaBlock=k=>`<div class="frow" id="ib-${k}"><span class="lbl">${IDB[k][0]}</span><div class="chips xchips">${IDEAS[k]().map((x,i)=>`<span class="chip">${esc(x)}<button class="x" data-act="idrm:${k}:${i}" aria-label="Remove ${IDB[k][3]}: ${esc(x)}">${I('x')}</button></span>`).join('')||`<span class="muted" style="font-size:14px">${IDB[k][2]}</span>`}</div>
+  <div class="addrow"><input class="field" id="ia-${k}" placeholder="${IDB[k][1]}" maxlength="80" aria-label="New ${IDB[k][3]}"><button class="btn" data-act="idadd:${k}">${I('plus')}Add</button></div></div>`;
+function hunitRow(k,ob){const U=HUNITS[k];if(U.length<2)return '';const u=unitOf(k);
+  return `<div class="${ob?'obcard':'frow'}"><span class="lbl" id="hul-${k}">How should we count it?</span><div class="chips" role="radiogroup" aria-labelledby="hul-${k}">${U.map(x=>`<button class="chip ${x.v===u.v?'on':''}" role="radio" aria-checked="${x.v===u.v}" data-act="hunit:${k}:${x.v}">${ck()}${x.l}</button>`).join('')}</div>${u.help?`<p class="help" style="margin-top:8px">${u.help}</p>`:''}</div>`;}
+function qSum(k){const t=track(k),n=dBetween(localToday(),t.start),st=taper(t);
+  return `<div class="frow"><div class="qsum"><span class="itile peach">${I('flag')}</span><div><b>${n>0?`Quit day in ${n} day${n>1?'s':''}`:n===0?'Quit day is today':`Day ${-n} of your quit journey`}</b><small>${dlab(t.start)}${st.length?` · easing in, up to ${st[0].v} ${st[0].per==='week'?'a week':'a day'} this week`:''}</small></div><button class="btn sm" data-act="qedit:${k}">Change</button></div></div>`;}
+function setHabit(k){const t=track(k),h=HB[k],r=S.vices[VK[k]];
+  return `<div class="hset" id="hs-${k}"><div class="hh"><span class="itile ${h.tint}">${I(hemo(k))}</span><b>${h.n}</b><button class="tgl" role="switch" aria-checked="${t.on}" aria-label="Track ${h.v}" data-act="htog:${k}"></button></div>
+  ${t.on?`<div class="frow"><span class="lbl">Your plan</span><div class="seg" data-seg="h-${k}"><span class="sp"></span>${[['quit','Quit'],['reduce','Reduce'],['track','Just track']].map(([v,l])=>`<button class="${t.mode===v?'on':''}" data-act="hmode:${k}:${v}">${l}</button>`).join('')}</div></div>
+    ${hunitRow(k)}
+    ${t.mode==='reduce'?cadenceBlock(k,t)+`<div class="frow"><div class="inl"><span class="lbl" id="liml-${k}">${limLabel(k,t)}</span><span class="stepper"><button data-act="lim:${k}:-1" aria-label="Fewer">−</button><span class="num" id="limv-${k}">${t.limit}</span><button data-act="lim:${k}:1" aria-label="More">+</button></span></div></div>`:''}
+    ${t.mode==='quit'?qSum(k):''}
+    ${t.mode==='reduce'?`<div class="frow"><div><label class="lbl" for="hst-${k}">Plan started</label><input type="date" class="field" id="hst-${k}" value="${t.start}" max="${localToday()}" style="max-width:240px"></div></div>`:''}
+    ${usualRow(k,t,r)}<div class="frow">
+      <p class="help">${t.mode!=='reduce'?'Saved moments remain in your history.':'Choose a past date if this plan began earlier. Saved moments remain in your history.'}</p><button class="btn sm" data-act="hsave:${k}" style="align-self:flex-start">Save habit details</button></div>`
+  :`<p class="muted" style="margin:0 0 6px;font-size:14px">Not tracking right now. Turn it on whenever you like; your history stays saved.</p>`}</div>`;}
+/* the medication editor: the mockup's Settings sheet with setup's how-often chips, a time per dose and start date */
+const FREQ=[['once','Once daily',1,'Once a day'],['twice','Twice daily',2,'Twice a day'],['three','Three times daily',3,'3 times a day'],['four','Four times daily',4,'4 times a day'],['prn','As needed',0]];
+/* six name chips from the catalog, no brand names */
+const CATALOG=['bupropion-sr','naltrexone','varenicline','acamprosate','sertraline','nic-patch'].map(id=>MEDICATION_CATALOG.flatMap(g=>g.items).find(c=>c.id===id).name);
+// Suggestions while typing a medicine's name: every catalog name (native datalist, so phones show them above the keyboard).
+const medSuggest=()=>`<datalist id="medcat">${[...new Set(MEDICATION_CATALOG.flatMap(g=>g.items).map(c=>c.name))].map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>`;
+const OPT='<span class="muted" style="font-weight:500">· optional</span>';
+const fkey=n=>n==='prn'?'prn':FREQ.find(f=>f[2]===n)[0];
+function setMeds(){const ms=medsList(),arc=archivedMeds(),del=deletedMeds();
+  return `<div class="frow"><div class="inl"><div><b>Track medication</b><p class="help">Doses show on Today and Tracking.</p></div><button class="tgl" role="switch" aria-checked="${medicationTrackingEnabled()}" aria-label="Track medication" data-act="mtrack"></button></div></div>
+  ${medicationTrackingEnabled()?`<div>${ms.map(m=>`<div class="mrow"><span class="itile ${m.freq==='prn'?'sky':'peach'}">${I('pill')}</span><div><b>${medName(m)}</b><small>${medSub(m)}</small></div><button class="btn sm" data-act="medit:${esc(m.id)}" aria-label="Edit ${esc(m.name)}">Edit</button>${medicationHasDoses(m.id)?`<button class="btn sm ghost" data-act="march:${esc(m.id)}" aria-label="Archive ${esc(m.name)}">Archive</button>`:`<button class="btn sm ghost" data-act="mrm:${esc(m.id)}" aria-label="Remove ${esc(m.name)}" title="Remove">${I('x')}</button>`}</div>`).join('')||'<div class="empty">No medications added.</div>'}</div>
+    <button class="btn sm primary" data-act="medit:new" style="margin-top:12px">${I('plus')}Add medication</button>
+    ${arc.length?`<details class="acc" style="margin-top:14px"><summary>Archived medications (history retained) ${I('chev')}</summary>${arc.map(m=>`<div class="mrow"><span class="itile" style="background:var(--soft)">${I('pill')}</span><div><b>${medName(m)}</b><small>Archived · history kept</small></div><button class="btn sm" data-act="mrest:${esc(m.id)}" aria-label="Restore ${esc(m.name)}">Restore</button><button class="btn sm ghost" data-act="mdel:${esc(m.id)}" aria-label="Delete ${esc(m.name)}">Delete</button></div>`).join('')}</details>`:''}
+    ${del.length?`<details class="acc" style="margin-top:14px"><summary>Deleted medications ${I('chev')}</summary><p class="help" style="margin:8px 0">Hidden everywhere, including your appointment summary. Restore one to bring it back to Archived.</p>${del.map(m=>`<div class="mrow"><span class="itile" style="background:var(--soft)">${I('pill')}</span><div><b>${medName(m)}</b><small>Deleted ${esc(insightsDateLabel(dateKey(m.deletedAt)))}</small></div><button class="btn sm" data-act="mundel:${esc(m.id)}" aria-label="Restore ${esc(m.name)}">Restore</button><button class="btn sm ghost" data-act="mpurge:${esc(m.id)}" aria-label="Delete ${esc(m.name)} forever">Delete forever</button></div>`).join('')}</details>`:''}`
+  :`<p class="muted" style="margin:0 0 6px;font-size:14px">Not tracking right now. Turn it on whenever you like; your history stays saved.</p>`}`;
+}
+function medForm(){const d=V.md,n=FREQ.find(f=>f[0]===d.freq)[2],today=localToday();
+  const sd=`<div><label class="lbl" for="mds">Schedule starts</label><input type="date" class="field" id="mds" data-md="start" value="${d.start}" style="max-width:240px"></div>`;
+  return `<div class="fsec" style="border:0"><div><label class="lbl" for="mn">Name</label><input class="field" id="mn" data-md="name" maxlength="40" value="${esc(d.name)}" placeholder="${d.id?'e.g. Naltrexone':'Type a name, or pick one below'}" autocomplete="off" list="medcat">${medSuggest()}
+      ${d.id?'':`<div class="chips" style="margin-top:10px">${CATALOG.filter(c=>!medsList().some(m=>m.name===c)).map(c=>`<button class="chip sm ${d.name===c?'on':''}" data-act="mcat:${esc(c)}">${esc(c)}</button>`).join('')}</div>`}</div>
+    <div><label class="lbl" for="md">Dose from your label</label><div class="dose2"><input class="field" id="md" data-md="dose" inputmode="decimal" value="${esc(d.dose)}" placeholder="e.g. 150"><select class="field" data-md="unit" aria-label="Unit">${MED_UNITS.map(u=>`<option ${u===d.unit?'selected':''}>${u}</option>`).join('')}</select></div></div></div>
+  <div class="fsec"><span class="lbl">How often, from your label?</span><div class="chips">${FREQ.map(([v,l,,sl])=>`<button class="chip ${d.freq===v?'on':''}" data-act="mfreq:${v}">${ck()}${sl||l}</button>`).join('')}</div>
+    ${n?doseTimes(d,n,sd)
+    :`<div class="ffl"><div><label class="lbl" for="mdl">Daily limit ${OPT}</label><input class="field" id="mdl" type="number" min="1" data-md="limit" value="${esc(d.limit)}"></div>${sd}</div><p class="help" style="margin-top:-4px">If a note would go above the limit, the app checks with you first.</p>`}
+    ${mbackHTML()}</div>
+  <div class="fsec"><label class="lbl" for="mw">Why this helps ${OPT}</label><textarea id="mw" data-md="why" maxlength="500" style="min-height:80px" placeholder="A note for yourself">${esc(d.why)}</textarea></div>`;}
+/* each dose: a name you can change (live "Dose times (rename if you like)") and an optional time; Settings and setup */
+const dtCell=(d,i)=>{const m=esc(d.name||'Medication');return `<div class="dtime"><input class="field" data-md="slots.${i}" maxlength="20" value="${esc(d.slots[i]||'')}" placeholder="${MED_SLOT_LABELS[i]}" aria-label="${m}, name of dose ${i+1}" autocomplete="off"><input type="time" class="field" ${i?'':'id="mdt0"'} data-md="times.${i}" value="${d.times[i]||''}" aria-label="${m}, time of dose ${i+1}"></div>`;};
+const doseTimes=(d,n,sd)=>{const h=`<p class="help" style="margin-top:${n===1?'-4px':'8px'}">Rename a dose if you like. Reminders show a time in the app. They don’t send notifications.</p>`;
+  return n===1?`<div class="ffl"><div><span class="lbl">Dose and time ${OPT}</span>${dtCell(d,0)}</div>${sd}</div>${h}`
+    :`<div><span class="lbl">Doses and times ${OPT}</span><div class="times dnames">${Array.from({length:n},(_,i)=>dtCell(d,i)).join('')}</div>${h}</div>${sd}`;};
+/* the backfill offer: a new schedule that started before today can mark the doses up to yesterday as taken */
+const mbackHTML=()=>{const d=V.md,n=FREQ.find(f=>f[0]===d.freq)[2];
+  return shouldOfferMedicationBackfill({id:d.id,freq:n||'prn',start:d.start})?`<div class="chips" id="mbk"><button class="chip ${d.backfill?'on':''}" aria-pressed="${d.backfill}" data-act="mback">${ck()}Mark doses from ${sdate(d.start)} to yesterday as taken</button></div>`:'<span id="mbk" hidden></span>';};
+const mdraft=m=>m?{id:m.id,name:m.name,dose:m.dose?String(m.dose):'',unit:m.unit,freq:fkey(m.freq),slots:m.slots.slice(),times:medicationReminderTimes(m),limit:m.dailyLimit?String(m.dailyLimit):'',start:dateKey(m.startDate)||localToday(),why:m.whyThisHelps||'',backfill:false}
+    :{id:'',name:'',dose:'',unit:'mg',freq:'once',slots:[],times:['09:00'],limit:'',start:localToday(),why:'',backfill:false};
+function medSheet(id){const m=id==='new'?null:S.meds.find(x=>x.id===id);if(id!=='new'&&!m)return '';
+  V.md=mdraft(m);
+  return `<div class="grab"></div><h3>${m?'Edit medication':'Add medication'}</h3><p class="muted" style="margin:0">Follow the directions given to you by your prescriber.</p>
+  <div id="medf">${medForm()}</div>
+  <div class="sfoot2"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="msv">Save medication</button></div>`;}
+/* the field to focus for a save error */
+const MERRF={'Add a name for this medication':'#mn','Keep the name to 40 characters.':'#mn','Enter the dose as a number, like 150.':'#md','Enter a daily limit of 1 or more, or leave it blank.':'#mdl','Choose the day the schedule starts.':'#mds'};
+const medRedraw=()=>{const f=$('#medf');if(f)f.innerHTML=medForm();};
+/* picking a catalog medicine (chip or name suggestion): a new medication also gets its dose, how often and dose times, as in the live app */
+const mcatFill=c=>{const d=V.md;d.name=c.name;d.unit=c.unit;d.cat=c.id;if(d.id)return;d.dose=String(c.dose);d.freq=fkey(c.freq);d.slots=medicationDefaultSlots(c.freq,c.bedtime);d.times=d.slots.map(s=>MED_SLOT_TIMES[s]||'');};
+/* a medication change: redraw the section, flash Saved, save in the background; a failed save puts everything back */
+function medsDone(snap,msg,undo,saved){resec('meds');if(saved)flashSaved($('#s-meds h2'));toast(msg,undo);
+  saveInBackground(()=>{restoreMedicationSnapshot(snap);resec('meds');});}
+const SECS={
+  profile:()=>sec('profile','Profile','',`<div class="frow"><label class="lbl" for="sname">Your name</label><input class="field" id="sname" maxlength="40" value="${esc(obName())}" data-save></div>
+    <div class="frow"><div class="ffl"><div><label class="lbl" for="scur">Currency</label><select class="field" id="scur" data-save>${curOpts()}</select></div><div><label class="lbl" for="sgoal">Savings goal</label><input class="field" id="sgoal" maxlength="60" value="${esc(goalInfo().name)}" data-save></div><div><label class="lbl" for="samt">Goal amount (${curSym()})</label><input class="field" id="samt" type="number" min="0" step="0.01" value="${esc(goalInfo().amt)}" data-save></div></div></div>`),
+  habits:()=>sec('habits','Habits','There is no required target or perfect day. Smoke and vape? Turn both on and each gets its own plan.',HK.map(setHabit).join('')),
+  meds:()=>sec('meds','Medication schedule','Scheduled doses appear on Today when they’re due. Archiving keeps your history.',setMeds()),
+  ideas:()=>sec('ideas','Focus & coping','Focus ideas show on Today. Your coping ideas appear in “Need support?” when you want one.',ideaBlock('foc')+ideaBlock('cope')),
+  why:()=>sec('why','Remember why','Shown in “Need support?”, for the harder moments.',`<div class="frow"><label class="lbl" for="swhy">Your reasons</label><textarea id="swhy" data-save style="min-height:130px">${esc(why().join('\n'))}</textarea><div class="inl"><p class="help">One personal reason per line, up to 15.</p><span class="help" id="whyc">${why().length} of 15</span></div></div>`),
+  support:()=>sec('support','Support','',`<div class="frow"><label class="lbl" for="scountry">Country for support <span class="muted" style="font-weight:500">· optional</span></label><select class="field" id="scountry" data-save>${countryOpts(country())}</select>${WHYCOUNTRY}</div>`),
+  look:()=>sec('look','Look & feel','Changes save immediately.',`${swatches()}
+    <div class="frow" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px"><div class="inl"><div><b>Hide counters</b><p class="help">Show gentle words instead of numbers, everywhere.</p></div><button class="tgl" role="switch" aria-checked="${hide()}" aria-label="Hide counters" data-act="hide"></button></div></div>`),
+  data:()=>sec('data','Your data','',`<p class="muted" style="font-size:14px;margin:0 0 14px">Reclaim has no advertising or usage analytics. What you save is stored in your own Google Drive, not a shared Reclaim database.</p>
+    <div class="chips"><button class="btn" data-act="backup">${I('db')}Create backup…</button><button class="btn" data-act="restore">${I('up')}Restore from file</button><input type="file" id="rfile" accept=".json,application/json" hidden></div>${window.reclaimSignIn?`<div class="inl" style="margin-top:12px"><p class="help" style="margin:0">Signing out ends Reclaim’s access to your Drive. Your data stays there.</p><button class="btn" data-act="signout">Sign out</button></div>`:''}
+    <button class="lrow" data-act="apopen" style="border:0;background:none;text-align:left;font:inherit;color:inherit;width:100%;margin-top:12px"><span class="itile lilac">${I('file')}</span><span><b>Appointment summary</b><div class="muted" style="font-size:13px">What changed since your last appointment, to show or print</div></span>${I('chev','chev')}</button>
+    <div class="danger"><b>Erase your Reclaim data</b><p class="help" style="margin:4px 0 12px">Choose whether to keep a backup first, then confirm. Nothing happens until the last step.</p><button class="btn warn" data-act="erase:0">Erase my data…</button></div>`),
+  /* links open in a new tab so the app (and its sign-in) stays put */
+  about:()=>sec('about','About','',`<p style="margin:0 0 10px">Hi, I’m Chris 👋</p>
+    <p style="margin:0 0 10px">I built Reclaim because so many apps like it cost a lot of money. Deciding to change something in your life takes courage, and the help you need shouldn’t be stuck behind a paywall. So Reclaim is free, with no ads and no tracking, and what you save stays in your own Google Drive.</p>
+    <p style="margin:0 0 10px">I use Reclaim myself, so I’m always looking for ways to make it better. If there’s something you wish it did, or something that gets in your way, I’d really like to hear from you at <a href="mailto:contact@reclaim.day" style="color:var(--primary);font-weight:650">contact@reclaim.day</a>.</p>
+    <p style="margin:0 0 14px">Thank you for letting it be part of your change, at whatever pace is right for you.<br>Chris</p>
+    <div class="chips">${[['https://reclaim.day/privacy/','Privacy policy'],['https://reclaim.day/terms/','Terms'],['https://reclaim.day/whats-new/','What’s new'],['https://reclaim.day/faq/','FAQ'],['https://glaske.co','glaske.co']].map(([h,l])=>`<a class="btn sm" style="text-decoration:none" href="${h}"${h.startsWith('mailto:')?'':' target="_blank" rel="noopener"'}>${l}</a>`).join('')}</div>
+    <a class="lrow" href="https://ko-fi.com/S5P629GQ84" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;margin-top:12px"><span class="itile butter">${I('heart')}</span><span><b>Support Reclaim’s development</b><div class="muted" style="font-size:13px">Entirely optional. If it helps you, you can chip in on Ko-fi.</div></span>${I('chev','chev')}</a>`)};
+function settings(){
+  return `<div class="hello"><div><div class="eyebrow">Settings</div><h1>Make it yours</h1><div class="lead">Selections save automatically. Text saves when you leave the field.</div></div></div>
+  <div class="setg"><nav class="setnav" aria-label="Settings sections">${SETSEC.map(([k,i,t,l])=>`<button class="setl ${V.sset===k?'on':''}" data-act="sgo:${k}"><span class="itile ${t}">${I(i)}</span>${l}</button>`).join('')}<button class="btn" data-act="startob">${I('leaf')}Guided setup again</button></nav>
+  <div class="col setl2">${SETSEC.map(([k])=>SECS[k]()).join('')}<button class="btn obagain" data-act="startob">${I('leaf')}Guided setup again</button></div></div>`;
+}
+VIEWS.settings=settings;
+function mainTo(el,how){if(!el)return;const m=$('#main'),r=el.getBoundingClientRect(),mr=m.getBoundingClientRect();let d=r.top-mr.top-12;
+  if(how==='nearest'){if(r.top>=mr.top&&r.bottom<=mr.bottom)return;if(r.bottom>mr.bottom&&r.height<mr.height)d=r.bottom-mr.bottom+12;}m.scrollTo({top:m.scrollTop+d,behavior:'smooth'});}
+function setOpen(x){V.sopen=x;if(x)V.sset=x;$$('.sets',app).forEach(c=>{const k=c.id.slice(2),o=x===k;c.classList.toggle('open',o);$('.shd button',c).setAttribute('aria-expanded',o);$('.tbody',c).inert=!o;$('.ssum',c).innerHTML=SSUM[k]();});
+  $$('.setl',app).forEach(l=>l.classList.toggle('on',l.dataset.act==='sgo:'+V.sset));requestAnimationFrame(placeSeg);}
+function flashSaved(el){const s=el?.closest('.sets')?.querySelector('.svd');if(!s)return;s.classList.add('show');clearTimeout(s._t);s._t=setTimeout(()=>s.classList.remove('show'),1600);}
+/* a section redrawn after a change or a failed save, kept open */
+const resec=k=>{swap('s-'+k,SECS[k]());requestAnimationFrame(placeSeg);};
+/* the quit-day sheet ("Switch to Quit", "Your quit day"): its draft plan is V.hq = {k, start, ease, from};
+   Guided setup's quit blocks use the habit's draft, V.ob.track[k]. */
+const nextMon=()=>{const d=pd(localToday());d.setDate(d.getDate()+((8-d.getDay())%7||7));return dk(d);};
+const qo=key=>key==='hq'?V.hq:V.screen==='onboard'?V.ob.track[key]:null;
+const qvice=key=>key==='hq'?V.hq.k:key;
+function taperHTML(key){const t=qo(key),st=taper(t),u=unitOf(qvice(key)).many,mx=Math.max(...st.map(x=>x.v),1),pw=t.usualPer==='week'?'a week':'a day';
+  return `<div class="inl" style="margin-top:16px"><span class="lbl" style="margin:0">About how many ${u} ${pw} right now?</span><span class="stepper"><button data-act="qfrom:${key}:-1" aria-label="Fewer">−</button><span class="num">${t.from}</span><button data-act="qfrom:${key}:1" aria-label="More">+</button></span></div>
+  <div class="taper ${V.qanim?'anim':''}" role="list" aria-label="Your cut-down steps">${st.map((x,i)=>`<div class="tstep" role="listitem" aria-label="${sdate(x.a)} to ${sdate(x.b)}: up to ${x.v} ${pw}"><span class="tv">${x.v}</span><span class="tb" style="height:${Math.round(x.v/mx*72)+8}%;animation-delay:${i*70}ms"></span><span class="td">${i?sdate(x.a):'This week'}</span></div>`).join('')}<div class="tstep quit" role="listitem" aria-label="Quit day, ${dlab(t.start)}"><span class="tv">${I('flag')}</span><span class="tb"></span><span class="td">Quit day</span></div></div>
+  <p class="help">Up to ${st[0].v} ${pw} this week, a little less each week after. Each step is a range, not a rule, and you can change them in Settings anytime.</p>`;}
+function quitBlock(key,part){
+  const t=qo(key),n=dBetween(localToday(),t.start),fut=n>0,on=v=>t.start===v;
+  const msg=n<0?`Your days count from ${dlab(t.start,{month:'long',day:'numeric'})}. That’s <b>${-n} day${n===-1?'':'s'}</b> already.`:n===0?`<b>Day one starts today.</b> That takes courage, and we’ll be here for it.`:`That’s <b>${n} day${n>1?'s':''}</b> away, on ${dlab(t.start)}. Plenty of time to get ready at your own pace.`;
+  return `<div class="qblock" data-qb="${key}" data-part="${part||''}">
+    ${part==='ease'?'':`<div class="obcard"><span class="lbl">When is your quit day?</span>
+      <div class="chips qdays">${[['Today',localToday()],['Tomorrow',addD(localToday(),1)],['Next Monday',nextMon()],['In 2 weeks',addD(localToday(),14)]].map(([l,v])=>`<button class="chip ${on(v)?'on':''}" data-act="qd:${key}:${v}" aria-pressed="${on(v)}">${ck()}${l}</button>`).join('')}</div>
+      <div class="qdate"><label class="lbl" for="qdt-${key}">Or pick a date</label><input type="date" class="field" id="qdt-${key}" value="${t.start}" data-q="${key}" max="${addD(localToday(),180)}"></div>
+      <p class="qmsg" aria-live="polite">${I(fut?'cal':n===0?'sun':'leaf')}<span>${msg}</span></p>
+      ${n<=0?'<p class="help">Already stopped? Pick the day you stopped and your days count from there.</p>':''}
+    </div>`}
+    ${fut&&part!=='date'?`<div class="obcard"><span class="lbl">Would you like to cut down until then?</span>
+      <div class="plans sm" role="radiogroup" aria-label="Cut down before quit day">${[[1,'Yes, ease me in','A gentle daily range that steps down each week.'],[0,'No, just the date','Carry on as usual and start fresh on quit day.']].map(([v,b,d])=>`<button class="plan ${+!!t.ease===v?'on':''}" role="radio" aria-checked="${+!!t.ease===v}" data-act="qease:${key}:${v}"><span class="tick">${I('check')}</span><b>${b}</b><span>${d}</span></button>`).join('')}</div>
+      ${t.ease?taperHTML(key):''}</div>`:''}
+  </div>`;}
+function qRefresh(key){const el=$(`[data-qb="${key}"]`);if(!el)return;if(V.screen==='onboard'){obRefresh();return;}const sc=el.closest('.sheet,main,.obbody,.obscroll')||$('#main'),y=sc?.scrollTop;el.outerHTML=quitBlock(key,el.dataset.part||undefined);V.qanim=false;if(sc)sc.scrollTop=y;}
+/* "How often?": every day, some days (a weekday picker) or a total for the week; and the usual amount with its cadence.
+   Setup edits its draft (V.ob.track) and redraws; Settings saves straight away. */
+const WDAYS=[[1,'Mon'],[2,'Tue'],[3,'Wed'],[4,'Thu'],[5,'Fri'],[6,'Sat'],[0,'Sun']];
+const limPhrase=t=>cadencePhrase({mode:'reduce',per:t.how==='week'?'week':'day',days:t.how==='days'?t.days:[]});
+const limMax=(k,t)=>unitOf(k).max*(t.how==='week'?7:1);
+function cadenceBlock(k,t,ob){const HOW=[['day','Every day'],['days','Some days'],['week','A total for the week']];
+  return `<div class="${ob?'obcard':'frow'}"><span class="lbl" id="hhl-${k}">How often?</span><div class="chips" role="radiogroup" aria-labelledby="hhl-${k}">${HOW.map(([v,l])=>`<button class="chip ${t.how===v?'on':''}" role="radio" aria-checked="${t.how===v}" data-act="chow:${k}:${v}">${ck()}${l}</button>`).join('')}</div>
+    ${t.how==='days'?`<div class="chips" role="group" aria-label="Days you allow" style="margin-top:10px">${WDAYS.map(([n,l])=>`<button class="chip ${t.days.includes(n)?'on':''}" aria-pressed="${t.days.includes(n)}" data-act="cday:${k}:${n}">${ck()}${l}</button>`).join('')}</div><p class="help" style="margin-top:8px">The limit applies on these days. On the others, anything logged counts as over, just as information.</p>`:''}
+    ${t.how==='week'?`<p class="help" style="margin-top:8px">Judged over the last 7 days, so a heavier day can be balanced by lighter ones.</p>`:''}</div>`;}
+/* the limit when the cadence changes: the same weekly allowance, spread (or gathered) over the new cadence */
+function limFor(k,t,how,days){const U=unitOf(k),week=t.how==='week'?t.limit:t.limit*(t.how==='days'?t.days.length:7),
+  n=how==='week'?week:week/(how==='days'?days.length:7),m=U.ls;
+  return Math.max(m,Math.min(U.max*(how==='week'?7:1),+(Math.round(n/m)*m).toFixed(1)));}
+/* a limit stepper's label, e.g. "Up to how many drinks on weekends?" */
+const limLabel=(k,t)=>`Up to how many ${unitOf(k).many} ${limPhrase(t)}?`;
+function usualRow(k,t,r,ob){const per=ob?t.usualPer:(r.usual&&r.usual.per)||'day',u=unitOf(k).many,
+  amt=ob?t.perDay:r.usual?r.usual.amount:r.perDay?+(+r.perDay).toFixed(2):'',
+  cost=ob?t.cost:per==='week'?((+r.costPerDay||0)*7).toFixed(2):(+r.costPerDay||0).toFixed(2),
+  pw=per==='week'?'week':'day',ex={smoke:10,vape:6,drink:3}[k];
+  return `<div class="${ob?'':'frow'}"><span class="lbl" id="hupl-${k}">Usual amount</span><div class="chips" role="radiogroup" aria-labelledby="hupl-${k}">${[['day','Per day'],['week','Per week']].map(([v,l])=>`<button class="chip ${per===v?'on':''}" role="radio" aria-checked="${per===v}" data-act="cusual:${k}:${v}">${ck()}${l}</button>`).join('')}</div></div>
+    ${ob?'':'<div class="frow">'}<div class="ffl" style="margin-top:4px"><div><label class="lbl" for="${ob?'opd':'hup'}-${k}">Usual ${u} per ${pw}</label><input class="field" id="${ob?'opd':'hup'}-${k}" type="number" min="0" inputmode="decimal" value="${esc(amt)}" ${ob?`data-ob="${k}.perDay"`:''} placeholder="e.g. ${per==='week'?ex*4:ex}"></div><div><label class="lbl" for="${ob?'ocs':'hsp'}-${k}">Usual spend per ${pw} (${curSym()})</label><input class="field" id="${ob?'ocs':'hsp'}-${k}" type="${ob?'number':'text'}" ${ob?'min="0" step="0.01"':''} inputmode="decimal" value="${ob?esc(cost):curSym()+cost}" ${ob?`data-ob="${k}.cost"`:''} ${ob?'placeholder="e.g. 8.00"':''}></div></div>${ob?'':'</div>'}`;}
+/* a habit change: redraw its block and save in the background; a failed save puts the habit back */
+/* the quit-day sheet's draft: ease-in starts from the usual amount, a day or a week */
+const hqDraft=(k,start,ease,sw)=>{const r=S.vices[VK[k]],w=!!(r.usual&&r.usual.per==='week');return Object.assign({k,start,ease,usualPer:w?'week':'day',from:w?Math.round(r.usual.amount):+r.perDay||track(k).limit+2},sw?{sw}:{});};
+const PLANN={quit:'Quit',reduce:'Reduce',track:'Just track'};
+const hsnap=k=>JSON.parse(JSON.stringify(S.vices[VK[k]]));
+function habitDone(k,was,msg){swap('hs-'+k,setHabit(k));placeSeg();flashSaved($('#s-habits h2'));if(msg)toast(msg);
+  saveInBackground(()=>{S.vices[VK[k]]=was;if(V.limph)V.limph[k]=null;resec('habits');});}
+/* "€4.50", "4,50" or "1,234.50" → a number */
+const money=s=>{s=String(s).replace(/[^\d.,]/g,'');s=s.includes('.')?s.replace(/,/g,''):s.replace(',','.');return s===''?0:Number(s);};
+/* the theme on the page and on .app, as the mockup sets it */
+function showTheme(){window.reclaimStartup.applyTheme(theme(),true);applyAppTheme();}
+
+/* backup destinations: the mockup's two plus "Both"; the erase sheet words Drive its own way */
+const BKDEST=[['download','Download to this device','A file you keep wherever you like.'],['drive','Save in Google Drive','Drive copies stay in Reclaim › Backups, separate from your live data.'],['both','Both','A file on this device and a copy in Reclaim › Backups.']];
+const bkRads=()=>`<div class="rads"${V.er?' style="margin-top:14px"':''}>${BKDEST.map(([v,t,d],i)=>`<button class="rad ${i?'':'on'}" data-act="rad"><span class="o"></span><span><b>${t}</b><small>${V.er&&v==='drive'?'Drive backups go to Reclaim › Backups, separate from Reclaim › Live Data.':d}</small></span></button>`).join('')}</div>`;
+const bkDest=()=>BKDEST[Math.max(0,$$('#sheetc .rad').findIndex(r=>r.classList.contains('on')))][0];
+const bkErr=(e,pre)=>toast(pre+(e&&e.message?' '+e.message:''));
+/* erase in steps: V.er = {step, dest, name}; the backup is real, Drive-only skips the "saved on this device" tick, Back on the last step */
+function eraseHTML(){
+  const s=V.er.step,dots=`<div class="erdots" aria-hidden="true">${[0,1,2,3].map(i=>`<i class="${i<=s?'on':''}"></i>`).join('')}</div>`,foot=(l,r)=>`<div class="sfoot2">${l}${r}</div>`,drive=V.er.dest==='drive';
+  const body=[
+    ()=>`<h3>Would you like to keep a backup?</h3><p class="muted" style="margin:0 0 16px">Your profile, habit history, medications and journal will be removed from the app. A separate backup lets you restore them later.</p><div style="display:flex;flex-direction:column;gap:8px"><button class="btn primary block" data-act="erase:1">Keep a backup first</button><button class="btn block" data-act="erase:3">Continue without a backup</button></div>${foot('<button class="btn ghost" data-act="sclose">Cancel</button>','')}`,
+    ()=>`<h3>Where should your backup go?</h3>${bkRads()}${foot('<button class="btn ghost" data-act="erase:0">Back</button>','<button class="btn primary" data-act="erbk">Create backup</button>')}`,
+    ()=>`<h3>Your backup is ready</h3>${drive?`<p class="muted" style="margin:0 0 14px">It’s in Reclaim › Backups in your Google Drive${V.er.name?' as <b>'+esc(V.er.name)+'</b>':''}.</p>`:`<p class="muted" style="margin:0 0 14px">Before going on, check the file is where you expect it.${V.er.name?' The Drive copy is in Reclaim › Backups as <b>'+esc(V.er.name)+'</b>.':''}</p><label class="cbx"><input type="checkbox" id="ercb">I have checked that the backup file was saved on my device.</label>`}${foot('<button class="btn ghost" data-act="erase:1">Back</button>',`<button class="btn primary" id="erok" data-act="erase:3" ${drive?'':'disabled'}>Continue</button>`)}`,
+    ()=>`<h3>Check before you erase</h3><p class="muted" style="margin:0">This removes from the app:</p><ul class="plist"><li>Your profile, goals and settings</li><li>Habit history and moments</li><li>Medications and dose notes</li><li>Journal check-ins and notes</li></ul><p class="muted" style="font-size:13.5px;margin:12px 0">Separate backups, including any older copies, will not be deleted. Other files in your Drive are not affected.</p><label class="cbx"><input type="checkbox" id="ercb">I understand this cannot be undone and that separate backups will remain.</label>${foot(`<button class="btn ghost" data-act="erase:${V.er.dest?2:0}">Back</button>`,'<button class="btn dangerb" id="erok" data-act="ergo" disabled>Erase everything</button>')}`,
+    ()=>`<h3>Your data has been erased</h3><p class="muted" style="margin:0">Your live data has been removed. Any separate backups remain in their original locations.</p>${foot('','<button class="btn primary" data-act="erclose">Close</button>')}`][s]();
+  return `<div class="grab"></div>${s<4?dots:''}${body}`;}
+const erShow=()=>{$('#sheet').classList.contains('open')?$('#sheetc').innerHTML=eraseHTML():openSheet(eraseHTML());$('#sheetc').scrollTop=0;};
+
+Object.assign(ACT,{
+  rad:(b)=>{$$('.rad',b.parentNode).forEach(r=>r.classList.toggle('on',r===b));},
+  backup:()=>{V.er=null;openSheet(`<div class="grab"></div><h3>Create a backup</h3><p class="muted" style="margin:0 0 14px">Where should your backup go?</p>${bkRads()}<div class="sfoot2"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="backupgo">Create backup</button></div>`);},
+  backupgo:async()=>{const d=bkDest();closeSheet();if(d!=='download')toast('Saving your backup…');
+    try{const r=await createSettingsBackup(d);toast(d==='download'?'Backup created':`Backup saved in Reclaim › Backups${d==='both'?' and downloaded':''}`);}
+    catch(e){bkErr(e,d==='both'?'The download started, but the Drive backup couldn’t be saved.':'The backup couldn’t be saved.');}},
+  restore:()=>$('#rfile')?.click(),
+  /* sign out waits for a running save, and asks before dropping a change that hasn't reached Drive */
+  signout:async(b)=>{if(hasUnsavedChanges()){b.disabled=true;b.textContent='Saving…';retryUnsaved();await savesSettled();b.disabled=false;b.textContent='Sign out';}
+    if(!hasUnsavedChanges())return window.reclaimSignIn.signOut();
+    openSheet(`<div class="grab"></div><h3>Sign out before it’s saved?</h3><p class="muted" style="margin:0 0 14px">Your latest change hasn’t reached Google Drive yet. If you sign out now, it will be lost.</p><div class="sfoot2"><button class="btn ghost" data-act="sclose">Stay signed in</button><button class="btn primary" data-act="signoutnow">Sign out anyway</button></div>`);},
+  signoutnow:()=>window.reclaimSignIn.signOut(),
+  restorego:()=>{if(!V.rst)return;const was=JSON.parse(JSON.stringify(S));applyState(V.rst);S.setupVersion=Math.max(S.setupVersion||0,was.setupVersion||0)||undefined;V.rst=null;closeSheet();renderAll();toast('Backup restored');
+    saveInBackground(()=>{applyState(was);renderAll();});},
+  erase:(b,e,x)=>{V.er=x==='0'?{step:0}:Object.assign(V.er||{},{step:+x});if(+x<2)V.er.dest=V.er.name=null;erShow();},
+  erbk:async(b)=>{const d=bkDest();b.disabled=true;b.textContent='Creating…';
+    try{const r=await createSettingsBackup(d);Object.assign(V.er,{dest:d,name:r&&r.name,step:2});erShow();}
+    catch(e){b.disabled=false;b.textContent='Create backup';bkErr(e,'The backup couldn’t be completed, so nothing was erased.');}},
+  ergo:async(b)=>{b.disabled=true;b.textContent='Erasing…';
+    try{await eraseSettingsData();V.er.step=4;erShow();}
+    catch(e){b.disabled=false;b.textContent='Erase everything';bkErr(e,'Your data couldn’t be erased.');}},
+  /* after erasing, Close starts Guided setup */
+  erclose:()=>{closeSheet();V.er=null;V.view='today';V.sopen=null;renderAll();ACT.startob?.();},
+  mtrack:()=>{const c=S.profile.companion,was=c.trackMedications;c.trackMedications=!was;
+    resec('meds');flashSaved($('#s-meds h2'));toast(c.trackMedications?'Medication tracking turned on':'Medication tracking paused. Your history stays saved.');
+    saveInBackground(()=>{c.trackMedications=was;resec('meds');});},
+  medit:(b,e,x)=>{const h=medSheet(x);if(!h){toast('This medication is no longer available.');return;}openSheet(h);},
+  mcat:(b,e,x)=>{const c=medicationCatalogMatch(x);c?mcatFill(c):V.md.name=x;medRedraw();},
+  mfreq:(b,e,x)=>{const d=V.md,n=FREQ.find(f=>f[0]===x)[2];d.freq=x;d.slots=d.slots.slice(0,n);d.times=Array.from({length:n},(_,i)=>d.times[i]||['09:00','14:00','18:00','21:00'][i]);medRedraw();},
+  mback:(b)=>{V.md.backfill=!V.md.backfill;b.classList.toggle('on',V.md.backfill);b.setAttribute('aria-pressed',V.md.backfill);},
+  msv:()=>{const d=V.md,n=FREQ.find(f=>f[0]===d.freq)[2],snap=medicationSnapshot(),err=saveMedication(Object.assign({},d,{freq:n||'prn'}));
+    if(err){restoreMedicationSnapshot(snap);toast(err);$(MERRF[err])?.focus();return;}
+    closeSheet();V.md=null;medsDone(snap,d.id?'Medication saved':d.backfill&&n?'Medication added. Earlier doses marked taken':'Medication added',null,1);},
+  /* archive keeps the history, with Undo */
+  march:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);if(!m)return;const snap=medicationSnapshot();setMedicationActive(x,false);
+    medsDone(snap,m.name+' archived',()=>{setMedicationActive(x,true);resec('meds');saveInBackground(()=>{setMedicationActive(x,false);resec('meds');});});},
+  /* × removes a medicine with no doses yet, with Undo */
+  mrm:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);if(!m)return;const snap=medicationSnapshot();if(!removeMedication(x))return;
+    medsDone(snap,m.name+' removed',()=>{const now=medicationSnapshot();restoreMedicationSnapshot(snap);resec('meds');saveInBackground(()=>{restoreMedicationSnapshot(now);resec('meds');});});},
+  /* delete (archived only) hides it and keeps it in Deleted, with Undo; Delete forever there erases its doses too */
+  mdel:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);if(!m)return;
+    openSheet(`<div class="grab"></div><h3>Delete ${esc(m.name)}?</h3><p class="muted" style="margin:0">It disappears from Settings and your appointment summary. It moves to Deleted medications, so you can restore it later with its dose history.</p><div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep it</button><button class="btn warn" data-act="mdelgo:${esc(x)}">Delete</button></div>`);},
+  mdelgo:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);closeSheet();if(!m)return;const snap=medicationSnapshot();if(!deleteMedication(x))return;
+    medsDone(snap,m.name+' deleted',()=>{const now=medicationSnapshot();restoreMedicationSnapshot(snap);resec('meds');saveInBackground(()=>{restoreMedicationSnapshot(now);resec('meds');});});},
+  mundel:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);if(!m)return;const snap=medicationSnapshot();if(!restoreDeletedMedication(x))return;medsDone(snap,m.name+' restored to Archived');},
+  mpurge:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);if(!m)return;
+    openSheet(`<div class="grab"></div><h3>Delete ${esc(m.name)} forever?</h3><p class="muted" style="margin:0">This erases ${esc(m.name)} and every dose you noted for it. It can’t be restored here. Older backups in your Google Drive still have it.</p><div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep it</button><button class="btn warn" data-act="mpurgego:${esc(x)}">Delete forever</button></div>`);},
+  mpurgego:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);closeSheet();if(!m)return;const snap=medicationSnapshot();if(!purgeMedication(x))return;medsDone(snap,m.name+' deleted forever');},
+  mrest:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);if(!m)return;const snap=medicationSnapshot();setMedicationActive(x,true);medsDone(snap,m.name+' restored');},
+  htog:(b,e,x)=>{const was=hsnap(x);setHabitOn(VK[x],!S.vices[VK[x]].enabled);habitDone(x,was,track(x).on?'Tracking turned on':'Tracking paused. Your history stays saved.');},
+  hmode:(b,e,x,y)=>{const t=track(x),nm=HB[x].v;if(t.mode===y)return;
+    if(y==='quit'){V.hq=hqDraft(x,localToday(),false,1);openSheet(`<div class="grab"></div><h3>Switch ${nm} to Quit</h3><p class="muted" style="margin:0">Choose a quit day that feels right. Saved moments remain in your history.</p>${quitBlock('hq')}<div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep current plan</button><button class="btn primary" data-act="qsave:${x}">Set quit plan</button></div>`);return;}
+    openSheet(`<div class="grab"></div><h3>Change your plan?</h3><p class="muted" style="margin:0">Switch ${nm} from <b>${PLANN[t.mode]}</b> to <b>${PLANN[y]}</b>. ${y==='quit'?'Your quit journey counts from today.':y==='track'?'You’ll see what you log, with no limit.':'You’ll choose a range.'} Saved moments remain in your history.</p><div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep current plan</button><button class="btn primary" data-act="hmodego:${x}:${y}">Change plan</button></div>`);},
+  /* back to Reduce at the last limit used, else the unit's usual day, else the usual amount */
+  hmodego:(b,e,x,y)=>{if(y!=='reduce'&&y!=='track')return;const v=VK[x],r=S.vices[v],was=hsnap(x),last=r.phases.filter(p=>p.mode==='reduce').sort((a,c)=>new Date(a.at)-new Date(c.at)).pop();
+    const err=y==='track'?setReducePlan(v,0,{},'track'):setReducePlan(v,last?last.target:unitOf(x).def||Math.max(1,Math.round(+r.perDay)||1),last&&{per:last.per,days:last.days});if(err){S.vices[v]=was;toast(err);return;}
+    closeSheet();habitDone(x,was,'Plan updated');},
+  hunit:(b,e,x,y)=>{if(unitOf(x).v===y)return;const was=hsnap(x),u=setHabitUnit(VK[x],y);if(!u)return;habitDone(x,was,`Counting ${HB[x].v} in ${u.many}`);},
+  hsave:(b,e,x)=>{const v=VK[x],was=hsnap(x),f=$('#hsp-'+x),a=$('#hup-'+x),pw=S.vices[v].usual&&S.vices[v].usual.per==='week'?'week':'day',per=$(`[data-act^="cusual:${x}:"][aria-checked="true"]`)?.dataset.act.split(':')[2]||pw,
+      av=a.value.trim(),n=av===''?0:Number(av);if(!isFinite(n)||n<0){toast('Enter a usual amount of 0 or more.');a.focus();return;}
+    const err=setHabitDetails(v,$('#hst-'+x)?.value,money(f.value)/(per==='week'?7:1));if(err){S.vices[v]=was;toast(err);return;}
+    if(a.value!==a.defaultValue||per!==pw)setUsual(v,n,per);
+    f.value=curSym()+(S.vices[v].costPerDay*(per==='week'?7:1)).toFixed(2);flashSaved(b);toast('Habit details saved');
+    saveInBackground(()=>{S.vices[v]=was;resec('habits');});},
+  qd:(b,e,x,y)=>{const t=qo(x);if(t.start===y)return;t.start=y;qRefresh(x);},
+  qease:(b,e,x,y)=>{const t=qo(x);t.ease=!!+y;V.qanim=t.ease;qRefresh(x);if(t.ease)sparks($(`[data-qb="${x}"] .tstep.quit .tv`),10);},
+  qfrom:(b,e,x,y)=>{const t=qo(x);t.from=Math.max(1,Math.min(t.usualPer==='week'?400:60,(+t.from||1)+ +y));qRefresh(x);},
+  qedit:(b,e,x)=>{const t=track(x);V.hq=hqDraft(x,t.start,!!t.ease);openSheet(`<div class="grab"></div><h3>Your quit day</h3><p class="muted" style="margin:0">Move it whenever you need to. Saved moments remain in your history.</p>${quitBlock('hq')}<div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="qsave:${x}">Save quit day</button></div>`);},
+  qsave:(b,e,x)=>{const v=VK[x],h=V.hq,was=hsnap(x),sw=track(x).mode!=='quit',err=setQuitPlan(v,h);if(err){S.vices[v]=was;toast(err);return;}
+    closeSheet();const n=dBetween(localToday(),h.start);habitDone(x,was,n>0?`Quit day set for ${sdate(h.start)}`:sw?'Plan updated':'Quit day saved');},
+  /* ± saves straight away; taps in a row change one plan entry */
+  lim:(b,e,x,y)=>{const t=track(x),U=unitOf(x),v=VK[x],n=Math.max(U.ls,Math.min(limMax(x,t),+(t.limit+ +y*U.ls).toFixed(1))),el=$('#limv-'+x);el.textContent=n;bump(el);flashSaved(b);if(n===t.limit)return;
+    const was=hsnap(x);V.limph=V.limph||{};V.limph[x]=setReduceLimit(v,n,V.limph[x]);
+    saveInBackground(()=>{S.vices[v]=was;V.limph[x]=null;resec('habits');});},
+  /* a new cadence starts a new plan entry (taps in a row change one); the limit keeps its weekly allowance */
+  chow:(b,e,x,y)=>{if(V.screen==='onboard')return obCad('chow',x,y);const t=track(x),v=VK[x];if(t.how===y)return;const days=y==='days'?(t.days.length?t.days:[6,0]):[],n=limFor(x,t,y,days),was=hsnap(x);
+    V.limph=V.limph||{};V.limph[x]=setReduceLimit(v,n,V.limph[x],y==='week'?{per:'week'}:{days});habitDone(x,was,'Plan updated');},
+  cday:(b,e,x,y)=>{if(V.screen==='onboard')return obCad('cday',x,y);const t=track(x),v=VK[x],d=+y,days=t.days.includes(d)?t.days.filter(i=>i!==d):t.days.concat(d);
+    if(!days.length){toast('Choose at least one day.');return;}
+    if(days.length>6){toast('For all seven days, choose Every day.');return;}
+    const was=hsnap(x);V.limph=V.limph||{};V.limph[x]=setReduceLimit(v,t.limit,V.limph[x],{days});habitDone(x,was);},
+  /* the usual amount's cadence only relabels the fields until Save habit details */
+  cusual:(b,e,x,y)=>{if(V.screen==='onboard')return obCad('cusual',x,y);$$(`[data-act^="cusual:${x}:"]`,app).forEach(c=>{c.classList.toggle('on',c===b);c.setAttribute('aria-checked',c===b);});
+    const u=unitOf(x).many;$('#hup-'+x).previousElementSibling.textContent=`Usual ${u} per ${y}`;$('#hsp-'+x).previousElementSibling.textContent=`Usual spend per ${y} (${curSym()})`;},
+  sgo:(b,e,x)=>{if(V.sopen!==x)setOpen(x);else{V.sset=x;$$('.setl',app).forEach(l=>l.classList.toggle('on',l.dataset.act==='sgo:'+x));}setTimeout(()=>mainTo($('#s-'+x)),300);},
+  stog:(b,e,x)=>{setOpen(V.sopen===x?null:x);if(V.sopen)setTimeout(()=>mainTo($('#s-'+x),'nearest'),420);},
+  idrm:(b,e,x,y)=>{const l=IDEAS[x](),was=l.slice();l.splice(+y,1);swap('ib-'+x,ideaBlock(x));flashSaved($('#s-ideas h2'));
+    saveInBackground(()=>{l.splice(0,l.length,...was);resec('ideas');});},
+  idadd:(b,e,x)=>{const f=$('#ia-'+x),v=f.value.trim(),l=IDEAS[x]();if(!v){f.focus();return;}
+    const err=l.length>=20?`You can save up to 20 ${IDB[x][3]}s.`:l.some(i=>i.toLocaleLowerCase()===v.toLocaleLowerCase())?`That ${IDB[x][3]} is already in your list.`:'';
+    if(err){toast(err);f.focus();return;}
+    l.push(v);swap('ib-'+x,ideaBlock(x));flashSaved($('#s-ideas h2'));$('#ia-'+x).focus();
+    saveInBackground(()=>{const i=l.lastIndexOf(v);if(i>=0)l.splice(i,1);resec('ideas');});},
+  otheme:(b,e,x)=>{const was=theme();S.profile.companion.theme=x;{const ss=$('#s-look .ssum',app);if(ss)ss.innerHTML=SSUM.look();}showTheme();$$('.sw',app).forEach(s=>{s.classList.toggle('on',s===b);s.setAttribute('aria-pressed',s===b)});
+    saveInBackground(()=>{S.profile.companion.theme=was;showTheme();resec('look');});},
+});
+
+app.addEventListener('input',e=>{const t=e.target;
+  if(t.dataset.md&&V.md){const [f,i]=t.dataset.md.split('.');i!=null?V.md[f][+i]=t.value:V.md[f]=t.value;if(f==='name'){const c=MEDICATION_CATALOG.flatMap(g=>g.items).find(c=>c.name===t.value);if(c&&V.md.cat!==c.id){mcatFill(c);const id=t.id;$('#medf')?medRedraw():$('#medit')&&($('#medit').outerHTML=medEditor());const n=$('#'+id);if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}}}if(f==='start'){const k=$('#mbk');if(k)k.outerHTML=mbackHTML();}return;}
+  if(t.id==='swhy'){const n=t.value.split('\n').filter(x=>x.trim()).length;$('#whyc').textContent=`${n} of 15`;}});
+/* Text saves when you leave the field: name (emptying it keeps the old one), currency, goal, amount, reasons, country */
+app.addEventListener('change',e=>{const t=e.target;if(t.id==='ercb'){$('#erok').disabled=!t.checked;return;}
+  if(t.id==='rfile'){const f=t.files[0];t.value='';if(!f)return;readBackupFile(f).then(r=>{V.rst=r;openSheet(`<div class="grab"></div><h3>Restore this backup?</h3><p class="muted" style="margin:0">It replaces the Reclaim data in the app with <b>${esc(f.name)}</b>. Make a backup first if you might want what’s here now.</p><div class="sfoot2"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="restorego">Restore backup</button></div>`);},err=>bkErr(err,'The backup was not restored.'));return;}
+  if(t.dataset.q&&t.value){qo(t.dataset.q).start=t.value;qRefresh(t.dataset.q);$('#qdt-'+t.dataset.q)?.focus();return;}
+  if(!t.matches('[data-save]'))return;
+  const p=S.profile,was={name:p.name,currency:p.currency,goal:Object.assign({},p.goal),reasons:p.reasons.slice(),country:p.country};
+  if(t.id==='samt'){const a=t.value===''?0:Number(t.value);if(!isFinite(a)||a<0){toast('Enter a goal amount of 0 or more.');t.value=goalInfo().amt;return;}p.goal={name:p.goal.name,amount:a};}
+  if(t.id==='sname'){p.name=t.value.trim()||p.name;t.value=p.name;$$('.avatar',app).forEach(a=>a.textContent=initial());}
+  if(t.id==='scountry')p.country=t.value;
+  if(t.id==='scur'){p.currency=t.value;const l=$('label[for=samt]',app);if(l)l.textContent=`Goal amount (${curSym()})`;}
+  if(t.id==='sgoal')p.goal={name:t.value.trim(),amount:p.goal.amount};
+  if(t.id==='swhy'){const all=t.value.split('\n').map(x=>x.trim()).filter(Boolean);if(all.length>15)toast('Keep up to 15 personal reasons. The first 15 are saved.');p.reasons=all.slice(0,15);}
+  flashSaved(t);
+  saveInBackground(()=>{Object.assign(p,was);const k=t.closest('.sets')?.id.slice(2);if(k)resec(k);$$('.avatar',app).forEach(a=>a.textContent=initial());});});
+</script>

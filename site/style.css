@@ -1,0 +1,419 @@
+@font-face{font-family:'Bricolage Grotesque';font-style:normal;font-weight:400 800;font-stretch:100%;font-display:swap;src:url(/fonts/bricolage-grotesque-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{
+  --cob:#2A51B8;--navy:#0A1F5C;--but:#FFE9A8;--mint:#CFEBDD;--pink:#FFC9D4;
+  --font:'Bricolage Grotesque',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth;overflow-x:clip}
+body{overflow-x:clip;font-family:var(--font);background:var(--cob);color:var(--but);-webkit-font-smoothing:antialiased;line-height:1.4}
+img{display:block;max-width:100%;height:auto}
+a{color:inherit}
+:focus-visible{outline:3px solid currentColor;outline-offset:3px;border-radius:8px}
+.skip{position:absolute;left:-999px;top:8px;background:var(--but);color:var(--cob);padding:10px 16px;border-radius:10px;z-index:10;font-weight:800}
+.skip:focus{left:8px}
+.wrap{max-width:1200px;margin:0 auto;padding:0 28px}
+
+/* shared bits */
+.btn{display:inline-block;white-space:nowrap;text-decoration:none;font-weight:800;font-size:21px;border-radius:99px;padding:18px 36px;background:var(--pink);color:var(--navy);border:3px solid var(--navy);box-shadow:6px 6px 0 var(--navy);transition:transform .12s,box-shadow .12s}
+/* pink, outlined, with an arrow: the one way into the app, never mistaken for a butter tag */
+.btn .arr{display:inline-block;margin-left:6px;transition:transform .12s}
+.btn:hover{transform:translate(3px,3px);box-shadow:3px 3px 0 var(--navy)}
+.btn:hover .arr{transform:translateX(4px)}
+.btn:active{transform:translate(6px,6px);box-shadow:0 0 0 var(--navy)}
+.logo{display:inline-flex;align-items:center;gap:9px;text-decoration:none;font-weight:800;font-size:24px;letter-spacing:-.03em}
+.logo svg{width:26px;height:26px}
+.phone img{border-radius:9% / 4.2%;border:3px solid var(--navy);box-shadow:10px 10px 0 var(--navy);background:var(--navy)}
+.sticker{display:inline-block;background:var(--but);color:var(--cob);font-weight:800;border-radius:99px;padding:8px 18px;font-size:18px;box-shadow:3px 3px 0 var(--navy)}
+
+/* header */
+.top{display:flex;justify-content:space-between;align-items:center;padding:20px 0}
+.top nav{display:flex;gap:24px;align-items:center;font-weight:600}
+.top nav a{text-decoration:none}
+.top nav a:hover{text-decoration:underline;text-underline-offset:4px}
+
+/* hero */
+/* header and hero fill the first screen on their own, like a band; the cue sits at its foot */
+.intro{min-height:100svh;display:flex;flex-direction:column;border-bottom:3px solid var(--navy)}
+.intro .wrap{flex:1;display:flex;flex-direction:column;width:100%}
+.hero{flex:1;position:relative;display:grid;grid-template-columns:1.05fr 1fr;gap:3vw;align-items:center;align-content:center;padding:2vh 0 96px} /* room for the cue */
+.hero h1{font-weight:800;font-size:clamp(54px,min(8.4vw,11vh),124px);letter-spacing:-.05em;line-height:.88}
+.hero .free{font-weight:700;font-size:16px;margin-top:min(14px,1.6vh);max-width:34ch}
+.lede{font-size:clamp(19px,min(2vw,2.8vh),24px);max-width:26ch;margin:min(26px,2.6vh) 0 min(24px,2.4vh);line-height:1.25}
+.pills{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:10px;margin-bottom:min(32px,3.4vh)}
+.pills li{background:var(--but);color:var(--cob);font-weight:800;border-radius:99px;padding:8px 18px;font-size:18px;box-shadow:3px 3px 0 var(--navy)}
+.pills li:nth-child(odd){transform:rotate(-3deg)}
+.pills li:nth-child(even){transform:rotate(2.5deg)}
+
+.trio{--h:min(68vh,660px);position:relative;height:var(--h)}
+.trio .phone{position:absolute;width:min(44%,250px,calc(var(--h) * .378));transform:rotate(var(--r));animation:land .9s cubic-bezier(.2,1.3,.4,1) both}
+.trio .phone:nth-of-type(1){left:0;top:12%;--r:-7deg}
+.trio .phone:nth-of-type(2){left:28%;top:0;--r:3deg;z-index:2;animation-delay:.12s}
+.trio .phone:nth-of-type(3){right:0;top:18%;--r:9deg;animation-delay:.24s}
+@keyframes land{from{opacity:0;transform:translateY(60px) rotate(calc(var(--r)*2.4))}}
+.star{position:absolute;left:0;top:0;visibility:hidden;width:96px;height:96px;background:var(--but);color:var(--cob);display:grid;place-items:center;text-align:center;font-weight:800;font-size:14px;line-height:1;clip-path:polygon(50% 0,61% 20%,82% 10%,80% 33%,100% 40%,84% 56%,96% 77%,73% 77%,68% 100%,50% 85%,32% 100%,27% 77%,4% 77%,16% 56%,0 40%,20% 33%,18% 10%,39% 20%);z-index:3;animation:wob 6s ease-in-out infinite alternate}
+@keyframes wob{to{transform:rotate(14deg) scale(1.06)}}
+
+/* feature bands */
+.band{padding:12vh 0}
+.band.butter{background:var(--but);color:var(--cob);border-block:3px solid var(--navy)}
+.band.mint{background:var(--mint);color:var(--navy);border-block:3px solid var(--navy)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:6vw;align-items:center}
+.split.flip .words{order:2}
+.band h2{font-weight:800;font-size:clamp(40px,5.6vw,80px);letter-spacing:-.045em;line-height:.92;margin-bottom:.35em}
+.band .words p{font-size:clamp(18px,1.8vw,22px);line-height:1.35;max-width:30ch}
+.sticker.tilt{transform:rotate(-4deg);margin-bottom:22px}
+.butter .sticker{background:var(--cob);color:var(--but)}
+.mint .sticker{background:var(--navy);color:var(--mint);box-shadow:3px 3px 0 var(--cob)}
+.butter .phone img{border-color:var(--cob);box-shadow:10px 10px 0 var(--cob)}
+
+.pop{width:min(300px,70vw);margin:0 auto;transform:rotate(var(--r,0deg))}
+.js .pop{opacity:0;transform:translateY(50px) rotate(calc(var(--r,0deg)*2.4));transition:transform .8s cubic-bezier(.2,1.3,.4,1),opacity .4s}
+.js .pop.in{opacity:1;transform:rotate(var(--r,0deg))}
+
+/* centred bands */
+.center{text-align:center}
+.center h2{max-width:14ch;margin:0 auto}
+.center>p{font-size:clamp(18px,1.8vw,22px);max-width:34ch;margin:20px auto 0;line-height:1.35}
+.stage{position:relative;isolation:isolate;max-width:980px;width:100%;margin:6vh auto 0}
+.win{width:100%;margin:0;border:3px solid var(--navy);border-radius:16px;background:#fff;box-shadow:14px 14px 0 var(--navy);overflow:hidden}
+.win .chrome{height:34px;background:var(--but);border-bottom:3px solid var(--navy);display:flex;gap:7px;align-items:center;padding:0 14px}
+.win .chrome i{width:12px;height:12px;border-radius:50%;background:var(--cob);display:block}
+.win img{width:100%}
+
+/* look picker */
+.swatches{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:34px}
+.swatches button{width:82px;height:82px;border-radius:50%;border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);cursor:pointer;font:800 14px var(--font);background:var(--c);color:var(--t);transition:transform .12s,box-shadow .12s}
+.swatches button:hover{transform:rotate(-8deg) scale(1.06)}
+.swatches button[aria-pressed=true]{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--navy);outline:3px solid var(--navy);outline-offset:4px}
+.duo{display:flex;gap:4vw;justify-content:center;margin-top:7vh;flex-wrap:wrap}
+.duo .pop{margin:0}
+
+/* drive + closing */
+.drive{background:var(--navy);color:var(--but);padding:12vh 0}
+.drive>.wrap{width:100%}
+.drive h2{font-weight:800;font-size:clamp(34px,5vw,68px);letter-spacing:-.04em;line-height:.95;max-width:16ch;margin:0 auto .4em}
+.drive p{font-size:20px;max-width:36ch;margin:0 auto;line-height:1.35}
+.drive a{text-underline-offset:4px}
+.note{background:var(--but);color:var(--navy);border-bottom:3px solid var(--navy);text-align:center;padding:12vh 28px}
+.note h2{font-weight:800;font-size:clamp(34px,5vw,68px);letter-spacing:-.04em;line-height:.95;max-width:16ch;margin:0 auto .5em}
+.note p{font-size:20px;max-width:40ch;margin:0 auto 1em;line-height:1.4}
+.note a{text-underline-offset:4px}
+.note .sig{font-weight:800;margin:1.4em auto 0}
+.end{text-align:center;padding:14vh 28px}
+.end .tip{font-size:17px;max-width:36ch;margin:28px auto 0;line-height:1.45}
+.end .tip+.tip{margin-top:12px}
+.end .tip a{text-underline-offset:3px}
+.end .tip .nw{white-space:nowrap}
+.end h2{font-weight:800;font-size:clamp(52px,min(10vw,15svh),150px);letter-spacing:-.055em;line-height:.85;margin-bottom:.4em}
+
+footer{background:var(--navy);padding:30px 0 44px;font-size:15px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:8px 28px}
+footer p{flex-basis:100%;max-width:70ch;opacity:.78;line-height:1.5;margin-top:8px}
+footer a{text-underline-offset:3px}
+
+/* desktop: every band is one full screen (taller content just grows it); the phone and the wide shots shrink to leave room for the words */
+@media(min-width:861px){
+  main>section{min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:center}
+  .band{padding:8vh 0}
+  .band>.wrap{width:100%}
+  .band .split .phone{--ph:min(68svh,680px);position:relative;width:fit-content}
+  .band .split .phone img{height:var(--ph);width:auto;margin:0 auto}
+  .band{overflow:clip}
+  /* a tinted dashed disc behind each phone, with two round stickers beside it (the colors follow the band's text color, so it works on cobalt, butter and mint) */
+  .stage{width:min(940px,calc((100svh - 390px) * 1.6));margin-top:6vh}
+  .duo{margin-top:4vh}
+  .duo .phone{width:auto}
+  .duo .phone img{height:min(42svh,520px);width:auto}
+  .drive,.note,.end{padding-block:8vh}
+  main>.end{min-height:calc(100svh - var(--foot,260px))}
+}
+/* short desktop windows: less padding round the letter, so Why I built Reclaim still fits one screen */
+@media(min-width:861px) and (max-height:760px){.note{padding-block:4vh}}
+
+@keyframes ripple{from{transform:scale(.55);opacity:.8}to{transform:scale(1.35);opacity:0}}
+@keyframes spin{to{rotate:360deg}}
+@keyframes twinkle{50%{transform:scale(1.25) rotate(14deg)}}
+@media(prefers-reduced-motion:reduce){.stk,.cap,.spark,.burst2{animation:none}.ripples i{animation:none;opacity:.25;transform:scale(.9)}}
+
+/* band scenes: one drawing per band round the phone (desktop sizes here, phone sizes in the max-width:860px block) */
+.daypath{left:50%;top:50%;width:calc(var(--ph) * .92);translate:-50% -50%;overflow:visible}
+.dayrays{transform-box:fill-box;transform-origin:center;animation:spin 50s linear infinite}
+/* one scene per band, drawn in the empty space round each phone */
+.deco{position:absolute;pointer-events:none;z-index:-1}
+.ripples{inset:0}
+.ripples i{position:absolute;left:50%;top:50%;width:calc(var(--ph) * .72);aspect-ratio:1;translate:-50% -50%;border-radius:50%;border:4px solid var(--cob);opacity:0;animation:ripple 7s ease-out infinite}
+.ripples i:nth-child(2){animation-delay:-2.3s}.ripples i:nth-child(3){animation-delay:-4.6s}
+.burst2{left:50%;top:50%;width:calc(var(--ph) * 1.18);aspect-ratio:1;translate:-50% -50%;background:color-mix(in srgb,var(--but) 16%,transparent);clip-path:polygon(50% 0,61% 20%,82% 10%,80% 33%,100% 40%,84% 56%,96% 77%,73% 77%,68% 100%,50% 85%,32% 100%,27% 77%,4% 77%,16% 56%,0 40%,20% 33%,18% 10%,39% 20%);animation:spin 60s linear infinite}
+.spark{position:absolute;z-index:2;width:38px;height:38px;filter:drop-shadow(3px 4px 0 var(--navy));animation:twinkle 3.2s ease-in-out infinite;pointer-events:none}
+.tap{width:56px;height:56px}
+.tap::before{content:"";position:absolute;inset:19px;border-radius:50%;background:var(--but);border:3px solid var(--navy)}
+.tap i{position:absolute;inset:0;border-radius:50%;border:3px solid var(--but);opacity:0;animation:tapring 2.8s ease-out infinite}
+.tap i+i{animation-delay:-1.4s}
+@keyframes tapring{from{transform:scale(.35);opacity:.9}to{transform:scale(1.5);opacity:0}}
+.spark:nth-of-type(2){animation-delay:-1s}.spark:nth-of-type(3){animation-delay:-2s}
+.bars{left:50%;bottom:0;width:175%;height:58%;translate:-50% 0;display:flex;align-items:flex-end;gap:2.4%}
+.bars i{flex:1;height:var(--h);background:var(--cob);border:3px solid var(--navy);border-bottom:0;border-radius:10px 10px 0 0;position:relative}
+.bars i.hot{background:var(--navy)}
+.bars i.hot::after{content:"3pm";position:absolute;left:50%;bottom:calc(100% + 10px);translate:-50% 0;rotate:-5deg;background:var(--cob);color:var(--but);font-weight:800;font-size:18px;border-radius:99px;padding:4px 14px;box-shadow:3px 3px 0 var(--navy)}
+.coins{inset:0}
+.stack{position:absolute;width:92px;display:flex;flex-direction:column-reverse}
+.stack i{display:block;height:28px;margin-top:-9px;border-radius:50%;background:var(--but);border:3px solid var(--navy);box-shadow:0 6px 0 var(--navy)}
+.stack i:nth-child(odd){translate:3px 0}.stack i:nth-child(even){translate:-4px 0}
+.sheet2{left:50%;top:50%;width:calc(var(--ph) * .78);height:calc(var(--ph) * .92);translate:-50% -50%;rotate:-7deg;background:#fff repeating-linear-gradient(transparent 0 33px,color-mix(in srgb,var(--cob) 35%,transparent) 33px 35px);border:3px solid var(--navy);border-radius:10px;box-shadow:8px 8px 0 var(--navy)}
+.note2{position:absolute;left:-58%;top:22%;z-index:2;width:136px;padding:16px 14px 20px;rotate:-6deg;background:var(--but);color:var(--navy);font-weight:800;font-size:20px;line-height:1.15;border:3px solid var(--navy);box-shadow:5px 5px 0 var(--navy);text-align:left}
+.demo{position:relative;isolation:isolate}
+.blister{left:50%;top:56%;width:560px;height:500px;translate:-50% -50%;rotate:5deg;border-radius:30px;border:3px solid var(--navy);box-shadow:8px 8px 0 var(--navy);background-color:var(--but);background-image:radial-gradient(circle,var(--mint) 0 9px,var(--navy) 9px 12px,transparent 12px);background-size:46px 46px}
+.cap{position:absolute;z-index:2;width:84px;height:32px;border-radius:99px;border:3px solid var(--navy);background:linear-gradient(90deg,#fff 50%,var(--cob) 50%);box-shadow:4px 4px 0 var(--navy);rotate:var(--t);animation:hop 4s ease-in-out infinite}
+.cap:nth-of-type(2){animation-delay:-1.3s}.cap:nth-of-type(3){animation-delay:-2.6s}
+.stk{position:absolute;z-index:2;display:grid;place-items:center;width:68px;height:68px;border-radius:50%;background:var(--but);color:var(--navy);border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);font-size:32px;line-height:1;rotate:var(--t,0deg);animation:hop 3.6s ease-in-out infinite;-webkit-user-select:none;user-select:none}
+.stk+.stk{animation-delay:-1.8s}
+.butter .stk{background:var(--cob);color:var(--but)}
+.mint .stk{background:#fff}
+
+/* more scenes: each remaining band has its own */
+.band,.drive,.note,.end{position:relative}
+.drive,.note,.end{overflow:clip;isolation:isolate}
+.drive>:not(.deco),.end>:not(.deco){position:relative;z-index:1}
+/* big screen: windows cascading behind, a cursor clicking the corner */
+.ghost{inset:0;border:3px solid var(--navy);border-radius:16px;box-shadow:6px 6px 0 var(--navy)}
+.g1{background:var(--but);translate:-26px -22px;rotate:-2.5deg}
+.g2{background:var(--mint);translate:24px 22px;rotate:2deg}
+.cursor{width:54px;right:-46px;bottom:-50px;z-index:3;filter:drop-shadow(3px 4px 0 var(--navy));animation:tap 3.4s ease-in-out infinite}
+.click{right:-6px;bottom:-4px;width:26px;height:26px;border-radius:50%;border:4px solid var(--but);z-index:3;opacity:0;animation:clickring 3.4s ease-out infinite}
+@keyframes tap{0%,60%,100%{transform:translate(0,0)}70%{transform:translate(-5px,-5px)}80%{transform:translate(0,0)}}
+@keyframes clickring{0%,68%{transform:scale(.4);opacity:0}72%{opacity:.9}100%{transform:scale(2.6);opacity:0}}
+/* pick your colors: paint dabs in the five looks */
+.blob{width:var(--s,90px);aspect-ratio:1;border-radius:50%;background:var(--c);border:3px solid var(--navy);box-shadow:5px 5px 0 var(--navy);animation:float 7s ease-in-out infinite alternate;z-index:0}
+.blob::after{content:"";position:absolute;left:18%;top:16%;width:26%;height:16%;border-radius:50%;background:#fff;opacity:.55;rotate:-30deg}
+.b1{--s:112px;left:0;top:12%}.b2{--s:62px;left:96px;top:44%;animation-delay:-2s}.b3{--s:84px;left:10px;top:70%;animation-delay:-4s}
+.b4{--s:98px;right:0;top:18%;animation-delay:-1s}.b5{--s:68px;right:92px;top:52%;animation-delay:-3s}.b6{--s:56px;right:12px;top:80%;animation-delay:-5s}
+@keyframes float{to{transform:translateY(-16px) rotate(8deg)}}
+#looks .wrap{position:relative}
+@media(min-width:861px) and (max-width:1099px){.blob{display:none}}
+/* drive: your own sky */
+.cloud{width:150px;color:var(--but);opacity:.5;animation:drift 14s ease-in-out infinite alternate}
+.c1{right:9%;top:5%;width:130px}.c2{right:4%;top:80%;width:170px;animation-delay:-6s}.c3{left:42%;top:86%;width:100px;animation-delay:-3s}
+@keyframes drift{to{transform:translateX(34px)}}/* drive: words and facts beside a little Drive window */
+.drive .split{align-items:center}
+.drive .words>svg{width:64px;height:64px;margin-bottom:20px}
+.drive h2{margin:0 0 .4em;max-width:13ch}
+.drive p{margin:0 0 22px;max-width:34ch}
+.facts{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:10px}
+.facts li{background:var(--but);color:var(--navy);font-weight:800;font-size:17px;border-radius:99px;padding:8px 16px;box-shadow:3px 3px 0 var(--cob)}
+.facts li:nth-child(odd){rotate:-2deg}.facts li:nth-child(even){rotate:2deg}
+.drivecard{width:min(470px,100%);margin:0 auto;background:var(--but);color:var(--navy);border:3px solid var(--navy);border-radius:18px;box-shadow:10px 10px 0 var(--cob);overflow:hidden}
+.dchrome{display:flex;align-items:center;gap:7px;padding:0 16px;height:40px;background:var(--cob);color:var(--but);border-bottom:3px solid var(--navy);font-weight:800;font-size:15px}
+.dchrome i{width:12px;height:12px;border-radius:50%;background:var(--but);display:block}
+.dchrome span{margin-left:8px}
+.drow{display:flex;align-items:center;gap:10px;margin:0 14px;padding:13px 4px;border-bottom:2px dashed color-mix(in srgb,var(--navy) 30%,transparent);font-weight:700;font-size:18px}
+.drow:nth-of-type(1){margin-top:6px}
+.drow.l2{padding-left:30px}.drow.l3{padding-left:56px}
+.drow .di{font-size:22px;line-height:1}
+.drow.hot{background:var(--mint);border:2.5px solid var(--navy);border-radius:14px;margin:8px 14px;padding:11px 10px 11px 14px;flex-wrap:wrap;box-shadow:3px 3px 0 var(--navy)}
+.drow.hot em{font-style:normal;font-size:13px;font-weight:800;background:var(--navy);color:var(--mint);border-radius:99px;padding:3px 10px;margin-left:auto}
+.dfoot{padding:12px 18px 14px;font-weight:700;font-size:14px;opacity:.75}
+/* why: a taped letter with a stamp */
+.letter{position:relative;max-width:780px;margin:0 auto;background:#FFFCEE;border:3px solid var(--navy);border-radius:8px;padding:56px 60px 46px;box-shadow:12px 12px 0 var(--navy);rotate:-1deg;text-align:left}
+.letter h2{max-width:none;margin:0 0 .5em;padding-right:96px;font-size:clamp(34px,4vw,56px)}
+.letter p{max-width:58ch;margin:0 0 1em}
+.letter .sig{margin:1.4em 0 0}
+.tape{position:absolute;top:-16px;width:96px;height:30px;background:color-mix(in srgb,var(--cob) 30%,transparent);border-inline:2px dashed color-mix(in srgb,var(--cob) 50%,transparent)}
+.t1{left:34px;rotate:-6deg}.t2{right:40px;rotate:5deg}
+.stamp{position:absolute;right:30px;top:30px;width:74px;height:88px;display:grid;place-items:center;align-content:center;font-size:32px;line-height:1;background:var(--mint);border:3px dashed var(--navy);border-radius:4px;rotate:5deg}
+.stamp small{font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+/* closing: a flat sunrise over hills, with sprouts */
+.scene{left:0;bottom:0;width:100%;height:clamp(104px,20svh,190px);z-index:0}
+.scene .sw{transform-box:fill-box;transform-origin:50% 100%;animation:sway 5s ease-in-out infinite alternate}
+.scene .rays{transform-box:fill-box;transform-origin:center;animation:spin 60s linear infinite}
+@keyframes sway{to{transform:rotate(7deg)}}
+.end{padding-bottom:calc(clamp(104px,20svh,190px) + 2vh)}
+@media(prefers-reduced-motion:reduce){.cursor,.click,.blob,.cloud,.scene .sw,.scene .rays,.dayrays,.tap i{animation:none}}
+
+/* privacy policy page */
+body.doc-page{background:var(--but);color:var(--navy)}
+body.doc-page .btn{background:var(--cob);color:var(--but)}
+.doc{max-width:42em;padding:24px 0 8px}
+.doc h1{font-size:clamp(40px,7vw,72px);font-weight:800;letter-spacing:-.045em;line-height:.95;margin:0 0 10px}
+.doc .updated{font-weight:600;opacity:.7;margin-bottom:28px}
+.doc h2{font-size:26px;font-weight:800;letter-spacing:-.025em;margin:40px 0 10px}
+.doc p,.doc li{font-size:18px;line-height:1.5}
+.doc p{margin:0 0 14px}
+.doc ul{padding-left:1.2em;margin:0 0 14px}
+.doc a{color:var(--cob);text-underline-offset:3px}
+/* faq */
+.faq details{border-top:2px solid var(--navy);padding:4px 0}
+.faq details:last-child{border-bottom:2px solid var(--navy)}
+.faq summary{font-size:20px;font-weight:800;letter-spacing:-.015em;padding:14px 0;cursor:pointer}
+.faq summary:focus-visible{outline:3px solid var(--cob);outline-offset:2px}
+.faq details p{margin:0 0 16px}
+.faq details ul{margin:0 0 16px}.faq details li{margin-bottom:8px}
+.changelog .entry{border-top:2px solid var(--navy);padding:18px 0 6px}
+.changelog .entry:last-child{border-bottom:2px solid var(--navy);margin-bottom:28px}
+.changelog .entry h2{font-size:22px;margin:6px 0 8px}
+.changelog .meta{font-size:15px;font-weight:600;margin:0}
+.changelog .tag{display:inline-block;font-weight:800;font-size:13px;letter-spacing:.02em;text-transform:uppercase;padding:2px 10px;border-radius:99px;border:2px solid var(--navy);margin-right:8px}
+.changelog .tag.new{background:var(--cob);color:var(--but)}
+.changelog .tag.fixed{background:transparent;color:var(--navy)}
+body.doc-page footer{background:transparent;color:var(--navy);padding:40px 0 50px}
+body.doc-page footer a{margin-left:14px}
+
+
+/* emoji */
+/* emoji round the hero: main.js puts each one in free space near its data-at spot, clear of everything else (hidden if there's no room) */
+.emo{position:absolute;inset:0;pointer-events:none} /* an overlay: takes no room in the hero grid */
+.emo span{pointer-events:auto;position:absolute;left:0;top:0;visibility:hidden;line-height:1;font-size:38px;filter:drop-shadow(4px 5px 0 var(--navy));z-index:3;cursor:pointer;-webkit-user-select:none;user-select:none;transition:scale .2s;
+  animation:fpop .7s cubic-bezier(.2,1.5,.4,1) var(--d,.3s) backwards,bob 6s ease-in-out calc(var(--d,.3s) + .7s) infinite alternate}
+.emo span:nth-child(3n){font-size:32px}.emo span:nth-child(3n+1){font-size:42px}
+.emo .on{visibility:visible}
+.emo span:hover{scale:1.25}
+@keyframes bob{to{transform:translateY(-14px) rotate(10deg)}}
+@keyframes fpop{from{opacity:0;transform:scale(.2) rotate(-40deg)}}
+.mood{display:flex;gap:8px;margin-top:26px}
+.mood button{font-size:30px;line-height:1;background:var(--but);border:3px solid var(--navy);border-radius:18px;padding:9px 12px;cursor:pointer;box-shadow:3px 3px 0 var(--navy);transition:transform .12s,box-shadow .12s}
+.mood button:hover{transform:translateY(-3px) rotate(-4deg)}
+.mood button[aria-pressed=true]{background:var(--pink);transform:translate(2px,2px);box-shadow:1px 1px 0 var(--navy)}
+.moodmsg{margin-top:14px;min-height:2.6em}
+.folder{font-weight:600;opacity:.8;margin-bottom:14px!important}
+.burst{position:fixed;z-index:60;pointer-events:none;font-size:26px;animation:burst .9s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes burst{from{transform:translate(0,0) scale(.4);opacity:1}to{transform:translate(var(--x),var(--y)) scale(1.2) rotate(var(--rot));opacity:0}}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* to-do card, like the app */
+.todo{width:min(440px,100%);background:#fff;color:var(--navy);border:3px solid var(--navy);border-radius:28px;padding:16px;box-shadow:10px 10px 0 var(--navy);display:grid;gap:10px}
+.task{position:relative;background:#fff;border:2.5px solid var(--navy);border-radius:20px;padding:12px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;transition:background .25s}
+.task.done{background:var(--mint)}
+.task.skip{background:#EFEAFB}
+.task .tt{font-weight:800;font-size:17px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;letter-spacing:-.01em}
+.task .td{font-size:14px;opacity:.7;display:block}
+.itile{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:22px;border:2.5px solid var(--navy);flex:none}
+.itile.peach{background:#FFD9C7}.itile.sky{background:#CDE7FB}.itile.lilac{background:#E3DAFB}
+.due{font-size:11px;font-weight:800;background:var(--pink);color:var(--navy);border:2px solid var(--navy);border-radius:99px;padding:1px 8px;text-transform:uppercase;letter-spacing:.04em}
+.dopt{all:unset;cursor:pointer;display:block;border-radius:10px}
+.dopt:focus-visible,.check:focus-visible,.mini:focus-visible,.opts button:focus-visible{outline:3px solid var(--cob);outline-offset:3px}
+.check{width:40px;height:40px;border-radius:50%;border:3px solid var(--navy);background:#fff;cursor:pointer;display:grid;place-items:center;box-shadow:2px 2px 0 var(--navy);transition:transform .12s}
+.check:hover{transform:scale(1.1) rotate(-6deg)}
+.check.on{background:var(--cob)}
+.check.on:after{content:"";width:8px;height:15px;border:solid var(--but);border-width:0 3.5px 3.5px 0;transform:rotate(45deg) translate(-1px,-2px)}
+.check,.mini{position:relative}
+/* invisible 44px hit areas around the 40px check and the small pill button */
+.check:before,.mini:before{content:"";position:absolute;inset:-4px}
+.mini{font:800 14px var(--font);background:var(--cob);color:var(--but);border:2.5px solid var(--navy);border-radius:99px;padding:8px 14px;cursor:pointer;box-shadow:2px 2px 0 var(--navy)}
+.opts{grid-column:1/-1;display:grid;gap:4px;padding-top:8px;border-top:2.5px dashed var(--navy)}
+.opts[hidden]{display:none}
+.opts button{all:unset;cursor:pointer;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;padding:6px;border-radius:14px}
+.opts button:hover{background:var(--but)}
+.opts .itile{width:36px;height:36px;font-size:17px;border-radius:11px}
+.opts b{font-weight:800;font-size:15px}.opts small{display:block;font-size:13px;opacity:.65}
+.medfoot{font-weight:600;font-size:15px;margin:2px 4px 0}
+.mint .todo{box-shadow:10px 10px 0 var(--navy)}
+@media(prefers-reduced-motion:reduce){.emo span{animation:none}.burst{display:none}}
+@media(max-width:860px){
+  .hero,.split{grid-template-columns:minmax(0,1fr)}
+  .hero{row-gap:40px;padding-bottom:9vh}
+  .split.flip .words{order:0}
+  .trio{height:370px;margin:0 30px}
+  .trio .phone{width:46%}
+  .top nav a{display:none}
+  .top nav a[href="/"]{display:inline;padding:10px 0}
+  /* one band, one screen: the phone shrinks to leave room for the words, so swiping can page band to band */
+  .band{padding:5svh 0;min-height:100svh;display:flex;align-items:center}
+  .band>.wrap{width:100%}
+  .band .split{gap:3svh}
+  .drive,.note,.end{min-height:100svh;display:flex;flex-direction:column;justify-content:center;align-items:center;padding-block:6svh}
+  main>.end{min-height:calc(100svh - var(--foot,260px))}
+  .band .phone{width:auto}
+  .ghost{box-shadow:4px 4px 0 var(--navy)}.g1{translate:-10px -9px}.g2{translate:9px 9px}
+  .stage{margin-top:3svh}
+  .cursor{width:36px;right:-14px;bottom:-26px}
+  .blob{--s:44px!important;box-shadow:3px 3px 0 var(--navy)}
+  .b1{left:-10px;top:56%}.b2{left:4px;top:72%}.b3{left:-8px;top:88%}.b4{right:-10px;top:60%}.b5{right:4px;top:76%}.b6{right:-8px;top:91%}
+  .cloud{width:84px!important}.c1{right:6%;top:1.5svh}.c2,.c3{display:none}
+  .drive{padding:6svh 0}.drive .split{gap:3svh}.drive h2{max-width:none}.facts li{font-size:14px;padding:6px 12px}.drow{font-size:15px;padding:10px 4px}.drow.l2{padding-left:20px}.drow.l3{padding-left:34px}.drow.hot{padding:9px 8px 9px 10px}.drivecard{box-shadow:6px 6px 0 var(--cob)}
+  .letter{padding:40px 22px 30px;box-shadow:7px 7px 0 var(--navy)}
+  .letter h2{padding-right:62px}
+  .stamp{width:52px;height:64px;right:18px;top:22px;font-size:22px}.stamp small{font-size:10px}
+  .tape{width:70px;height:24px}
+  .end{padding-bottom:calc(clamp(96px,16svh,190px) + 1svh)}
+  .band{overflow:clip}
+  .band .split .phone{--ph:42svh;position:relative;width:fit-content}
+  .stk{width:46px;height:46px;font-size:22px;border-width:2.5px;box-shadow:3px 3px 0 var(--navy)}
+  .spark{width:26px;height:26px}.tap{width:38px;height:38px}.tap::before{inset:12px}
+  .stack{width:62px;scale:.7;transform-origin:bottom center}
+  .note2{width:92px;padding:9px 8px 12px;font-size:13px;left:-48%;box-shadow:3px 3px 0 var(--navy)}
+  .bars i.hot::after{font-size:13px;padding:2px 9px;translate:-78% 0}
+  .cap:nth-of-type(4){display:none}
+  .blister{width:118%;height:min(440px,52svh);box-shadow:5px 5px 0 var(--navy);background-size:36px 36px}
+  .cap{width:60px;height:24px}
+  .band .phone img{height:42svh;width:auto;margin:0 auto}
+  /* touch: a swipe settles on one band (native snapping is far more reliable on iPhones than script-handled touches) */
+  @media(pointer:coarse){html{scroll-snap-type:y mandatory}.intro,main>section{scroll-snap-align:start;scroll-snap-stop:always}}
+  .todo{margin:0 auto}
+  .mood button{font-size:26px;padding:8px 10px}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .star{animation:none}
+  .trio .phone{animation:none}
+  .js .pop{opacity:1;transform:rotate(var(--r,0deg));transition:none}
+}
+
+@media(min-width:520px) and (max-width:860px){
+  .hero{padding-top:7vh}
+}
+
+/* phones and tablets: a tidy sticker row instead of emoji scattered round the headline */
+.sheet{display:none}
+@media(max-width:860px){
+  .emo span{display:none}
+  .sheet{display:flex;gap:14px;margin:22px 0 4px}
+  .sheet span{width:60px;height:60px;border-radius:50%;background:var(--but);border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);display:grid;place-items:center;font-size:30px;line-height:1;cursor:pointer;animation:hop 3.6s ease-in-out infinite;-webkit-user-select:none;user-select:none}
+  .sheet span:nth-child(1){rotate:-7deg}
+  .sheet span:nth-child(2){rotate:5deg;animation-delay:-.9s}
+  .sheet span:nth-child(3){rotate:-4deg;animation-delay:-1.8s}
+  .sheet span:nth-child(4){rotate:8deg;animation-delay:-2.7s}
+}
+@media(min-width:520px) and (max-width:860px){.sheet span{width:68px;height:68px;font-size:34px}.sheet{gap:18px}}
+@keyframes hop{0%,70%,100%{transform:translateY(0)}82%{transform:translateY(-9px)}92%{transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.sheet span{animation:none}}
+
+/* scroll cue */
+.cue{position:absolute;left:50%;bottom:22px;translate:-50% 0;z-index:40;display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:800;font-size:16px;background:var(--but);color:var(--cob);border:3px solid var(--navy);border-radius:99px;padding:10px 18px 10px 20px;box-shadow:4px 4px 0 var(--navy);transition:opacity .4s,transform .4s}
+.cue svg{width:22px;height:22px;animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(5px)}}
+.scrolled .cue{opacity:0;pointer-events:none;transform:translateY(14px)}
+@media(prefers-reduced-motion:reduce){.cue svg{animation:none}}
+
+/* next-section arrow */
+.nav.off{opacity:0;visibility:hidden;pointer-events:none}
+.nav{transition:opacity .3s,visibility .3s;position:fixed;right:18px;top:50%;translate:0 -50%;z-index:40;display:grid;gap:12px}
+.next{width:54px;height:54px;display:grid;place-items:center;border-radius:50%;background:var(--but);color:var(--cob);border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);cursor:pointer;transition:transform .12s,box-shadow .12s,opacity .3s}
+.next:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--navy)}
+.next:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--navy)}
+.next:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
+.next svg{width:26px;height:26px;transition:transform .3s}
+.next .ic-top,.next .lbl{display:none}
+.next.up{width:auto;border-radius:99px;padding:0 18px 0 14px;gap:6px;grid-auto-flow:column;font:800 17px var(--font)}
+.next.up .ic-down{display:none}
+.next.up .ic-top,.next.up .lbl{display:block}
+.nav.last .prev{display:none}
+/* on desktop the cue waits in the bottom-right corner and the arrows take its place there once it fades; the footer leaves room under them */
+@media(min-width:701px){.cue{position:fixed;left:auto;right:18px;translate:none}.nav{top:auto;bottom:22px;translate:none}}@media(min-width:701px) and (max-width:1320px){footer{padding-bottom:110px}}
+/* phones swipe band to band, so the arrows would only cover content: only Top shows there, at the end */
+@media(max-width:700px){.nav{top:auto;bottom:18px;translate:none;gap:10px}.next{width:48px;height:48px}.cue{left:18px;translate:none}.nav:not(.last){opacity:0;visibility:hidden;pointer-events:none}}
+.prev svg{transform:rotate(180deg)}
+.prev[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){.next,.next svg{transition:none}}
+
+/* "this one is interactive" label above the doses card */
+.demo{display:grid;justify-items:center;gap:22px}
+.try{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:17px;background:var(--navy);color:var(--mint);border-radius:99px;padding:8px 18px 8px 14px;box-shadow:3px 3px 0 var(--cob);rotate:-2deg}
+.try svg{width:20px;height:20px;animation:nudge 1.6s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.try svg{animation:none}}
+.cue-off .cue{display:none}
+
+/* the closing band and the footer are one screen: everything in the band is sized from the height the footer leaves (--foot is measured in main.js) */
+main>.end{--a:calc(100svh - var(--foot,260px));--sc:clamp(72px,calc(var(--a) * .21),190px);min-height:var(--a);padding:calc(var(--a) * .05) 28px calc(var(--sc) + 8px)}
+main>.end h2{font-size:clamp(38px,min(10vw,calc(var(--a) * .18)),150px);margin-bottom:.3em}
+main>.end .tip{max-width:min(62ch,100%);margin-top:calc(var(--a) * .035);font-size:clamp(14px,calc(var(--a) * .03),17px)}
+main>.end .tip+.tip{margin-top:calc(var(--a) * .015)}
+main>.end .scene{height:var(--sc)}

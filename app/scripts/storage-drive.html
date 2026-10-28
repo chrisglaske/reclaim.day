@@ -1,0 +1,268 @@
+<script>
+  // Drive from the browser, with the narrow drive.file scope: the app only sees what it created.
+  // Layout (the same as the retired Apps Script version, so moved data and old backups match):
+  //   Reclaim/Live Data/Reclaim Live Data.json
+  //   Reclaim/Backups/Reclaim Backup <date> <time>.json
+  // Each folder and the live file carry a private app tag (appProperties reclaim=root|live|backups|data),
+  // so they are still found after being moved or renamed; untagged ones are found by name and tagged.
+  // config: { getToken: () => Promise<string>,   an access token; sign-in is not part of this file
+  //           onUnauthorized: () => void,        optional: Drive said 401, so the token is no good
+  //           label }                            optional short name for this backend (default Google Drive)
+  //         optional fetch, locks, sleep: replaced in tests
+  // Other devices and tabs: the tab remembers the live file's checksum from its last load or save. Before a
+  // save it fetches only the metadata; a changed or missing file refuses the save with STATE_STALE_MESSAGE.
+  // Errors carry plain words, plus status, reason and retryable (offline, 429, 5xx, rate limits).
+  function driveStorage(config) {
+    const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+    const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3/files';
+    const FOLDER_MIME = 'application/vnd.google-apps.folder';
+    const FOLDER_NAME = 'Reclaim';
+    const LIVE_FOLDER_NAME = 'Live Data';
+    const BACKUP_FOLDER_NAME = 'Backups';
+    const DATA_FILE_NAME = 'Reclaim Live Data.json';
+    const BACKUP_PREFIX = 'Reclaim Backup ';
+    const UPGRADE_BACKUP_PREFIX = 'Before Reclaim v4 – ';
+    const MAX_PAYLOAD_CHARS = 5 * 1024 * 1024;
+    const BACKUP_KEYS = ['profile', 'vices', 'meds', 'slips', 'cravings', 'doses', 'journal'];
+    const TAG = 'reclaim';
+    const META_FIELDS = 'id,trashed,md5Checksum,appProperties';
+    const RETRY_DELAYS = [1000, 3000];
+    const doFetch = config.fetch || ((...args) => window.fetch(...args));
+    const sleep = config.sleep || (ms => new Promise(resolve => window.setTimeout(resolve, ms)));
+    const ids = {};
+    // known: the live file as this tab last saw it ({ id: null } when there was none); null before the first load.
+    // attempt: the id of a save whose reply never came, so a file changed by it isn't mistaken for another device.
+    let known = null, attempt = null;
+
+    // One Drive operation at a time per browser, so two tabs don't both create the folders.
+    const locks = config.locks === undefined ? (navigator.locks || null) : config.locks;
+    const exclusive = task => locks ? locks.request('reclaim-drive', task) : task();
+
+    function driveError(status, reason, detail) {
+      const busy = status === 429 || status >= 500 || /^(rateLimitExceeded|userRateLimitExceeded)$/.test(reason);
+      const message = status === 0 ? 'You seem to be offline.'
+        : status === 401 ? 'Your Google sign-in has ended. Sign in again to continue.'
+        : reason === 'storageQuotaExceeded' ? 'Your Google Drive is full. Free up some space in Drive, then try again.'
+        : busy ? 'Google Drive isn’t responding right now.'
+        : status === 404 ? 'Reclaim’s file wasn’t found in Google Drive.'
+        : 'Google Drive couldn’t do that just now (' + status + ').';
+      const error = new Error(message);
+      Object.assign(error, { status, reason, detail, retryable: status === 0 || busy });
+      return error;
+    }
+
+    // Retries offline and busy replies a couple of times; a 401 drops the token and tries once more.
+    async function request(url, options = {}, allow404 = false) {
+      let tries = 0, renewed = false;
+      for (;;) {
+        const token = await config.getToken();
+        let response = null;
+        try {
+          response = await doFetch(url, Object.assign({}, options, {
+            headers: Object.assign({ Authorization: 'Bearer ' + token }, options.headers || {})
+          }));
+        } catch (error) { /* no connection: response stays null */ }
+        if (response && response.status === 404 && allow404) return null;
+        if (response && response.status < 300) return response;
+        let reason = '', detail = '';
+        if (response) {
+          try {
+            const e = (await response.json()).error || {};
+            reason = (e.errors && e.errors[0] && e.errors[0].reason) || e.status || '';
+            detail = e.message || '';
+          } catch (error) { /* non-JSON error body */ }
+        }
+        const error = driveError(response ? response.status : 0, reason, detail);
+        if (error.status === 401 && !renewed && config.onUnauthorized) {
+          renewed = true;
+          config.onUnauthorized();
+          continue;
+        }
+        if (!error.retryable || tries >= RETRY_DELAYS.length) throw error;
+        await sleep(RETRY_DELAYS[tries++]);
+      }
+    }
+
+    async function json(url, options, allow404) {
+      const response = await request(url, options, allow404);
+      return response ? response.json() : null;
+    }
+
+    const sendJson = (method, body) => ({
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    function multipart(method, metadata, payload) {
+      const boundary = 'reclaim_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      return {
+        method,
+        headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+        body: '--' + boundary + '\r\n' +
+          'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+          JSON.stringify(metadata) + '\r\n' +
+          '--' + boundary + '\r\n' +
+          'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+          payload + '\r\n' +
+          '--' + boundary + '--'
+      };
+    }
+
+    async function getMeta(id) {
+      if (!id) return null;
+      try {
+        const file = await json(DRIVE_API + '/' + encodeURIComponent(id) + '?fields=' + META_FIELDS, {}, true);
+        return file && !file.trashed ? file : null;
+      } catch (error) {
+        if (/^appNotAuthorized/.test(error.reason || '')) return null;
+        throw error;
+      }
+    }
+
+    // Under drive.file, search only returns items this app created. The oldest match wins, so a
+    // duplicate made by a race is never picked over the original.
+    async function first(q) {
+      const result = await json(DRIVE_API + '?pageSize=1&orderBy=createdTime&fields=files(id)&q=' + encodeURIComponent(q + ' and trashed = false'));
+      return result && result.files && result.files.length ? result.files[0].id : null;
+    }
+
+    // By tag wherever it is, else by name under its parent (then tagged), else created there if asked.
+    // parent: async () => the parent's id, or null when it doesn't exist.
+    async function find(key, name, mimeType, parent, create) {
+      if (ids[key] && await getMeta(ids[key])) return ids[key];
+      let id = await first("appProperties has { key='" + TAG + "' and value='" + key + "' }");
+      const parentId = id ? null : await parent();
+      if (!id && parentId) {
+        const quoted = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        id = await first("name = '" + quoted + "' and mimeType = '" + mimeType + "' and '" + parentId + "' in parents");
+        if (id) await request(DRIVE_API + '/' + encodeURIComponent(id) + '?fields=id', sendJson('PATCH', { appProperties: { [TAG]: key } }));
+      }
+      if (!id && parentId && create) {
+        const body = { name, mimeType, appProperties: { [TAG]: key } };
+        if (parentId !== 'root') body.parents = [parentId];
+        id = (await json(DRIVE_API + '?fields=id', sendJson('POST', body))).id;
+      }
+      ids[key] = id || undefined;
+      return id;
+    }
+
+    const rootFolder = create => find('root', FOLDER_NAME, FOLDER_MIME, async () => 'root', create);
+    const liveFolder = create => find('live', LIVE_FOLDER_NAME, FOLDER_MIME, () => rootFolder(create), create);
+    const backupFolder = () => find('backups', BACKUP_FOLDER_NAME, FOLDER_MIME, () => rootFolder(true), true);
+    const dataFileId = create => find('data', DATA_FILE_NAME, 'application/json', () => liveFolder(create), create);
+
+    async function readFile(id) {
+      const response = await request(DRIVE_API + '/' + encodeURIComponent(id) + '?alt=media', {}, true);
+      return response ? response.text() : '';
+    }
+
+    // Has another device or tab saved, created or erased the live file since this tab last saw it?
+    async function changedElsewhere() {
+      if (!known) return false;
+      if (!known.id) return !!(await dataFileId(false));
+      const meta = await getMeta(known.id);
+      if (!meta) return true;
+      if (meta.md5Checksum === known.md5) return false;
+      return !(attempt && meta.appProperties && meta.appProperties.reclaimSave === attempt);
+    }
+
+    function checkPayload(payload) {
+      if (typeof payload !== 'string' || payload.length === 0 || payload.length > MAX_PAYLOAD_CHARS) {
+        throw new Error('Invalid payload');
+      }
+      let parsed;
+      try { parsed = JSON.parse(payload); } catch (error) { throw new Error('Invalid payload'); }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid payload');
+      return parsed;
+    }
+
+    function checkBackup(payload, versions) {
+      let state;
+      try { state = checkPayload(payload); } catch (error) { throw new Error('Invalid backup payload'); }
+      if (!versions.includes(state.version) || !BACKUP_KEYS.every(key => Object.prototype.hasOwnProperty.call(state, key))) {
+        throw new Error('Expected a Reclaim version ' + versions.join(' or ') + ' backup');
+      }
+    }
+
+    // The browser sends its own local time so names match the person's clock.
+    function backupName(prefix, stamp) {
+      return prefix + (/^\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2}$/.test(stamp || '') ? stamp : backupFileStamp()) + '.json';
+    }
+
+    async function writeBackup(payload, stamp, prefix) {
+      const folder = await backupFolder();
+      const metadata = { name: backupName(prefix, stamp), mimeType: 'application/json', parents: [folder] };
+      const file = await json(UPLOAD_API + '?uploadType=multipart&fields=id,name', multipart('POST', metadata, payload));
+      return { fileId: file.id, name: file.name, savedAt: new Date().toISOString() };
+    }
+
+    // Keeps status, reason and retryable for the caller.
+    const prefixed = (error, prefix) => { error.message = prefix + error.message; return error; };
+
+    return {
+      label: config.label || 'Google Drive',
+      hasDrive: true,
+
+      load: () => exclusive(async () => {
+        try {
+          const id = await dataFileId(false);
+          // Metadata before content: a save landing in between then reads as a change, never as none.
+          const meta = id ? await getMeta(id) : null;
+          const text = meta ? await readFile(id) : '';
+          known = { id: meta ? id : null, md5: meta && meta.md5Checksum };
+          attempt = null;
+          return { state: text || null, fileId: known.id };
+        } catch (error) {
+          throw prefixed(error, 'Could not load data: ');
+        }
+      }),
+
+      // True when another device or tab has saved since this tab loaded or saved (start.html checks on return).
+      changed: () => exclusive(changedElsewhere),
+
+      save: payload => exclusive(async () => {
+        try {
+          checkPayload(payload);
+          if (await changedElsewhere()) throw new Error(STATE_STALE_MESSAGE);
+          const id = (known && known.id) || await dataFileId(true);
+          const saveId = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+          attempt = saveId;
+          const file = await json(UPLOAD_API + '/' + encodeURIComponent(id) + '?uploadType=multipart&fields=id,md5Checksum',
+            multipart('PATCH', { appProperties: { [TAG]: 'data', reclaimSave: saveId } }, payload));
+          known = { id, md5: file.md5Checksum };
+          attempt = null;
+          return { savedAt: new Date().toISOString(), fileId: id };
+        } catch (error) {
+          throw error.message === STATE_STALE_MESSAGE ? error : prefixed(error, 'Could not save data: ');
+        }
+      }),
+
+      saveBackup: (payload, stamp) => exclusive(async () => {
+        checkBackup(payload, [3, 4, 5]);
+        return writeBackup(payload, stamp, BACKUP_PREFIX);
+      }),
+
+      // Only the first call per person writes a file; later calls return the one already there.
+      saveUpgradeBackup: (payload, stamp) => exclusive(async () => {
+        checkBackup(payload, [3]);
+        const folder = await backupFolder();
+        const q = "name contains 'Before Reclaim v4' and trashed = false and '" + folder + "' in parents";
+        const existing = await json(DRIVE_API + '?pageSize=1&fields=files(id,name)&q=' + encodeURIComponent(q));
+        if (existing && existing.files && existing.files.length) {
+          return { fileId: existing.files[0].id, name: existing.files[0].name };
+        }
+        return writeBackup(payload, stamp, UPGRADE_BACKUP_PREFIX);
+      }),
+
+      clear: () => exclusive(async () => {
+        const id = await dataFileId(false);
+        if (id) await request(DRIVE_API + '/' + encodeURIComponent(id), { method: 'DELETE' }, true);
+        ids.data = undefined;
+        known = { id: null };
+        attempt = null;
+        return true;
+      })
+    };
+  }
+</script>

@@ -1,0 +1,358 @@
+<script>
+  // The saved state S: the shape of a person's saved data (defaults, cleanup on load), upgrades from older
+  // versions, and load/save through reclaimStorage(). Loaded first; the rest of the app reads and changes S.
+  // A save refused because another device or tab changed the live file (storage-drive.html).
+  const STATE_STALE_MESSAGE = 'Reclaim was updated on another device or tab. Reload to continue.';
+  // Looks a person can pick. Night is the dark one, so it is not a day look.
+  const STATE_THEMES = ['zine', 'pine', 'ocean', 'graphite', 'night'];
+  const STATE_DAY_THEMES = ['zine', 'pine', 'ocean', 'graphite'];
+  // Old look ids from earlier releases, mapped to their closest current look when loaded.
+  const STATE_LEGACY_THEMES = {
+    'notion-paper': 'pine', 'cobalt-chalk': 'ocean', 'garden-notes': 'pine', 'charcoal-pastels': 'graphite'
+  };
+  // Raise this when Guided setup changes enough that everyone should walk through it again.
+  // Finishing or skipping setup saves it as `setupVersion`; an older number opens setup on the next load.
+  const SETUP_VERSION = 3;
+  // Currencies for costs and savings; anything else loads as USD.
+  const STATE_CURRENCIES = ['USD', 'CAD', 'EUR', 'GBP', 'AUD', 'NZD'];
+  // Countries offered in the location picker, used to show support resources (EU members listed one by one).
+  const STATE_EU_COUNTRIES = {
+    at: 'Austria', be: 'Belgium', bg: 'Bulgaria', hr: 'Croatia',
+    cy: 'Cyprus', cz: 'Czechia', dk: 'Denmark', ee: 'Estonia',
+    fi: 'Finland', fr: 'France', de: 'Germany', gr: 'Greece',
+    hu: 'Hungary', ie: 'Ireland', it: 'Italy', lv: 'Latvia',
+    lt: 'Lithuania', lu: 'Luxembourg', mt: 'Malta', nl: 'Netherlands',
+    pl: 'Poland', pt: 'Portugal', ro: 'Romania', sk: 'Slovakia',
+    si: 'Slovenia', es: 'Spain', se: 'Sweden'
+  };
+  const STATE_SUPPORT_COUNTRIES = {
+    us: 'United States', ca: 'Canada', uk: 'United Kingdom',
+    au: 'Australia', nz: 'New Zealand',
+    ...STATE_EU_COUNTRIES,
+    other: 'Other location'
+  };
+
+  // Habit keys in display order. Each habit may store a count `unit`; the first one is its default.
+  const STATE_VICES = ['smoking', 'vaping', 'drinking'];
+  const STATE_VICE_UNITS = {
+    smoking: ['cigarettes', 'rollups', 'cigars'],
+    vaping: ['sessions', 'puffs', 'pods', 'ml'],
+    drinking: ['drinks']
+  };
+
+  // An empty country means not chosen yet and is allowed.
+  function isSupportCountry(country) {
+    return typeof country === 'string' &&
+      (country === '' || Object.prototype.hasOwnProperty.call(STATE_SUPPORT_COUNTRIES, country));
+  }
+
+  // Maps an old or unknown look id to a current one; anything unrecognized becomes Pine.
+  function stateTheme(theme) {
+    const mapped = Object.prototype.hasOwnProperty.call(STATE_LEGACY_THEMES, theme) ? STATE_LEGACY_THEMES[theme] : theme;
+    return STATE_THEMES.includes(mapped) ? mapped : 'pine';
+  }
+
+  // A fresh, empty state for a new person. normalizeState also uses it for createdAt when that is missing.
+  function defaultState() {
+    return {
+      version: 5,
+      onboarded: false,
+      createdAt: new Date().toISOString(),
+      profile: {
+        name: '',
+        country: '',
+        currency: 'USD',
+        reasons: [],
+        goal: { name: '', amount: 0 },
+        companion: {
+          toolkit: [],
+          intentions: [],
+          intentionDays: {},
+          reflections: {},
+          reminders: {},
+          reminderActions: {},
+          trackMedications: false,
+          hideCounters: false,
+          // New users start on Zine; a missing or unknown saved look still reads as Pine (stateTheme, normalizeState).
+          theme: 'zine',
+          autoLight: 'zine'
+        }
+      },
+      vices: {
+        smoking: { enabled: false, perDay: 0, costPerDay: 0, phases: [] },
+        vaping: { enabled: false, perDay: 0, costPerDay: 0, phases: [] },
+        drinking: { enabled: false, perDay: 0, costPerDay: 0, phases: [] }
+      },
+      meds: [],
+      slips: [],
+      cravings: [],
+      doses: {},
+      journal: {}
+    };
+  }
+
+  function stateObject(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function stateNumber(value, fallback) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  }
+
+  function stateStrings(value) {
+    return Array.isArray(value) ? value.filter(item => typeof item === 'string') : [];
+  }
+
+  // Optional cadence of a reduce phase (version 5). `days` (weekdays, Sunday = 0) means a per-day limit on
+  // those days and none on the others; otherwise `per: "week"` makes `target` a rolling 7-day total.
+  // Daily and every-day are the defaults, so they are left out.
+  function statePhaseCadence(phase) {
+    if (phase.mode !== 'reduce') return {};
+    const days = Array.isArray(phase.days)
+      ? Array.from(new Set(phase.days.filter(day => Number.isInteger(day) && day >= 0 && day <= 6))).sort((a, b) => a - b)
+      : [];
+    if (days.length && days.length < 7) return { days: days };
+    return phase.per === 'week' ? { per: 'week' } : {};
+  }
+
+  // Upgrades saved data from any older version to version 5, then normalizes it. Works on a deep copy.
+  // Version 2 kept a single `quitDate` per habit and one bupropion entry in `med`; these become
+  // a quit phase and an entry in `meds` (with that day's doses keyed by the new medication id).
+  function migrate(data) {
+    if (!stateObject(data)) return defaultState();
+
+    const source = JSON.parse(JSON.stringify(data));
+    const version = Number(source.version) || 0;
+    const vices = stateObject(source.vices) ? source.vices : {};
+    const legacyMed = source.med;
+
+    ['smoking', 'drinking'].forEach(key => {
+      const vice = vices[key];
+      if (!stateObject(vice)) return;
+      if (!Array.isArray(vice.phases)) {
+        vice.phases = vice.quitDate
+          ? [{ mode: 'quit', at: vice.quitDate, target: 0 }]
+          : [];
+      }
+      delete vice.quitDate;
+    });
+
+    if (!Array.isArray(source.meds)) {
+      source.meds = [];
+      if (stateObject(legacyMed) && legacyMed.startDate) {
+        const frequency = Math.min(3, Math.max(1, Number(legacyMed.dosesPerDay) || 1));
+        const id = 'bupropion-' + (Date.parse(legacyMed.startDate) || Date.now());
+        source.meds.push({
+          id: id,
+          catalogId: frequency === 1 ? 'bupropion-xl' : 'bupropion-sr',
+          name: legacyMed.name || 'Bupropion',
+          dose: Number(legacyMed.doseMg) || 150,
+          unit: 'mg',
+          freq: frequency,
+          slots: frequency === 1
+            ? ['Daily dose']
+            : frequency === 2
+              ? ['Morning', 'Afternoon']
+              : ['Morning', 'Midday', 'Evening'],
+          startDate: legacyMed.startDate,
+          active: !!legacyMed.enabled,
+          timeline: 'bupropion',
+          alcohol: 'Alcohol with bupropion can lower the seizure threshold.'
+        });
+        const doses = stateObject(source.doses) ? source.doses : {};
+        Object.keys(doses).forEach(day => {
+          if (Array.isArray(doses[day])) doses[day] = { [id]: doses[day] };
+        });
+      }
+      delete source.med;
+    }
+
+    // Before version 3 every logged use was a slip, so mark them as such.
+    if (version < 3 && Array.isArray(source.slips)) {
+      source.slips.forEach(slip => {
+        if (stateObject(slip) && !slip.kind) slip.kind = 'slip';
+      });
+    }
+    // Versions 4 and 5 only add fields (vaping, units, eased phases; cadence, track phases, usual amount);
+    // normalizeState supplies their defaults, and a missing cadence means daily, every day.
+    source.version = 5;
+    return normalizeState(source);
+  }
+
+  // Rebuilds the state from scratch so every known field exists with the right type and a safe value.
+  // Unknown top-level, profile and record fields are dropped; doses, journal and the companion maps
+  // (intentionDays, reflections, reminders, reminderActions) are kept as they are.
+  function normalizeState(data) {
+    const base = defaultState();
+    const profile = stateObject(data.profile) ? data.profile : {};
+    const goal = stateObject(profile.goal) ? profile.goal : {};
+    const companion = stateObject(profile.companion) ? profile.companion : {};
+    const sourceVices = stateObject(data.vices) ? data.vices : {};
+
+    const result = {
+      version: 5,
+      onboarded: !!data.onboarded,
+      // Optional: the SETUP_VERSION this person last finished or skipped; left out when not set.
+      ...(Number(data.setupVersion) > 0 ? { setupVersion: Math.floor(Number(data.setupVersion)) } : {}),
+      createdAt: typeof data.createdAt === 'string' && data.createdAt
+        ? data.createdAt
+        : base.createdAt,
+      profile: {
+        name: typeof profile.name === 'string' ? profile.name : '',
+        country: isSupportCountry(profile.country) ? profile.country : '',
+        currency: STATE_CURRENCIES.includes(profile.currency) ? profile.currency : 'USD',
+        reasons: stateStrings(profile.reasons),
+        goal: {
+          name: typeof goal.name === 'string' ? goal.name : '',
+          amount: Math.max(0, stateNumber(goal.amount, 0))
+        },
+        companion: {
+          toolkit: stateStrings(companion.toolkit),
+          intentions: stateStrings(companion.intentions),
+          intentionDays: stateObject(companion.intentionDays) ? companion.intentionDays : {},
+          reflections: stateObject(companion.reflections) ? companion.reflections : {},
+          reminders: stateObject(companion.reminders) ? companion.reminders : {},
+          reminderActions: stateObject(companion.reminderActions) ? companion.reminderActions : {},
+          trackMedications: typeof companion.trackMedications === 'boolean'
+            ? companion.trackMedications
+            : Array.isArray(data.meds) && data.meds.some(med => stateObject(med) && med.active === true),
+          hideCounters: !!companion.hideCounters,
+          // Auto was removed (2026-10-25): a saved "auto" becomes the day look it used.
+          theme: stateTheme(companion.theme === 'auto' ? companion.autoLight : companion.theme),
+          autoLight: STATE_DAY_THEMES.includes(companion.autoLight) ? companion.autoLight : 'pine',
+          // Optional: the last appointment date and questions for the doctor; left out when not set.
+          ...(typeof companion.lastAppointment === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(companion.lastAppointment)
+            ? { lastAppointment: companion.lastAppointment } : {}),
+          ...(Array.isArray(companion.questions) && companion.questions.length ? {
+            questions: companion.questions
+              .filter(q => stateObject(q) && typeof q.id === 'string' && typeof q.text === 'string' && q.text.trim())
+              .slice(0, 20)
+              .map(q => ({ id: q.id, text: q.text.slice(0, 300), at: typeof q.at === 'string' ? q.at : '' }))
+          } : {})
+        }
+      },
+      vices: {},
+      meds: [],
+      slips: [],
+      cravings: [],
+      doses: stateObject(data.doses) ? data.doses : {},
+      journal: stateObject(data.journal) ? data.journal : {}
+    };
+
+    STATE_VICES.forEach(key => {
+      const vice = stateObject(sourceVices[key]) ? sourceVices[key] : {};
+      // Optional (version 5): the usual amount with its cadence. perDay stays the daily average of it.
+      const usualAmount = stateObject(vice.usual) ? Math.max(0, stateNumber(vice.usual.amount, 0)) : 0;
+      const usual = stateObject(vice.usual) && ['day', 'week'].includes(vice.usual.per)
+        ? { amount: usualAmount, per: vice.usual.per } : null;
+      result.vices[key] = Object.assign({
+        enabled: !!vice.enabled,
+        perDay: usual
+          ? (usual.per === 'week' ? usual.amount / 7 : usual.amount)
+          : Math.max(0, stateNumber(vice.perDay, 0)),
+        costPerDay: Math.max(0, stateNumber(vice.costPerDay, 0)),
+        phases: Array.isArray(vice.phases) ? vice.phases
+          .filter(phase => stateObject(phase) && ['quit', 'reduce', 'track'].includes(phase.mode) && typeof phase.at === 'string')
+          .map(phase => Object.assign({
+            mode: phase.mode,
+            at: phase.at,
+            target: phase.mode === 'reduce' ? Math.max(0, stateNumber(phase.target, 0)) : 0
+          }, phase.ease === true ? { ease: true } : {}, statePhaseCadence(phase))) : []
+      }, usual ? { usual: usual } : {}, STATE_VICE_UNITS[key].includes(vice.unit) ? { unit: vice.unit } : {});
+    });
+
+    // Records without a string id are dropped.
+    result.meds = (Array.isArray(data.meds) ? data.meds : [])
+      .filter(med => stateObject(med) && typeof med.id === 'string')
+      .map(med => Object.assign({
+        id: med.id,
+        catalogId: typeof med.catalogId === 'string' ? med.catalogId : '',
+        name: typeof med.name === 'string' ? med.name : '',
+        dose: stateNumber(med.dose, 0),
+        unit: typeof med.unit === 'string' ? med.unit : 'mg',
+        freq: med.freq === 'prn' ? 'prn' : Math.min(4, Math.max(1, Math.round(stateNumber(med.freq, 1)))),
+        slots: stateStrings(med.slots),
+        startDate: typeof med.startDate === 'string' ? med.startDate : '',
+        active: !!med.active,
+        timeline: typeof med.timeline === 'string' ? med.timeline : null,
+        alcohol: typeof med.alcohol === 'string' ? med.alcohol : null,
+        whyThisHelps: typeof med.whyThisHelps === 'string' ? med.whyThisHelps.slice(0, 500) : '',
+        dailyLimit: Number.isInteger(Number(med.dailyLimit)) && Number(med.dailyLimit) > 0
+          ? Number(med.dailyLimit)
+          : null
+      // Optional: set when the medication was deleted (kept so it can be restored); left out when not.
+      }, typeof med.deletedAt === 'string' && med.deletedAt ? { deletedAt: med.deletedAt } : {}));
+
+    // Slips and cravings for an unknown habit are dropped.
+    result.slips = (Array.isArray(data.slips) ? data.slips : [])
+      .filter(slip => stateObject(slip) && STATE_VICES.includes(slip.vice))
+      .map(slip => Object.assign({
+        id: typeof slip.id === 'string' ? slip.id : '',
+        vice: slip.vice,
+        at: typeof slip.at === 'string' ? slip.at : '',
+        amount: Math.max(0, stateNumber(slip.amount, 0)),
+        cost: slip.cost === '' ? '' : Math.max(0, stateNumber(slip.cost, 0)),
+        triggers: stateStrings(slip.triggers),
+        why: typeof slip.why === 'string' ? slip.why : '',
+        action: ['log', 'streak', 'full'].includes(slip.action) ? slip.action : 'log',
+        kind: slip.kind === 'use' ? 'use' : 'slip',
+        createdAt: typeof slip.createdAt === 'string' ? slip.createdAt : ''
+      }, typeof slip.productType === 'string' && slip.productType.trim()
+        ? { productType: slip.productType }
+        : {}));
+
+    result.cravings = (Array.isArray(data.cravings) ? data.cravings : [])
+      .filter(craving => stateObject(craving) && STATE_VICES.includes(craving.vice))
+      .map(craving => ({
+        id: typeof craving.id === 'string' ? craving.id : '',
+        vice: craving.vice,
+        at: typeof craving.at === 'string' ? craving.at : ''
+      }));
+
+    return result;
+  }
+
+  // The one live state object, shared by the whole app. It is never replaced: applyState updates it in place.
+  const S = defaultState();
+
+  // Migrates any saved data and copies it into S in place, removing keys the new data lacks.
+  function applyState(data) {
+    const next = migrate(data);
+    Object.keys(S).forEach(key => {
+      if (!Object.prototype.hasOwnProperty.call(next, key)) delete S[key];
+    });
+    Object.assign(S, next);
+    return S;
+  }
+
+  // Guided setup opens at start-up on a first run, or when setup has changed since this person last went through it.
+  function setupDue() {
+    return !S.onboarded || (S.setupVersion || 0) < SETUP_VERSION;
+  }
+
+  // Turns a storage load reply into S. No saved file yet means a fresh default state.
+  // A version 3 file is first copied to a Drive backup before it is upgraded.
+  function decodeLoadedState(response) {
+    if (response && response.state) {
+      let parsed;
+      try {
+        parsed = JSON.parse(response.state);
+      } catch (error) {
+        throw new Error('Saved data could not be read. Your saved file has not been changed.');
+      }
+      if (stateObject(parsed) && Number(parsed.version) === 3) startUpgradeBackup(response.state);
+      return applyState(parsed);
+    }
+    return applyState(defaultState());
+  }
+
+  function loadState() {
+    return reclaimStorage().load().then(decodeLoadedState);
+  }
+
+  // Saves S as JSON, passed through migrate first so only clean, current-version data is written.
+  function saveState() {
+    return reclaimStorage().save(JSON.stringify(migrate(JSON.parse(JSON.stringify(S)))));
+  }
+</script>

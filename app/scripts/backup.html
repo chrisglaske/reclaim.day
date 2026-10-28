@@ -1,0 +1,104 @@
+<script>
+  // Backups and erasing: a backup is the whole saved state (S) as a save would write it, downloaded and/or copied to Drive.
+  // Also the one-time backup before a version 3 file is upgraded, checking a file before a restore, and Erase. Relies on
+  // state.html and reclaimStorage(); used by Settings › Your data, Guided setup's restore and saveState (core.html).
+  function settingsBackupJson() {
+    return JSON.stringify(migrate(JSON.parse(JSON.stringify(S))), null, 2);
+  }
+
+  function backupFileStamp(date = new Date()) {
+    const pad = value => String(value).padStart(2, '0');
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) + ' ' +
+      pad(date.getHours()) + '-' + pad(date.getMinutes()) + '-' + pad(date.getSeconds());
+  }
+
+  // Throws if the browser can't start the download.
+  function downloadSettingsBackup(json) {
+    const blob = new Blob([json || settingsBackupJson()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Reclaim Backup ' + backupFileStamp() + '.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // A separate file in Reclaim/Backups; the live data file is not touched.
+  function saveSettingsBackupToDrive(json) {
+    return reclaimStorage().saveBackup(json, backupFileStamp());
+  }
+
+  // The first time this version loads a version 3 file, the untouched file goes to Drive as
+  // "Before Reclaim v4 – <stamp>" so a rollback can restore it. Saves wait for it; if it fails
+  // they go ahead anyway and a note offers a manual backup.
+  let upgradeBackup = Promise.resolve();
+
+  function startUpgradeBackup(json) {
+    if (!reclaimStorage().hasDrive) return;
+    upgradeBackup = reclaimStorage().saveUpgradeBackup(json, backupFileStamp()).catch(error => {
+      console.warn('Reclaim could not save the pre-upgrade backup:', error && error.message ? error.message : error);
+      saveNotice.upgradeBackupFailed = true;
+      return null;
+    });
+  }
+
+  // The upgrade note's "Back up" opens Settings › Your data with the backup sheet.
+  function openUpgradeBackup() {
+    saveNotice.upgradeBackupFailed = false;
+    V.view = 'settings';
+    V.sset = V.sopen = 'data';
+    renderAll();
+    ACT.backup();
+  }
+
+  // destination: download, drive or both. Resolves to the Drive file ({ name }) when there is one.
+  async function createSettingsBackup(destination) {
+    const json = settingsBackupJson();
+    if (destination !== 'drive') downloadSettingsBackup(json);
+    return destination === 'download' ? null : saveSettingsBackupToDrive(json);
+  }
+
+  // A version 3, 4 or 5 backup file, checked and migrated; throws with a message to show.
+  // Checks the parts every version shares before migrating, so a wrong or damaged file never replaces the live data.
+  async function readBackupFile(file) {
+    if (file.size > 5_000_000) throw new Error('Choose a JSON backup smaller than 5 MB.');
+    let parsed;
+    try { parsed = JSON.parse(await file.text()); } catch (error) { throw new Error('Choose a Reclaim JSON backup file.'); }
+    if (!logicObject(parsed) || ![3, 4, 5].includes(Number(parsed.version)) ||
+        !['profile', 'vices', 'meds', 'slips', 'cravings', 'doses', 'journal']
+          .every(key => Object.prototype.hasOwnProperty.call(parsed, key))) {
+      throw new Error('Choose a complete Reclaim version 3, 4 or 5 JSON backup.');
+    }
+    if (!logicObject(parsed.profile) || !logicObject(parsed.vices) ||
+        !logicObject(parsed.vices.smoking) || !logicObject(parsed.vices.drinking) ||
+        (parsed.vices.vaping !== undefined && !logicObject(parsed.vices.vaping)) ||
+        !Array.isArray(parsed.meds) || !Array.isArray(parsed.slips) ||
+        !Array.isArray(parsed.cravings) || !logicObject(parsed.doses) ||
+        !logicObject(parsed.journal) ||
+        parsed.meds.some(med => !logicObject(med) || typeof med.id !== 'string') ||
+        parsed.slips.some(slip => !logicObject(slip) || !STATE_VICES.includes(slip.vice)) ||
+        parsed.cravings.some(craving => !logicObject(craving) || !STATE_VICES.includes(craving.vice))) {
+      throw new Error('The backup has invalid Reclaim data fields and was not restored.');
+    }
+    return migrate(parsed);
+  }
+
+  // Erases the live data (Drive: clearAll; preview: an empty save). Separate backups stay.
+  async function eraseSettingsData() {
+    const previous = JSON.parse(JSON.stringify(S));
+    try {
+      if (reclaimStorage().clear) {
+        await reclaimStorage().clear();
+      } else {
+        applyState(defaultState());
+        await saveState();
+      }
+      applyState(defaultState());
+    } catch (error) {
+      applyState(previous);
+      throw error;
+    }
+  }
+</script>

@@ -1,0 +1,152 @@
+<style>
+  /* App-only additions the mockup lacks: the skip link and the save notices above the toast. */
+  html,body{background:var(--bg,#FFF4D9)}
+  .skip-link{position:absolute;left:12px;top:-60px;z-index:400;padding:12px 16px;border-radius:12px;background:var(--primary);color:var(--on-primary);font-weight:700;text-decoration:none}
+  .skip-link:focus{top:12px}
+  /* 44px hit areas: an invisible box centred on small controls; nothing visible changes. */
+  :is(.chip,.iconbtn,.jfc,.link,.minbtn,.check,.seg>button,.stepper>button,.chip .x,.wd2,summary,.tgl){position:relative}
+  .ripplebox{position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none}
+  :is(.btn.sm,.task .act .btn){overflow:visible} /* .btn clips for its ripple; ripple() clips itself, so the hit area can reach past the edge */
+  :is(.chip,.iconbtn,.jfc,.link,.minbtn,.check,.seg>button,.stepper>button,.chip .x,.wd2,summary,.btn.sm,.task .act .btn)::after,.tgl::before{content:'';position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+  /* Closed overlays leave the tab order and the accessibility tree once they have faded out. */
+  .sheetw:not(.open){visibility:hidden;transition:visibility 0s .5s}
+  .flow:not(.open),.sos:not(.open){visibility:hidden;transition:opacity .35s,visibility 0s .35s}
+  .qpop:not(.open){visibility:hidden;transition:opacity .2s,transform .4s cubic-bezier(.34,1.3,.64,1),visibility 0s .4s}
+  .toast:not(.show) #tundo{visibility:hidden;transition:visibility 0s .45s}
+  .toast.savenote{bottom:164px;white-space:normal;width:max-content;max-width:min(560px,calc(100% - 32px))}
+  @container app (min-width:820px){.toast.savenote{bottom:90px}}
+  /* Today's "Taken earlier?": Tracking's inline field under the dose row. */
+  .task:has(.cfg){row-gap:0}
+  .task .cfg{grid-column:1/-1;transition:grid-template-rows .45s cubic-bezier(.2,.8,.2,1),margin-top .45s cubic-bezier(.2,.8,.2,1)}
+  .task .cfg.open{margin-top:12px}
+  .task .cfg:not(.open)>div{visibility:hidden;transition:visibility 0s .45s}
+  .task .earl .lbl{margin:10px 0 0}
+  .task .earl .exrow{margin:0}
+  /* Tracking's moment amount: the mockup's stepper number, typeable. */
+  /* Mockup flaw: on phones a done dose's tick (grid-row:1, column reset to auto) went first and pushed the text right. */
+  @container app (max-width:520px){.task.done .act.round{grid-column:3}}
+  /* Mockup flaw: in a narrow "Today at a glance" card (820–900px) the value was pushed out of the row; stack it as the tiles do. */
+  @container gl (max-width:259px){
+    .gl,.gl:first-of-type{display:flex;flex-direction:column;align-items:stretch;gap:2px}
+    .gl .itile{align-self:flex-start;width:30px;height:30px;border-radius:10px;margin-bottom:6px}.gl .itile .ic{width:16px;height:16px}
+    .gl .v{order:1;text-align:left;font-size:23px}.gl>div:not(.meter){order:2}.gl .meter{order:3;margin-top:6px;flex:none}
+  }
+  .stepper input.num{field-sizing:content;min-width:40px;max-width:72px;padding:0;border:0;background:none;color:inherit;font:inherit;font-weight:800;font-size:18px}
+  /* Live app: alcohol notes for active medicines in a drink moment, on the warning tokens. */
+  .whyask.alcw{margin:12px 0 0;background:var(--warnbg);color:var(--warn)}
+  .whyask.alcw .ic{color:var(--warn)}
+  .whyask.alcw p{color:inherit;margin:0}.whyask.alcw p+p{margin-top:4px}
+  .whyask.alcw p:last-child{opacity:.85}
+  /* Live app: the moment sheet's recovery-marker advice and "Suggested" badge. */
+  .whyask.madv{margin:0 0 10px}.whyask.madv p{margin:0;color:var(--ink)}
+  .rad .sugg{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--primary);font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
+  .rad .sugg[hidden]{display:none}
+  /* Live app: remove any moment from the Journal day, and the day's medications. */
+  .jev li:has(.jrm){grid-template-columns:58px 28px minmax(0,1fr) auto}.jev .jact{display:flex;gap:2px}
+  .jev .jrm{width:32px;height:32px;border-radius:10px;border-color:transparent;background:none;color:var(--muted)}.jev .jrm:hover{background:var(--soft)}.jev .jrm .ic{width:15px;height:15px}
+  @container app (max-width:519px){.jev li:has(.jrm){grid-template-columns:52px 26px minmax(0,1fr) auto}}
+  .acc.jdoses{margin-top:10px}
+  /* the day's own sleep (Insights' sleep chips) on the Journal day */
+  .jsleep{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);margin-top:10px;padding:12px 0 2px}
+  .jsleep>div{flex:1;min-width:0}.jsleep b{display:block;font-size:14px}.jsleep small{color:var(--muted);font-size:13px}.jdoses .lrows{margin-bottom:8px}
+  .jdoses .prn .cfg{grid-column:1/-1}
+  /* Insights › Recovery extras (M8c): medicine tabs, best streak, milestones */
+  .grid.main2>.col{min-width:0}.rtabs{max-width:100%;overflow-x:auto;scrollbar-width:none}.rtabs button{white-space:nowrap;flex:none}
+  .rsub{font-size:13px;margin:0 0 8px}.rbest{font-size:13.5px;margin:0 0 8px}.rbest b{color:var(--ink)}
+  /* Weekly reflection sheet: the week and its arrows beside the heading (M8f) */
+  .rwkh{display:flex;align-items:center;justify-content:space-between;gap:4px 10px;flex-wrap:wrap;margin-bottom:6px}.rwkh h3{margin:0}
+  .rwk{display:flex;align-items:center;gap:2px;font-size:13.5px;font-weight:600;color:var(--muted)}.rwk span{min-width:104px;text-align:center}
+  .acc.rmore{margin-top:12px}.rh{font-size:13px;font-weight:700;margin:6px 0 8px;color:var(--muted)}
+  .rach{list-style:none;margin:0 0 10px;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+  .rach li{display:flex;gap:8px;align-items:center;padding:7px 9px;border-radius:12px;background:var(--soft);font-size:12.5px;color:var(--muted)}
+  .rach li b{display:block;font-size:13px;color:var(--ink)}.rach li:not(.on){opacity:.7}
+  .rach .rd{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center}
+  .rach li.on .rd{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}.rach .rd .ic{width:12px;height:12px}
+  .rstk{margin-bottom:10px}.rstk>b{display:block;font-size:13.5px;margin-bottom:6px}
+  .rbar{display:grid;grid-template-columns:92px 1fr;gap:8px;align-items:center;margin-bottom:4px;font-size:12px;color:var(--muted)}
+  .rbar>div{height:22px;border-radius:8px;background:var(--soft);overflow:hidden}
+  .rbar i{display:flex;align-items:center;height:100%;padding:0 8px;border-radius:8px;background:color-mix(in srgb,var(--muted) 35%,transparent);color:var(--ink);font-style:normal;font-weight:700;font-size:11.5px;white-space:nowrap}
+  .rbar i.cur{background:var(--primary);color:var(--on-primary)}
+  /* M8e: dose names beside their times; setup's restore link */
+  .dtime{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
+  .times.dnames{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+  .obrest{margin-top:18px}
+  .obrest>.link{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+  .obrest>.link svg{width:16px;height:16px}
+  /* M8g: a dose row's text opens its options sheet; skipped doses */
+  .dopt{all:unset;box-sizing:border-box;display:block;min-width:0;cursor:pointer;position:relative;border-radius:10px}
+  .dopt::after{content:'';position:absolute;inset:-8px -4px}
+  .dopt:focus-visible{outline:3px solid var(--primary);outline-offset:2px}
+  .dose .dopt>.tt,.dopt>.td{display:block}
+  .dopt .dhint{margin-left:6px;font-weight:700;opacity:.55}
+  .dopts{margin-top:14px;gap:2px}
+  .dopts>button.lrow{border:0;background:none;text-align:left;font:inherit;color:inherit;width:calc(100% + 16px);min-height:56px}
+  .dopts>button.lrow+button.lrow{border-top:1px solid var(--line)}
+  .chips.dsr{margin-top:14px}
+  .dose.skip{background:var(--soft)}.dose.skip .td{color:var(--muted)}
+  /* M8h: a skipped dose in Today's Done today and timeline */
+  .task.skip .td{color:var(--muted)}
+  .tl .st.skip::before{background:var(--accent)}
+  .tl .st.skip .d{border-color:var(--accent);color:var(--accent)}.tl .st.skip .d .ic{width:10px;height:10px;stroke-width:4}
+  .medgrid i.skip{background:color-mix(in srgb,var(--muted) 35%,transparent)}
+  .legend i.mskip{background:color-mix(in srgb,var(--muted) 35%,transparent);border-radius:50%}
+  /* the appointment page */
+  .apback{align-self:flex-start}
+  .apctl .apf{display:flex;flex-direction:column;gap:14px}
+  .apctl .lbl{margin-bottom:8px}
+  .aplast{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}.aplast>div{flex:1;min-width:180px;max-width:260px}
+  .apdoc{display:flex;flex-direction:column;gap:14px}
+  .aphead h2{font-size:20px;margin:0}.aphead p{margin:4px 0 0;color:var(--muted);font-size:14px}
+  .apglance{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14.5px}
+  .aprows{display:flex;flex-direction:column}
+  .aprow{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.aprow:first-child{border-top:0;padding-top:0}
+  .aprow>div{min-width:0}.aprow b{display:block}.aprow small{display:block;color:var(--muted);font-size:13px}.aprow p{margin:4px 0 0;font-size:14px}
+  .aphab+.aphab{margin-top:14px}.aphab h3,.aph3{font-size:15px;margin:0 0 8px}.aph3{margin-top:14px}
+  .aptw{overflow-x:auto}
+  .aptab{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+  .aptab th,.aptab td{text-align:left;padding:6px 8px 6px 0;border-top:1px solid var(--line);white-space:nowrap}
+  .aptab thead th{color:var(--muted);font-weight:600;font-size:12.5px;border-top:0;white-space:normal;vertical-align:bottom}.aptab td{white-space:normal}
+  .aptab tbody th{font-weight:600}
+  .apq{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+  .apq li{display:flex;align-items:center;gap:8px}.apq li span{flex:1;min-width:0;overflow-wrap:anywhere}.apq li .apn{flex:0 0 auto;min-width:18px;font-variant-numeric:tabular-nums;color:var(--muted)}
+  .apqadd{display:flex;gap:8px;margin-top:12px}.apqadd .field{flex:1;min-width:0}
+  .apnotes{display:flex;flex-direction:column}
+  .apnote{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.apnote:first-child{border-top:0}
+  .apnote>div{min-width:0}.apnote small{color:var(--muted);font-size:12.5px}.apnote p{margin:2px 0 0;font-size:14px;overflow-wrap:anywhere}
+  .apnote:not(.on) p{color:var(--muted)}
+  .apfoot{color:var(--muted);font-size:12.5px;margin:0}
+  .aperr{color:var(--muted);margin:0}
+  /* Dark looks: white on the light --good green was under 3:1 (Quick log's Done badge), so it takes the page color. */
+  .app.dark .qts.ok{color:var(--bg)}
+  /* Zine colors: faded butter on cobalt falls under AA, so quieter text on the hero and on a due check-in is solid --on-hero2 (white). */
+  .app[data-theme=zine] :is(.hero .hsub,.tl .st,.hfoot,.donegrp summary,.task.done .td,.story .eyebrow,.stat span,.steps li,.obside .note,.obdone p,.firsts small,.jck.st-now small){color:var(--on-hero2)}
+  /* Zine look only: the site's details on the Zine colors. applyAppTheme sets .zine for the Zine looks.
+     Navy outlines and hard offset shadows; pressing shifts into the shadow; nothing you tap tilts. */
+  .app.zine{--zine-line:var(--ink);--zine-shadow:var(--ink);--zw:2px}
+  .app.zine :is(h1,h2,.display){font-weight:800;letter-spacing:-.035em}
+  .app.zine :is(.card,.hero,.tile){border:var(--zw) solid var(--zine-line);box-shadow:4px 4px 0 var(--zine-shadow)}
+  .app.zine .tile.on{border-color:var(--zine-line);background:var(--butter)}
+  .app.zine .sheet{border:var(--zw) solid var(--zine-line);border-bottom:0}
+  @container app (min-width:820px){.app.zine .sheet{border-bottom:var(--zw) solid var(--zine-line);box-shadow:8px 8px 0 var(--zine-shadow)}}
+  .app.zine .btn:not(.ghost){border:var(--zw) solid var(--zine-line);box-shadow:3px 3px 0 var(--zine-shadow);transition:transform .12s,box-shadow .12s,background .2s,opacity .2s}
+  .app.zine .btn:not(.ghost):hover{filter:none;transform:translate(1px,1px);box-shadow:2px 2px 0 var(--zine-shadow)}
+  .app.zine .btn:not(.ghost):active{transform:translate(3px,3px);box-shadow:0 0 0 var(--zine-shadow)}
+  .app.zine :is(.chip,.iconbtn){border:var(--zw) solid var(--zine-line)}
+  .app.zine .chip.on{background:var(--ink);color:var(--card)}
+  .app.zine .plus{border:var(--zw) solid var(--zine-line);box-shadow:3px 3px 0 var(--zine-shadow),0 0 0 6px var(--bg)}
+  .app.zine .seg .sp{border:var(--zw) solid var(--zine-line);box-shadow:2px 2px 0 var(--zine-shadow)}
+  .app.zine .tabbar{border-top:var(--zw) solid var(--zine-line)}
+  @media (prefers-reduced-motion:reduce){.app.zine .btn:not(.ghost):is(:hover,:active){transform:none}}
+  @media print{
+    html,body{background:#fff!important}
+    .app{height:auto!important;overflow:visible!important;background:#fff!important;--ink:#111;--muted:#555;--line:#ccc}
+    .shell{position:static!important;display:block!important}
+    .side,.mtop,.tabbar,.skip-link,.toast,.savenote,.tip,.qpop,.sos,.flow,.sheetw,.apctl,.apback,.noprint,.hello{display:none!important}
+    main{overflow:visible!important;padding:0!important}
+    .wrap{max-width:none!important}
+    .apdoc,.apdoc *{color:#111!important}.apdoc .muted,.apdoc small,.aphead p,.apfoot,.aptab thead th{color:#555!important}
+    .apsec{box-shadow:none!important;background:#fff!important;border:1px solid #ccc!important;break-inside:avoid;padding:12px 14px!important}
+    .apsec .itile{display:none}
+    .apnote:not(.on){display:none!important}.apnote p{color:#111!important}
+  }
+</style>

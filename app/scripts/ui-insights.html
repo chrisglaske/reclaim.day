@@ -1,0 +1,253 @@
+<script>
+/* ---------- Insights (from the design mockup, on the real data: d = ins(V.iper) from scripts/model) ---------- */
+const HRS=[6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23];
+const hl=h=>h===12?'12 PM':h<12?h+' AM':(h-12)+' PM';
+const TRIG_OPTS=['Stress','Tired','Social','Routine','Boredom','Craving'];
+/* "Oct 16 – 22": the period's first and last day; "7 days" / "this week" wording for the 7 / 30 days chips */
+const rng=d=>{const a=d.days[0],b=d.days.at(-1);return pd(a).getMonth()===pd(b).getMonth()?`${sdate(a)} – ${pd(b).getDate()}`:`${sdate(a)} – ${sdate(b)}`;};
+const thisP=d=>d.n===7?'this week':'in the last 30 days',lastP=d=>d.n===7?'last week':'the 30 days before';
+const andL=p=>p.length<3?p.join(' and '):p.slice(0,-1).join(', ')+', and '+p.at(-1);
+
+function storyCard(d){
+  const u=sum(d.use),w=sum(d.wave),rich=u+w>=6,ws=`<em>${w} wave${w===1?'':'s'}</em>`;
+  const lim=d.reduce.length?`stayed within your ${andL(d.reduce)} limit${d.reduce.length>1?'s':''} on `:'';
+  const line=rich?andL([`You rode out ${ws}`,...d.medName?[`kept ${esc(d.medName)} going <em>${d.medDays} of ${d.n} days</em>`]:[],...lim?[`${lim}<em>${d.limitDays} days</em>`]:[]])+'.'
+    :`You rode out ${ws}${lim?` and ${lim}<em>${d.limitDays} of ${d.n} days</em>`:''}. The patterns below fill in as you go.`;
+  const shown=hide()?`Here’s the shape of ${d.n===7?'your week':'the last 30 days'}. Counters are hidden, so the numbers stay out of sight.`:line;
+  return `<section class="hero story"><div class="hhead"><div><div class="eyebrow">${d.n===7?'Your week':'Last 30 days'} · ${rng(d)}</div><h2>${shown}</h2></div></div>
+    <div class="stats">
+      <button class="stat" data-act="itab:patterns"><b class="num">${blur(w)}</b><span>Waves ridden out ${I('chev')}</span></button>
+      <button class="stat" data-act="itab:patterns"><b class="num">${d.reduce.length?blur(d.limitDays):'–'}<small style="font-size:16px;opacity:.7">/${d.n}</small></b><span>Days within limit ${I('chev')}</span></button>
+      <button class="stat" data-act="itab:progress"><b class="num">${blur(curSym()+d.kept)}</b><span>Kept in pocket ${I('chev')}</span></button>
+      <button class="stat" data-act="itab:wellbeing"><b>${d.best||blur(u)}</b><span>${d.best?'Your steadiest day':'Moments noted'} ${I('chev')}</span></button>
+    </div></section>`;
+}
+function hoursCard(d){
+  const u=sum(d.use),w=sum(d.wave),max=Math.max(1,...d.use.map((x,i)=>Math.max(x,d.wave[i])));
+  const [b0,b1]=d.band||[6,8],bi0=HRS.indexOf(b0),bi1=HRS.indexOf(b1);
+  const inU=d.use.slice(bi0,bi1+1).reduce((a,b)=>a+b,0),inW=d.wave.slice(bi0,bi1+1).reduce((a,b)=>a+b,0);
+  const cols=HRS.map((h,i)=>{const tip=`<b>${hl(h)}</b> · ${d.use[i]} moment${d.use[i]===1?'':'s'} · ${d.wave[i]} wave${d.wave[i]===1?'':'s'}`;
+    return `<div class="hcol" style="grid-column:${i+1}" tabindex="0" data-tip="${tip.replace(/"/g,'&quot;')}" aria-label="${hl(h)}: ${d.use[i]} moments, ${d.wave[i]} waves">
+      <i class="u" style="height:${d.use[i]/max*94}%;--d:${i}"></i><i class="w" style="height:${d.wave[i]/max*94}%;--d:${i}"></i></div>`;}).join('');
+  const lab=[0,3,6,9,12,15].map(i=>`<span class="hx" style="grid-column:${i+1}/span 3">${hl(HRS[i]).replace(' ','')}</span>`).join('');
+  const msg=!(u+w)?`Nothing noted in the last ${d.n} days yet. Moments and waves show up here by the hour.`:u+w>=6?`<b>${inU} of your ${u} moments</b> happened between ${hl(b0)} and ${hl(b1+1)}, and so did <b>${inW} of ${w} waves</b>. That stretch is worth a plan.`
+    :`Early signs point to <b>${b0<12?'mornings':b0<17?'afternoons':'evenings'}</b>. That’s from ${u+w} notes, so a few more will sharpen it.`;
+  return `<section class="card"><div class="ctitle"><h2>When urges show up</h2><span class="badge">Last ${d.n} days</span></div>
+    <div class="legend"><span><i style="background:var(--c-use)"></i>Moments of use</span><span><i style="background:var(--c-wave)"></i>Waves ridden out</span></div>
+    <div class="hours">${d.band?`<div class="band" style="grid-column:${bi0+1}/${bi1+2}"><span>Tricky window</span></div>`:''}${cols}${lab}</div>
+    <div class="callout">${I('bulb')}<div>${msg}</div></div>
+    <div class="cact"><button class="btn sm" data-act="sos">${I('life')}Practice a coping tool</button>${d.band?`<button class="btn sm ghost" data-act="ifocus:${b0}">${I('target')}Add a focus for ${hl(b0)}</button>`:''}</div>
+    <details class="tablev"><summary>Show as a table</summary><table><tr><th>Hour</th><th>Moments</th><th>Waves</th></tr>${HRS.map((h,i)=>d.use[i]||d.wave[i]?`<tr><td>${hl(h)}</td><td>${d.use[i]}</td><td>${d.wave[i]}</td></tr>`:'').join('')}</table></details>
+  </section>`;
+}
+function trigCard(d){
+  if(d.untagged.length){
+    return `<section class="card" id="trigc"><div class="ctitle"><h2>What came before?</h2><span class="badge">${d.untagged.length} to tag</span></div>
+      <p class="muted" style="margin:0 0 6px">Tag a few recent moments and we’ll show what tends to set things off. One tap each.</p>
+      ${d.untagged.map((m,k)=>`<div class="tagrow" id="tr-${k}"><div><b>${esc(m.v)}</b> <span class="muted">· ${m.w}</span></div><div class="chips">${TRIG_OPTS.map(t=>`<button class="chip" data-act="itag:${k}:${t}">${t}</button>`).join('')}</div></div>`).join('')}
+    </section>`;
+  }
+  const t=[...d.trig].sort((a,b)=>b[1]-a[1]),tot=sum(d.use);
+  if(!t.length)return `<section class="card" id="trigc"><div class="ctitle"><h2>What tends to come before</h2><span class="badge">${tot} moments</span></div><p class="muted" style="margin:0">${tot?'None of these moments has a trigger noted yet. Add one when you log a moment.':`No moments noted in the last ${d.n} days.`}</p></section>`;
+  const max=t[0][1];
+  return `<section class="card ${d.justTagged?'reveal':''}" id="trigc"><div class="ctitle"><h2>What tends to come before</h2><span class="badge">${tot} moments</span></div>
+    ${t.map(([k,v],i)=>`<div class="hb" data-tip="<b>${esc(k)}</b> · in ${v} of ${tot} moments"><span>${esc(k)}</span><span class="tr"><i style="width:${v/max*100}%;--d:${i}"></i></span><span class="v num">${v}</span></div>`).join('')}
+    <div class="callout">${I('bulb')}<div><b>${esc(t[0][0])}</b> came up in ${t[0][1]} of ${tot} moments. A note, not a verdict.</div></div>
+    <div class="cact"><button class="btn sm" data-act="nav:journal">${I('pen')}Write about it</button></div></section>`;
+}
+function ratioCard(d){
+  const u=sum(d.use),w=sum(d.wave),pct=u+w?Math.round(w/(u+w)*100):0,C=2*Math.PI*42;
+  return `<section class="card"><div class="ctitle"><h2>Waves you rode out</h2></div>
+    <div class="ringwrap"><div class="ring" role="img" aria-label="${pct}% of urges ridden out"><svg viewBox="0 0 100 100"><circle class="rt" cx="50" cy="50" r="42"/><circle class="rv" cx="50" cy="50" r="42" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-off="${C*(1-pct/100)}"/></svg><b class="num">${hide()?'••':pct+'%'}</b></div>
+    <div><div style="font-weight:700;font-size:16px">${blur(w)} of ${blur(u+w)} urges</div><div class="muted" style="font-size:14px">passed without use ${thisP(d)}</div>
+    ${d.lastPct!=null&&pct>=d.lastPct?`<span class="delta">${I('up')}Up from ${d.lastPct}% ${lastP(d)}</span>`:d.lastPct!=null?`<div class="muted" style="font-size:13px;margin-top:8px">${d.lastPct}% ${lastP(d)}</div>`:`<div class="muted" style="font-size:13px;margin-top:8px">${d.n===7?'Next week':'In 30 days'} you’ll see how it compares.</div>`}</div></div></section>`;
+}
+function heatCard(d){
+  const start=pd(d.heatStart),act=d.heat.filter(x=>x>0).length;
+  const lv=['No notes','1–2 notes','3–4 notes','5+ notes'];
+  const cells=Array.from({length:35},(_,i)=>{const dt=new Date(start);dt.setDate(start.getDate()+i);const lab=dt.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+    if(i>=d.heat.length)return `<span class="c fut" style="--d:${i}" aria-hidden="true"></span>`;
+    return `<span class="c l${d.heat[i]} ${i===d.heat.length-1?'today':''}" style="--d:${i}" tabindex="0" data-tip="<b>${lab}</b> · ${lv[d.heat[i]]}" aria-label="${lab}: ${lv[d.heat[i]]}"></span>`;}).join('');
+  return `<section class="card"><div class="ctitle"><h2>Showing up</h2><span class="badge">${act} of ${d.heat.length} days</span></div>
+    <div class="heat">${['M','T','W','T','F','S','S'].map(x=>`<span class="wd">${x}</span>`).join('')}${cells}</div>
+    <div class="hscale">Fewer<i style="background:var(--soft)"></i><i style="background:color-mix(in srgb,var(--primary) 28%,var(--card))"></i><i style="background:color-mix(in srgb,var(--primary) 58%,var(--card))"></i><i style="background:var(--primary)"></i>More</div>
+    <p class="muted" style="margin:10px 0 0;font-size:14px">${act*2>=d.heat.length?'Most days have a note or two. Gaps are fine; this isn’t a streak.':'Any note counts: a dose, a check-in, a wave. Gaps are fine; this isn’t a streak.'}</p></section>`;
+}
+/* a callout only when one time of day sits clearly (¾ of a mood step) below the others. */
+function moodNote(m){const r=[['Mornings',m.m],['Afternoons',m.a],['Evenings',m.e]].filter(([,v])=>v).sort((a,b)=>a[1]-b[1]);
+  return r.length>1&&r[1][1]-r[0][1]>=.75?`<div class="callout">${I('bulb')}<div>${r[0][0]} tend to feel lower.</div></div>`:'';}
+function moodCard(d){
+  const m=d.moods;
+  if(m.n<6)return `<section class="card unlock"><div class="ctitle"><h2>Mood through the day</h2><span class="badge">${I('lock')}${m.n} of 6</span></div>
+    <p class="muted" style="margin:0">After 6 check-ins you’ll see whether mornings, afternoons or evenings feel different.</p>
+    <div class="pdots">${Array.from({length:6},(_,i)=>`<i class="${i<m.n?'on':''}"></i>`).join('')}</div>
+    <button class="btn sm primary" data-act="nav:today">Check in on Today</button></section>`;
+  const pos=v=>(v-1)/4*100,face=v=>MOODS[Math.round(v)-1][0];
+  return `<section class="card"><div class="ctitle"><h2>Mood through the day</h2><span class="badge">${m.n} check-ins</span></div>
+    ${[['Morning',m.m],['Afternoon',m.a],['Evening',m.e]].filter(([,v])=>v).map(([l,v])=>`<div class="mdrow"><span class="lbl2">${l}</span><div class="mtrack" data-tip="<b>${l}</b> · usually ${MOODS[Math.round(v)-1][1]}"><span class="dot" style="left:0" data-left="${pos(v)}%">${face(v)}</span></div></div>`).join('')}
+    <div class="mends"><span>${MOODS[0][1]}</span><span>${MOODS[4][1]}</span></div>
+    ${moodNote(m)}</section>`;
+}
+/* The sleep chips save the night's hours on the day after it, as a sleep-only note. */
+const SLEEPQ=[['Under 5h',4.5],['5–6h',5.5],['6–7h',6.5],['7–8h',7.5],['8h+',8.5]];
+function sleepCard(d){
+  if(d.sleep>=5)return `<section class="card ${d.justUnlocked?'reveal':''}"><div class="ctitle"><h2>Sleep and the next day</h2>${d.justUnlocked?`<span class="badge" style="background:var(--mint)">${I('spark')}Unlocked</span>`:`<span class="badge">${d.sleep} nights</span>`}</div>
+    <p class="muted" style="margin:0 0 8px">Moments of use on the day after…</p>
+    <div class="cmp">${[['Under 6 hours',d.short],['7 hours or more',d.long]].map(([l,v],i)=>`<div class="hb" data-tip="<b>${l}</b> · ${v==null?'no nights yet':v.toFixed(1)+' moments next day'}"><span>${l}</span><span class="tr"><i style="width:${v?Math.round(v/Math.max(d.short||0,d.long||0)*100):0}%;--d:${i}"></i></span><span class="v num">${v==null?'–':v.toFixed(1)}</span></div>`).join('')}</div>
+    <p class="muted" style="margin:12px 0 0;font-size:13px">Observations from your notes, not proof one causes the other.</p></section>`;
+  return `<section class="card unlock" id="sleepc"><div class="ctitle"><h2>${I('moon')} Sleep and the next day</h2><span class="badge">${I('lock')}${d.sleep} of 5 nights</span></div>
+    <p class="muted" style="margin:0">Note sleep on 5 nights and we’ll show how it lines up with the day after. No need to open a check-in.</p>
+    <div class="pdots">${Array.from({length:5},(_,i)=>`<i class="${i<d.sleep?'on':''}"></i>`).join('')}</div>
+    <div style="font-weight:700;margin-bottom:8px">How long did you sleep ${d.ask}?</div>
+    <div class="chips sleepq">${SLEEPQ.map(([l],i)=>`<button class="chip" data-act="isleep:${i}">${l}</button>`).join('')}</div></section>`;
+}
+/* Coming up: the next marker of the first habit on a started quit plan, then the savings goal. */
+function msCard(){
+  const k=HK.find(x=>{const t=track(x);return t.on&&t.mode==='quit'&&t.start<=localToday()&&nextMilestone(VK[x]);}),nm=k&&nextMilestone(VK[k]);
+  const amt=Number(S.profile.goal.amount),kept=Math.round(totals().estimatedSavings),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,stop=[25,50,75,100].find(m=>m>pct);
+  if(!k&&!(amt>0))return '';
+  return `<section class="card"><div class="ctitle"><h2>Coming up</h2></div>
+    ${k?`<div class="ms"><span class="itile ${HB[k].tint}">${I(hemo(k))}</span><div class="grow"><div style="font-weight:700">${MARKW[nm.days]} without ${HB[k].v}</div><div class="muted" style="font-size:13px">${blur(nm.daysRemaining)} day${nm.daysRemaining===1?'':'s'} to go · Day ${blur(hday(k))}</div><div class="meter"><i style="width:${Math.round(hday(k)/nm.days*100)}%"></i></div></div></div>`:''}
+    ${amt>0?`<div class="ms"><span class="itile butter">${I('wallet')}</span><div class="grow"><div style="font-weight:700">${esc(S.profile.goal.name)||'Savings goal'}</div><div class="muted" style="font-size:13px">${blur(curSym()+kept+' of '+curSym()+amt)} · ${stop?'next stop '+stop+'%':'goal reached'}</div><div class="meter"><i style="width:${pct}%"></i></div></div></div>`:''}</section>`;
+}
+function medCard(m){
+  const n=[...m.s].filter(c=>c==='1').length;
+  return `<section class="card"><div class="ctitle"><h2>${esc(m.name)}</h2><span class="badge">${blur(n)} of 30 days noted</span></div>
+    <div class="medgrid">${[...m.s].map((c,i)=>`<i class="${c==='1'?'':c==='2'?'skip':'no'}" style="--d:${i}" data-tip="<b>${sdate(addD(m.start,i))}</b> · ${c==='1'?'Dose noted':c==='2'?'Skipped':'None noted'}"></i>`).join('')}</div>
+    <div class="legend" style="margin-top:12px"><span><i style="background:var(--good);border-radius:50%"></i>Dose noted</span><span><i style="border:2px solid var(--line2);border-radius:50%"></i>None noted</span>${m.s.includes('2')?'<span><i class="mskip"></i>Skipped</span>':''}</div></section>`;
+}
+function toolsCard(){
+  return `<section class="card"><div class="ctitle"><h2>Take it further</h2></div><div class="lrows">
+    <button class="lrow" data-act="apopen" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile lilac">${I('file')}</span><span><b>Appointment summary</b><div class="muted" style="font-size:13px">${apptLast()?`Last appointment ${sdate(apptLast())} · what changed since then`:'What changed, ready to show or print'}</div></span>${I('chev','chev')}</button>
+    <button class="lrow" data-act="irefl" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile butter">${I('pen')}</span><span><b>Weekly reflection</b><div class="muted" style="font-size:13px">What helped this week?</div></span>${I('chev','chev')}</button>
+  </div></section>`;
+}
+/* Recovery benefits: the app's existing time markers, one tab per habit with a quit plan (vaping has none for now),
+   then one per active medicine with a "What to expect" timeline (MED_TIMELINES, M8c) */
+/* RECM: the app's own markers (scripts/habits TRACKING_MILESTONES), in the mockup's [minutes, label, text] shape */
+const RECM={smoke:TRACKING_MILESTONES.smoking.map(m=>[m.minutes,m.label,m.detail]),drink:TRACKING_MILESTONES.drinking.map(m=>[m.minutes,m.label,m.detail])};
+const togo=m=>m<1440?`${Math.ceil(m/60)} hours`:m<2*525600?`${Math.ceil(m/1440)} days`:`${Math.round(m/525600)} years`;
+/* the markers around the next one (all with V.rall); st(i): done / cur / up */
+const rList=(items,ni,st)=>{const shown=V.rall?items:items.filter((m,i)=>ni<0||i>=ni-1&&i<=ni+2),hidden=items.length-shown.length;
+  return `<ol class="rlist">${shown.map(m=>{const i=items.indexOf(m),c=st(i);return `<li class="${c}"><span class="rd" aria-label="${c==='done'?'Time marker passed':'Time marker not yet reached'}">${c==='done'?I('check'):''}</span><div><b>${m[1]}</b><span>${m[2]}</span></div></li>`;}).join('')}</ol>
+    ${hidden||V.rall?`<button class="link" data-act="rall">${V.rall?'Show fewer':`Show all ${items.length} markers`}</button>`:''}`;};
+function recMed(m){
+  const tl=medTimeline(m),ni=tl.findIndex(b=>b.current),start=m.startDate?dateKey(m.startDate):localToday();
+  const note=`<p class="help rsafe">Typical experiences only. Everyone responds differently; follow your prescriber's guidance.</p>`;
+  if(start>localToday())return `<p class="empty">These markers start on ${esc(m.name)}'s start date, ${dlab(start)}.</p>${note}`;
+  return `<p class="muted rsub">What to expect · day ${dBetween(start,localToday())+1} on ${esc(m.name)}</p>
+    ${ni>=0&&!hide()?`<div class="rnext"><span class="eyebrow">Next to reach</span><b>${tl[ni].label}</b><span class="muted">${tl[ni].note.split(' · ')[1]}</span><div class="meter"><i style="width:${Math.round(Math.min(1,tl[ni].pct)*100)}%"></i></div></div>`:''}
+    ${rList(tl.map(b=>[b.ms,b.label,b.desc]),ni,i=>tl[i].done?'done':tl[i].current?'cur':'up')}${note}`;
+}
+/* Milestones along the way (the live app's achievements and abstinence streaks), folded under the card */
+function recMore(){
+  const a=achievements(),got=a.filter(x=>x.earned).length,sv=streakVices();
+  const bars=sv.map(v=>{const h=streakRuns(v),mx=Math.max(1,...h.map(x=>x.ms)),k=HK.find(x=>VK[x]===v);
+    return `<div class="rstk"><b>${HEMO[k][1]} ${HB[k].n}</b>${h.slice().reverse().slice(0,10).map(x=>`<div class="rbar"><span>${dlab(dateKey(new Date(x.start)),{month:'short',day:'numeric',year:'numeric'})}</span><div><i class="${x.current?'cur':''}" style="width:${Math.max(10,x.ms/mx*100)}%">${blur(shortDur(x.ms))}</i></div>${x.current?'<span class="vh">, current streak</span>':''}</div>`).join('')}</div>`;}).join('');
+  return `<details class="acc rmore" id="rmore" ${V.rmo?'open':''}><summary>Milestones along the way · ${blur(got)} of ${a.length} ${I('chev')}</summary>
+    <h3 class="rh">Achievements</h3><ul class="rach">${a.map(x=>`<li class="${x.earned?'on':''}" title="${esc(x.desc)}"><span class="rd" aria-hidden="true">${x.earned?I('check'):''}</span><span><b>${esc(x.title)}</b><span>${esc(x.sub)} · ${x.earned?'Achieved':'Not yet'}</span></span></li>`).join('')}</ul>
+    ${sv.length?`<h3 class="rh">Abstinence streaks</h3>${bars}`:''}</details>`;
+}
+function recCard(){
+  const tabs=['smoke','drink'].filter(k=>track(k).on),meds=timelineMeds(),keys=[...tabs,...meds.map(m=>'med:'+m.id)];
+  const head=`<div class="ctitle"><h2>Recovery benefits</h2></div><p class="muted rnote">Possible changes vary from person to person. A check means the time marker has passed; it is not a medical measurement.</p>`;
+  if(!keys.length)return `<section class="card" id="recc">${head}<p class="empty">No active habit timeline is set up. You can still use the rest of Insights without one.</p>${streakVices().length||achievements().length?recMore():''}</section>`;
+  const k=keys.includes(V.rtab)?V.rtab:(tabs.find(x=>track(x).mode==='quit')||keys[0]);
+  const lab=x=>x.startsWith('med:')?`💊 ${esc(meds.find(m=>'med:'+m.id===x).name)}`:`${HEMO[x][1]} ${HB[x].n}`;
+  const tabsH=keys.length>1?`<div class="rtabs" role="tablist" aria-label="Recovery benefit timelines">${keys.map(x=>`<button role="tab" aria-selected="${x===k}" class="${x===k?'on':''}" data-act="rtab:${x}">${lab(x)}</button>`).join('')}</div>`:'';
+  if(k.startsWith('med:'))return `<section class="card" id="recc">${head}${tabsH}${recMed(meds.find(m=>'med:'+m.id===k))}${recMore()}</section>`;
+  const t=track(k),n=dBetween(localToday(),t.start),best=bestStreak(VK[k]);
+  const sl=slipCount(k),bestH=best>0||sl?`<p class="muted rbest">${best>0?`Best streak <b>${blur(shortDur(best))}</b>`:''}${best>0&&sl?' · ':''}${sl?`<b>${blur(sl)}</b> ${sl===1?'slip':'slips'} since your quit day`:''}</p>`:'';
+  let body;
+  if(t.mode==='track')body=`<p class="empty">You’re tracking ${HB[k].v} without a limit, so there’s no quit timeline here. Your pattern is still in Tracking and Insights.</p><p class="muted rbest">7-day avg <b>${blur(fmtNum(avg7(k)))}/day</b>${Number(S.vices[VK[k]].perDay)>0?` · vs. your usual ${fmtNum(S.vices[VK[k]].perDay)}/day`:''}</p>`;
+  else if(t.mode!=='quit')body=`<p class="empty">Time-based ${HB[k].v} benefits are shown for a Quit plan. Your reduction progress is still tracked in Tracking and Insights.</p><p class="muted rbest">7-day avg <b>${blur(fmtNum(avg7(k)))}/day</b>${Number(S.vices[VK[k]].perDay)>0?` · vs. your usual ${fmtNum(S.vices[VK[k]].perDay)}/day`:''}</p>${bestH}`;
+  else if(n>0)body=`<p class="empty">These time markers start on your quit day, ${dlab(t.start)}.</p>${bestH}`;
+  else{const st0=streakHistory(VK[k]).startedAt,el=st0?Math.max(0,(Date.now()-new Date(st0))/6e4):0,ms=RECM[k],ni=ms.findIndex(m=>el<m[0]);
+    body=`${ni>=0&&!hide()?`<div class="rnext"><span class="eyebrow">Next to reach</span><b>${ms[ni][1]}</b><span class="muted">${togo(ms[ni][0]-el)} to go</span><div class="meter"><i style="width:${Math.round((el-(ni?ms[ni-1][0]:0))/(ms[ni][0]-(ni?ms[ni-1][0]:0))*100)}%"></i></div></div>`:''}${bestH}
+    ${rList(ms,ni,i=>el>=ms[i][0]?'done':i===ni?'cur':'up')}`;}
+  return `<section class="card" id="recc">${head}${tabsH}${body}${k==='drink'?`<p class="help rsafe">If you drink heavily or have withdrawal symptoms, stopping suddenly can be medically risky. A healthcare professional can help you plan safely.</p>`:''}${recMore()}</section>`;
+}
+/* Kept in pocket: the app's estimated savings, savings-goal milestones and estimated amounts not used */
+function moneyCard(){
+  const d=V.ins,tot=totals(),amt=Number(S.profile.goal.amount)||0,kept=Math.round(tot.estimatedSavings),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,y=curSym(),stop=[25,50,75,100].find(m=>m>pct);
+  const nu=k=>Math.round(tot[VK[k]].unitsAvoided),NOT={smoke:[nu('smoke'),`${uw('smoke',nu('smoke'))} not smoked`],vape:[nu('vape'),`vape ${uw('vape',nu('vape'))} skipped`],drink:[nu('drink'),`${uw('drink',nu('drink'))} not had`]};
+  const hs=HK.filter(k=>track(k).on);
+  return `<section class="card" id="moneyc"><div class="ctitle"><h2>Kept in pocket</h2><span class="badge">Estimated</span></div>
+    <div class="mkept"><span class="hv num">${blur(y+kept)}</span><span class="muted">since your plans started · ${blur(y+d.kept)} ${thisP(d)}</span></div>
+    ${amt>0?`<div class="goalbar"><div class="inl"><b>${esc(S.profile.goal.name)||'Savings goal'}</b><span class="muted">${hide()?'':`${pct}% of ${y}${amt}`}</span></div>
+      <div class="gtrack"><i style="width:${pct}%"></i>${[25,50,75,100].map(m=>`<span class="gm ${pct>=m?'on':''}" style="left:${m}%" title="${m}%"></span>`).join('')}</div>
+      <div class="gl2">${[25,50,75,100].map(m=>`<span class="${pct>=m?'on':''}">${pct>=m?I('check'):''}${m}%</span>`).join('')}</div>
+      <p class="help" style="margin:6px 0 0">${hide()?'Your goal is here when you want it.':stop?`Next stop ${stop}% · ${y}${Math.max(0,Math.round(amt*stop/100-kept))} to go`:'Goal reached'}</p></div>`:''}
+    ${hs.length?`<div class="notused"><span class="lbl">Estimated amounts not used</span>${hs.map(k=>`<div class="nu"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><b class="num">${hide()?'':'~'+NOT[k][0]}</b><span>${NOT[k][1]}</span></div>`).join('')}</div>`:''}
+    <p class="muted" style="margin:10px 0 0;font-size:12.5px">From your usual amounts and spend, minus what you’ve noted. Not exact.</p></section>`;
+}
+const ITABS=[['overview','Overview'],['patterns','Patterns'],['progress','Progress'],['wellbeing','Wellbeing']];
+const IPANEL={
+  overview:d=>`${storyCard(d)}<div class="grid main2"><div class="col">${heatCard(d)}</div><div class="col">${msCard()}${toolsCard()}</div></div>`,
+  patterns:d=>`<div class="grid main2"><div class="col">${hoursCard(d)}</div><div class="col">${ratioCard(d)}${trigCard(d)}</div></div>`,
+  progress:d=>`<div class="grid main2"><div class="col">${moneyCard()}</div><div class="col">${recCard()}</div></div>`,
+  wellbeing:d=>`<div class="grid main2"><div class="col">${moodCard(d)}${sleepCard(d)}</div><div class="col">${d.med.map(medCard).join('')}</div></div>`};
+function insights(){
+  const d=V.ins=ins(V.iper),t=V.itab||'overview';
+  return `<div class="hello"><div><div class="eyebrow">Insights · ${rng(d)}</div><h1>What your ${d.n===7?'week':'month'} shows</h1><div class="ins-note" style="margin-top:6px">${I('check')}Built from what you already log. Nothing extra needed.</div></div>
+    <div class="chips">${[7,30].map(n=>`<button class="chip ${d.n===n?'on':''}" data-act="iper:${n}" aria-pressed="${d.n===n}">${n} days</button>`).join('')}</div></div>
+    <div class="itabs"><div class="seg" role="tablist" aria-label="Insights sections"><span class="sp"></span>${ITABS.map(([k,l])=>`<button role="tab" id="it-${k}" aria-selected="${k===t}" aria-controls="ipanel" class="${k===t?'on':''}" data-act="itab:${k}" ${k===t?'':'tabindex="-1"'}>${l}</button>`).join('')}</div></div>
+    <div class="ipanel" id="ipanel" role="tabpanel" aria-labelledby="it-${t}">${IPANEL[t](d)}</div>`;
+}
+function animInsights(){requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  $$('.ring .rv',app).forEach(c=>c.style.strokeDashoffset=c.dataset.off);
+  $$('.mtrack .dot',app).forEach(t=>t.style.left=t.dataset.left);}));}
+VIEWS.insights=insights;
+/* The weekly reflection sheet for the week starting V.rwk */
+const reflWeek=k=>`${dlab(k,{month:'short',day:'numeric'})} – ${dlab(addD(k,6),{month:'short',day:'numeric'})}`;
+function reflHTML(){
+  const k=V.rwk,cur=k>=weeklyReflectionKey();
+  return `<div class="grab"></div><div class="rwkh"><h3>Weekly reflection</h3><div class="rwk"><button class="iconbtn" data-act="irwk:-1" aria-label="Previous reflection week"><span style="display:grid;transform:scaleX(-1)">${I('chev')}</span></button><span>${reflWeek(k)}</span><button class="iconbtn" data-act="irwk:1" aria-label="Next reflection week" ${cur?'disabled':''}>${I('chev')}</button></div></div>
+    <p class="muted" style="margin:0 0 12px">${cur?'What helped this week? What would you like to try next week?':'What helped that week? What would you like to try next?'}</p><textarea id="refl" style="min-height:140px" maxlength="3000" placeholder="A few words is plenty" aria-label="Reflection for ${reflWeek(k)}">${esc(S.profile.companion.reflections[k]||'')}</textarea><div class="exrow" style="margin-top:14px"><button class="btn ghost" data-act="sclose">Not now</button><button class="btn primary" data-act="ireflsave">Save reflection</button></div>`;
+}
+app.addEventListener('toggle',e=>{if(e.target.id==='rmore')V.rmo=e.target.open;},true);
+Object.assign(ACT,{
+  itab:(b,e,x)=>{if(V.view!=='insights')return;const was=V.itab||'overview';V.itab=x;const d=V.ins,p=$('#ipanel'),m=$('#main'),tb=$('.itabs');
+      $$('.itabs [role=tab]').forEach(t=>{const on=t.dataset.act==='itab:'+x;t.classList.toggle('on',on);t.setAttribute('aria-selected',on);on?t.removeAttribute('tabindex'):t.setAttribute('tabindex','-1');});placeSeg();
+      p.setAttribute('aria-labelledby','it-'+x);p.innerHTML=IPANEL[x](d);p.classList.remove('ifwd','ibck');void p.offsetWidth;p.classList.add(ITABS.findIndex(t=>t[0]===x)>=ITABS.findIndex(t=>t[0]===was)?'ifwd':'ibck');animInsights();
+      const top=tb.offsetTop-6;if(m.scrollTop>top)m.scrollTo({top,behavior:'smooth'});if(b.closest('.stat'))$('#it-'+x)?.focus({focusVisible:kbd});},
+  rtab:(b,e,x,y)=>{V.rtab=x==='med'?'med:'+y:x;swap('recc',recCard());$('#recc [aria-selected=true]')?.focus({focusVisible:kbd});},
+  rall:()=>{V.rall=!V.rall;swap('recc',recCard());},
+  /* the 7 / 30 days chips: every card follows them */
+  iper:(b,e,x)=>{V.iper=+x;swapView();requestAnimationFrame(placeSeg);},
+  /* "Add a focus for 4 PM" really adds the focus */
+  ifocus:(b,e,x)=>{const l=`A plan for ${hl(+x)}`,a=S.profile.companion.intentions;
+    if(a.includes(l)){toast('That focus is already on Today');return;}
+    if(a.length>=20){toast('Your focus list is full. Remove one in Settings first.');return;}
+    a.push(l);sparks(b,8);toast(`A focus idea for ${hl(+x)} is added on Today`);
+    saveInBackground(()=>{const i=a.indexOf(l);if(i>=0)a.splice(i,1);});},
+  /* tagging recent moments: saved on the moment, with Undo */
+  itag:(b,e,x,y)=>{const k=+x,row=$('#tr-'+k),d=V.ins,u=d.untagged[k],m=u&&S.slips.find(s=>s&&s.id===u.id);if(!m||u.done)return;const was=m.triggers;
+      b.classList.add('on');sparks(b,8);m.triggers=[y];d.trig.find(t=>t[0]===y)?d.trig.find(t=>t[0]===y)[1]++:d.trig.push([y,1]);u.done=true;
+      row.classList.add('donerow');$$('.chip',row).forEach(c=>c.disabled=true);
+      const redraw=()=>{V.ins=ins(V.iper);swap('trigc',trigCard(V.ins));};
+      toast('Tagged: '+y,()=>{m.triggers=was;redraw();saveInBackground(()=>{m.triggers=[y];redraw();});});
+      saveInBackground(()=>{m.triggers=was;redraw();});
+      if(d.untagged.every(m=>m.done)){setTimeout(()=>{if(V.ins!==d||!$('#trigc'))return;const n=V.ins=ins(V.iper);if(n.untagged.length){swap('trigc',trigCard(n));return;}
+        n.justTagged=true;$('#trigc').outerHTML=trigCard(n);n.justTagged=false;toast('Nice. Your first trigger pattern is ready.');},650);}},
+  /* the sleep chips: a sleep-only note on the day after the night */
+  isleep:(b,e,x)=>{const k=V.ins.askDay;if(!k)return;const was=S.journal[k]?JSON.parse(JSON.stringify(S.journal[k])):null;
+    const put=()=>{if(was)S.journal[k]=was;else delete S.journal[k];},set=()=>{S.journal[k]=Object.assign({},was||{},{sleepHours:SLEEPQ[+x][1],updatedAt:new Date().toISOString()});};
+    b.classList.add('on');sparks(b,10);set();saveInBackground(()=>{put();swapView();});
+    setTimeout(()=>{if(!$('#sleepc'))return;const d=V.ins=ins(V.iper);if(d.sleep>=5){d.justUnlocked=true;$('#sleepc').outerHTML=sleepCard(d);d.justUnlocked=false;sparks($('.reveal .badge',app),18);toast('Sleep pattern unlocked');}
+      else{$('#sleepc').outerHTML=sleepCard(d);toast('Sleep noted for '+dlab(addD(k,-1),{weekday:'long'})+' night',()=>{put();swapView();saveInBackground(()=>{set();swapView();});});}},380);},
+  /* the appointment summary: sections off by default, real text, a real download */
+  /* the weekly reflection: saved under the week's Monday, pre-filled when there is one; the arrows
+     go back to earlier weeks, never past this one (the live app's reflectionOffset). An old Sunday-dated one
+     opened from the Journal edits its own key. */
+  irefl:(b,e,x)=>{V.rwk=x&&dateKey(x)?x:weeklyReflectionKey();openSheet(reflHTML());},
+  irwk:(b,e,x)=>{V.rwk=addD(weeklyReflectionKey(pd(V.rwk)),+x*7);if(V.rwk>weeklyReflectionKey())V.rwk=weeklyReflectionKey();$('#sheetc').innerHTML=reflHTML();const f=$(`[data-act="irwk:${x}"]`);(f&&!f.disabled?f:$('[data-act="irwk:-1"]'))?.focus();},
+  ireflsave:b=>{const k=V.rwk||weeklyReflectionKey(),r=S.profile.companion.reflections,had=Object.prototype.hasOwnProperty.call(r,k),was=r[k],v=$('#refl').value.trim();
+    if(!v){toast('Add a few words first, or choose Not now.');return;}
+    const redo=()=>{if($('#jres'))$('#jres').innerHTML=jRes();};
+    r[k]=v;sparks(b,12);closeSheet();redo();toast(k===weeklyReflectionKey()?'Reflection saved for this week':`Reflection saved for ${reflWeek(k)}`);
+    saveInBackground(()=>{if(had)r[k]=was;else delete r[k];redo();});}
+});
+app.addEventListener('keydown',e=>{
+  if(e.target.closest?.('.itabs')&&/^Arrow(Left|Right)$/.test(e.key)){const t=$$('.itabs [role=tab]'),i=t.indexOf(e.target);if(i>=0){e.preventDefault();const n=t[(i+(e.key==='ArrowRight'?1:t.length-1))%t.length];n.click();n.focus();}}});
+</script>

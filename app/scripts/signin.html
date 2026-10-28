@@ -1,0 +1,203 @@
+<script>
+  // Google sign-in for the hosted app (app.reclaim.day). Only active when the build sets
+  // window.reclaimGoogle = { clientId } (tools/build-app.mjs); the local preview and the site's demo skip it.
+  // Google Identity Services token model: a popup gives a one-hour access token for drive.file, kept in
+  // memory only (a browser-only app gets no refresh token). Popups need a click, so every visit starts on a
+  // "Continue with Google" screen. From 50 minutes on, the next ordinary click renews the token; the popup
+  // usually closes by itself. If it still runs out, a save notice asks to sign in again and the waiting save goes on.
+  // A 'reclaim-signed-in' flag in localStorage (no account details) only switches the screen to "Welcome back".
+  window.reclaimSignIn = (() => {
+    const config = window.reclaimGoogle;
+    if (!config || !config.clientId) return null;
+    const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+    const RENEW_BEFORE = 10 * 60000;
+    const SIGNED_IN = 'reclaim-signed-in';
+    let client = null, token = null, expiresAt = 0, waiting = [], renewing = false;
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.onload = () => {
+      client = google.accounts.oauth2.initTokenClient({
+        client_id: config.clientId,
+        scope: SCOPE,
+        prompt: '',
+        callback: response => {
+          renewing = false;
+          if (response.error) return failed('Google sign-in did not finish. Try again when you’re ready.');
+          if (!google.accounts.oauth2.hasGrantedAllScopes(response, SCOPE)) {
+            return failed('Reclaim needs permission to keep its own files in your Google Drive. Tick that box to continue.');
+          }
+          token = response.access_token;
+          expiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000;
+          const done = waiting;
+          waiting = [];
+          done.forEach(resolve => resolve(token));
+          if (typeof saveNotice !== 'undefined') saveNotice.signin = false;
+          if (!window.reclaimStartup.ready) loadingScreen();
+          remember(true);
+          // A renewal on a click, or a sign-in from the save notice: pick up what another device saved meanwhile.
+          if (window.reclaimStartup.ready && typeof refreshAfterSignIn === 'function') refreshAfterSignIn();
+        },
+        error_callback: error => {
+          // A quiet renewal that didn't work isn't an error yet; the save notice asks once the token ends.
+          if (renewing) { renewing = false; return; }
+          failed(error && error.type === 'popup_closed'
+            ? 'The sign-in window was closed. Try again when you’re ready.'
+            : 'The sign-in window couldn’t open. Allow pop-ups for this site, then try again.');
+        }
+      });
+      const button = document.getElementById('signin-button');
+      if (button && !button.hidden) { button.disabled = false; button.focus(); }
+    };
+    script.onerror = () => failed('Google sign-in couldn’t load. Check your connection, then reload.');
+    document.head.appendChild(script);
+
+    // A one-line add-to-home-screen hint under the sign-in button, only in a browser tab (never once installed):
+    // Chrome and Edge get an Install button for their own prompt, iPhone and iPad (no prompt there) the Share steps.
+    // A tab in a browser that already has Reclaim installed (Chrome and Edge 140+ can tell, via the manifest's
+    // related_applications) says so instead: a page can't open the app itself, so it says where to find it.
+    let installPrompt = null, installedApp = false;
+    const installed = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    const apple = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installPrompt = event; installHint(); });
+    window.addEventListener('appinstalled', () => { installPrompt = null; installHint(); });
+    if (!installed() && navigator.getInstalledRelatedApps) {
+      navigator.getInstalledRelatedApps().then(apps => {
+        installedApp = apps.some(app => app.platform === 'webapp');
+        installHint();
+      }, () => { /* the hint just stays as it was */ });
+    }
+    function installHint() {
+      const hint = document.getElementById('signin-install');
+      const onScreen = document.getElementById('startup-screen').classList.contains('signin');
+      if (!hint) return;
+      if (!onScreen || installed() || (!installPrompt && !apple && !installedApp)) { hint.hidden = true; return; }
+      hint.textContent = '';
+      if (installedApp) {
+        const phone = navigator.userAgentData ? navigator.userAgentData.mobile : /Android|Mobi/.test(navigator.userAgent);
+        hint.append(phone
+          ? '📲 Reclaim is installed on this device. You can open it from your apps.'
+          : '💻 Reclaim is installed on this computer. Open it from your apps, or with the Open in Reclaim button at the right of the address bar.');
+      } else if (installPrompt) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Install Reclaim';
+        button.addEventListener('click', () => {
+          const prompt = installPrompt;
+          installPrompt = null;
+          prompt.prompt();
+          prompt.userChoice.finally(installHint);
+        });
+        hint.append('📲 ', button, ' to open it like any other app.');
+      } else {
+        const how = document.createElement('a');
+        how.href = 'https://reclaim.day/faq/#home-screen';
+        how.target = '_blank';
+        how.rel = 'noopener';
+        how.textContent = 'How';
+        const steps = document.createElement('b');
+        steps.textContent = 'Share › Add to Home Screen';
+        hint.append('📲 Tip: add Reclaim to your home screen with ', steps, '. ', how);
+      }
+      hint.hidden = false;
+    }
+
+    function remember(on) {
+      try {
+        if (on) window.localStorage.setItem(SIGNED_IN, '1');
+        else window.localStorage.removeItem(SIGNED_IN);
+      } catch (error) { /* only the greeting depends on it */ }
+    }
+
+    function returning() {
+      try { return window.localStorage.getItem(SIGNED_IN) === '1'; } catch (error) { return false; }
+    }
+
+    function failed(message) {
+      const note = document.getElementById('signin-note');
+      if (note) note.textContent = message;
+    }
+
+    // Must run inside a click so the browser allows the popup.
+    function request() {
+      renewing = false;
+      if (client) client.requestAccessToken();
+    }
+
+    // Any click in the last ten minutes of a token renews it, before a save has to wait.
+    document.addEventListener('click', () => {
+      if (client && token && !renewing && Date.now() > expiresAt - RENEW_BEFORE) {
+        renewing = true;
+        client.requestAccessToken();
+      }
+    }, true);
+
+    // The startup screen becomes the sign-in screen until the first token arrives.
+    function showScreen() {
+      window.clearTimeout(window.reclaimStartup.timer);
+      const screen = document.getElementById('startup-screen');
+      screen.classList.add('signin');
+      const back = returning();
+      document.getElementById('startup-title').textContent = back ? 'Welcome back' : 'Sign in to Reclaim';
+      document.getElementById('startup-message').textContent = back
+        ? 'Continue with Google to open your Reclaim folder in Drive.'
+        : 'Reclaim keeps your data in a Reclaim folder in your own Google Drive. It can only see the files it made there, nothing else in your Drive.';
+      document.getElementById('signin-terms').hidden = false;
+      installHint();
+      const button = document.getElementById('signin-button');
+      button.hidden = false;
+      button.disabled = !client;
+      button.onclick = () => { failed(''); request(); };
+      button.focus();
+    }
+
+    function loadingScreen() {
+      const screen = document.getElementById('startup-screen');
+      if (!screen.classList.contains('signin')) return;
+      screen.classList.remove('signin');
+      document.getElementById('signin-button').hidden = true;
+      document.getElementById('signin-terms').hidden = true;
+      installHint();
+      document.getElementById('startup-title').textContent = 'Getting Reclaim ready';
+      document.getElementById('startup-message').textContent = 'Loading your saved moments and preferences…';
+    }
+
+    return {
+      // Resolves once signed in; start.html waits for it before loading.
+      start() {
+        showScreen();
+        return new Promise(resolve => waiting.push(resolve));
+      },
+      request,
+      getToken() {
+        if (token && Date.now() < expiresAt - 60000) return Promise.resolve(token);
+        token = null;
+        // While the app is open the save notice asks; before that, the start screen does.
+        if (!window.reclaimStartup.ready) showScreen();
+        else if (typeof saveNotice !== 'undefined') saveNotice.signin = true;
+        return new Promise(resolve => waiting.push(resolve));
+      },
+      // Drive turned the token down (401), so the next getToken asks to sign in again.
+      expire() {
+        token = null;
+        expiresAt = 0;
+      },
+      // Ends Google's grant for Reclaim, so the next visit asks again from the start.
+      // ui-settings.html first waits for pending saves and asks if any changes would be lost.
+      signOut() {
+        remember(false);
+        if (typeof allowLeaving === 'function') allowLeaving();
+        const done = () => window.location.reload();
+        if (token && window.google && google.accounts) google.accounts.oauth2.revoke(token, done);
+        else done();
+      }
+    };
+  })();
+  if (window.reclaimSignIn) {
+    window.reclaimDriveConfig = {
+      getToken: () => window.reclaimSignIn.getToken(),
+      onUnauthorized: () => window.reclaimSignIn.expire()
+    };
+  }
+</script>

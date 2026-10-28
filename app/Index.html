@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FFF4D9">
+  <title>Reclaim</title>
+  <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <style>
+    /* self-hosted latin subsets (files in app/fonts, copied by the builds); other scripts fall back to system fonts */
+    @font-face { font-family:'Inter'; font-style:normal; font-weight:400 800; font-display:swap; src:url(/fonts/inter-latin.woff2) format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+    @font-face { font-family:'Bricolage Grotesque'; font-style:normal; font-weight:400 800; font-stretch:100%; font-display:swap; src:url(/fonts/bricolage-grotesque-latin.woff2) format('woff2'); unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD; }
+    html:not([data-app-ready]) #app { display:none !important; }
+    html { background:var(--bg,#FFF4D9); }
+    #startup-screen { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px; background:var(--bg,#FFF4D9); color:var(--ink,#0A1F5C); font:16px/1.6 'Inter',system-ui,sans-serif; text-align:center; }
+    #startup-screen[hidden] { display:none; }
+    #startup-screen .startup-content { width:min(26rem,100%); }
+    /* the mockup's logo: leaf mark and lowercase name */
+    #startup-screen .startup-brand { display:inline-flex; align-items:center; gap:10px; margin-bottom:20px; font:800 21px/1 'Bricolage Grotesque','Inter',system-ui,sans-serif; letter-spacing:-.03em; }
+    #startup-screen .startup-mark { display:grid; width:34px; height:34px; place-items:center; border-radius:11px; background:var(--primary,#2A51B8); color:var(--on-primary,#FFE9A8); animation:startup-breathe 2.4s ease-in-out infinite; }
+    #startup-screen .startup-mark svg { width:20px; height:20px; }
+    #startup-screen h1 { margin:0 0 4px; font:700 22px/1.3 'Bricolage Grotesque','Inter',system-ui,sans-serif; }
+    #startup-screen p { margin:0; color:var(--muted,#46507A); font-size:15px; }
+    #startup-screen .startup-skel { display:grid; gap:10px; margin-top:24px; }
+    #startup-screen .startup-skel i { display:block; height:64px; border-radius:18px; background:linear-gradient(90deg,var(--line,#F0DCA6) 0 30%,var(--card,#fff) 50%,var(--line,#F0DCA6) 70% 100%) 0 0 / 300% 100%; opacity:.7; animation:startup-shimmer 1.4s linear infinite; }
+    #startup-screen .startup-skel i:first-child { height:96px; }
+    #startup-screen .startup-skel i:last-child { width:72%; height:44px; }
+    #startup-screen.failed .startup-skel { display:none; }
+    #startup-screen.failed .startup-mark { animation:none; }
+    #startup-retry { margin-top:20px; min-height:44px; padding:10px 24px; border:0; border-radius:14px; background:var(--primary,#174A3B); color:var(--on-primary,#fff); font:600 16px/1.5 'Inter',system-ui,sans-serif; cursor:pointer; }
+    #startup-retry:focus-visible { outline:3px solid var(--primary,#174A3B); outline-offset:4px; }
+    #startup-retry[hidden], #signin-button[hidden] { display:none; }
+    #startup-screen.signin .startup-skel { display:none; }
+    #startup-screen.signin .startup-mark { animation:none; }
+    #signin-button { margin-top:24px; min-height:44px; padding:10px 24px; border:0; border-radius:14px; background:var(--primary,#174A3B); color:var(--on-primary,#fff); font:600 16px/1.5 'Inter',system-ui,sans-serif; cursor:pointer; }
+    #signin-button:disabled { opacity:.6; cursor:progress; }
+    #signin-button:focus-visible { outline:3px solid var(--primary,#174A3B); outline-offset:4px; }
+    #signin-note { margin-top:12px !important; }
+    #signin-note:empty { display:none; }
+    #startup-screen #signin-terms { margin-top:20px; font-size:13px; }
+    #signin-terms[hidden] { display:none; }
+    #signin-terms a { color:inherit; text-decoration:underline; text-underline-offset:2px; }
+    #signin-terms a:focus-visible { outline:3px solid var(--primary,#174A3B); outline-offset:2px; border-radius:2px; }
+    #startup-screen #signin-install { margin-top:14px; padding-top:14px; border-top:1px solid var(--line,#F0DCA6); font-size:13px; }
+    #signin-install[hidden] { display:none; }
+    #signin-install a, #signin-install button { color:inherit; font:inherit; font-weight:700; text-decoration:underline; text-underline-offset:2px; }
+    #signin-install button { min-height:44px; padding:0; border:0; background:none; cursor:pointer; }
+    #signin-install b { font-weight:600; white-space:nowrap; }
+    #signin-install a:focus-visible, #signin-install button:focus-visible { outline:3px solid var(--primary,#174A3B); outline-offset:2px; border-radius:2px; }
+    @keyframes startup-shimmer { to { background-position:-150% 0; } }
+    @keyframes startup-breathe { 50% { transform:scale(1.06); } }
+    @media (prefers-reduced-motion:reduce) { #startup-screen .startup-skel i, #startup-screen .startup-mark { animation:none; } }
+  </style>
+  <script>
+    window.reclaimStartup = {
+      ready: false,
+      failed: false,
+      themes: ['zine', 'pine', 'ocean', 'graphite', 'night'],
+      dayThemes: ['zine', 'pine', 'ocean', 'graphite'],
+      darkThemes: ['night'],
+      isDark(theme) { return this.darkThemes.includes(theme); },
+      legacyThemes: {
+        'notion-paper': 'pine', 'cobalt-chalk': 'ocean', 'garden-notes': 'pine', 'charcoal-pastels': 'graphite'
+      },
+      // Nothing cached (a new user or a new browser): the startup screen uses Zine, the new users' look.
+      choice: 'zine',
+      normalizeTheme(theme) {
+        if (theme === null) return 'zine';
+        const mapped = this.legacyThemes[theme] || theme;
+        return this.themes.includes(mapped) ? mapped : 'pine';
+      },
+      // `autoLight` only converts an old cached "auto" (Auto was removed 2026-10-25) into the day look it used.
+      applyTheme(theme, remember = false, autoLight) {
+        const resolved = this.normalizeTheme(theme === 'auto' ? (this.dayThemes.includes(autoLight) ? autoLight : 'pine') : theme);
+        this.choice = resolved;
+        const root = document.documentElement;
+        root.dataset.theme = resolved;
+        root.toggleAttribute('data-dark', this.isDark(resolved));
+        const background = getComputedStyle(root).getPropertyValue('--bg').trim();
+        if (background) document.querySelector('meta[name="theme-color"]').setAttribute('content', background);
+        if (remember) {
+          try {
+            window.localStorage.setItem('reclaim-theme', resolved);
+            window.localStorage.removeItem('reclaim-auto-light');
+          } catch (error) {
+            console.warn('Reclaim could not remember the appearance for the next refresh:', error);
+          }
+        }
+      },
+      fail(error) {
+        this.failed = true;
+        const screen = document.getElementById('startup-screen');
+        if (screen) screen.classList.add('failed');
+        console.error('Reclaim startup failed:', error);
+        const title = document.getElementById('startup-title');
+        if (!title) return;
+        title.textContent = 'Reclaim could not finish loading';
+        document.getElementById('startup-message').textContent =
+          'Your saved data has not been changed. Check your connection, then try again.';
+        const retry = document.getElementById('startup-retry');
+        retry.onclick = () => window.location.reload();
+        retry.hidden = false;
+      },
+      finish() {
+        this.ready = true;
+        window.clearTimeout(this.timer);
+        document.documentElement.setAttribute('data-app-ready', '');
+        document.getElementById('startup-screen').hidden = true;
+      }
+    };
+    try {
+      window.reclaimStartup.applyTheme(
+        window.localStorage.getItem('reclaim-theme'),
+        false,
+        window.localStorage.getItem('reclaim-auto-light')
+      );
+    } catch (error) {
+      console.warn('Reclaim could not read the appearance preference:', error);
+      window.reclaimStartup.applyTheme('zine');
+    }
+    window.addEventListener('error', event => {
+      if (!window.reclaimStartup.ready && event.error) window.reclaimStartup.fail(event.error);
+    });
+    window.reclaimStartup.timer = window.setTimeout(() => {
+      if (!window.reclaimStartup.ready && !window.reclaimStartup.failed) {
+        document.getElementById('startup-title').textContent = 'Still getting Reclaim ready';
+        document.getElementById('startup-message').textContent =
+          'Loading is taking longer than usual, often because of a slow connection. Please keep this page open.';
+      }
+    }, 20000);
+  </script>
+  <?!= include('styles/mockup'); ?>
+  <?!= include('styles/app'); ?>
+  <script>window.reclaimStartup.applyTheme(window.reclaimStartup.choice);</script>
+</head>
+<body>
+  <section id="startup-screen" aria-labelledby="startup-title">
+    <div class="startup-content">
+      <div class="startup-brand" aria-hidden="true"><span class="startup-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.2-6.1C9.5 14.4 12 13 13 12"/></svg></span>reclaim</div>
+      <h1 id="startup-title">Getting Reclaim ready</h1>
+      <p id="startup-message" role="status">Loading your saved moments and preferences…</p>
+      <div class="startup-skel" aria-hidden="true"><i></i><i></i><i></i></div>
+      <button id="startup-retry" type="button" hidden>Try again</button>
+      <button id="signin-button" type="button" hidden>Continue with Google</button>
+      <p id="signin-note" role="alert"></p>
+      <p id="signin-terms" hidden>By continuing you agree to the <a href="https://reclaim.day/terms/" target="_blank" rel="noopener">Terms</a>. The <a href="https://reclaim.day/privacy/" target="_blank" rel="noopener">Privacy policy</a> explains how your data is kept.</p>
+      <p id="signin-install" hidden></p>
+      <noscript><p>Reclaim needs JavaScript to load. Enable it in your browser, then refresh.</p></noscript>
+    </div>
+  </section>
+  <div class="app" id="app"></div>
+  <!-- The build inlines each include below into this page, in this order: the data layer first, then model (which
+       reads it for the screens), then the ui-* screens, then start. A new script file needs its own include line here. -->
+  <!-- Load order matters: state and core hold the data, ui the shared view code, start renders. -->
+  <?!= include('scripts/state'); ?>
+  <?!= include('scripts/storage'); ?>
+  <?!= include('scripts/storage-drive'); ?>
+  <?!= include('scripts/signin'); ?>
+  <?!= include('scripts/core'); ?>
+  <?!= include('scripts/ui'); ?>
+  <?!= include('scripts/feedback'); ?>
+  <?!= include('scripts/habits'); ?>
+  <?!= include('scripts/meds'); ?>
+  <?!= include('scripts/today'); ?>
+  <?!= include('scripts/checkin'); ?>
+  <?!= include('scripts/journal'); ?>
+  <?!= include('scripts/insights'); ?>
+  <?!= include('scripts/appointment'); ?>
+  <?!= include('scripts/settings'); ?>
+  <?!= include('scripts/settings-meds'); ?>
+  <?!= include('scripts/backup'); ?>
+  <?!= include('scripts/helplines'); ?>
+  <?!= include('scripts/model'); ?>
+  <?!= include('scripts/ui-today'); ?>
+  <?!= include('scripts/ui-tracking'); ?>
+  <?!= include('scripts/ui-journal'); ?>
+  <?!= include('scripts/ui-quick'); ?>
+  <?!= include('scripts/ui-insights'); ?>
+  <?!= include('scripts/ui-appt'); ?>
+  <?!= include('scripts/ui-settings'); ?>
+  <?!= include('scripts/ui-setup'); ?>
+  <?!= include('scripts/start'); ?>
+</body>
+</html>

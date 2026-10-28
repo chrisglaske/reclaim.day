@@ -1,0 +1,249 @@
+<script>
+/* ---------- Guided setup: the mockup's onboarding on real data ----------
+   V.ob is the mockup's S.ob: view state plus a draft of each habit plan (V.ob.track). Profile, why, focus,
+   coping, theme and medication change S directly; habit plans are written from the draft when a step is
+   left, starting each time from the plans as they were when setup opened (V.ob.base), so switching
+   Quit ↔ Reduce back and forth adds no plan entries (bug 7). Each step left saves in the background. */
+const FOCI=[['walk','Take a walk'],['water','Drink water'],['call','Call someone'],['stretch','Stretch'],['meal','Eat a proper meal'],['outside','Get some daylight']];
+const COPING=[['breathe','Slow breathing'],['outside','Step outside'],['text','Text someone'],['water','Cold water'],['wait','Wait 10 minutes'],['music','Music']];
+const clone=o=>JSON.parse(JSON.stringify(o));
+/* the draft, from the saved data; called before V.screen is 'onboard' so track() still reads S */
+function obFresh(){const t={},orig={};
+  HK.forEach(k=>{const v=VK[k],r=S.vices[v],c=track(k),u=unitOf(k),has=!!(viceAt(v)||viceQuitAhead(v));
+    const w=!!(r.usual&&r.usual.per==='week'),d={on:!!r.enabled,mode:has?c.mode:'quit',limit:has&&c.mode==='reduce'?c.limit:(u.def||Math.max(1,Math.round(+r.perDay)||1)),how:has&&c.mode==='reduce'?c.how:'day',days:has&&c.mode==='reduce'?c.days.slice():[],start:has?c.start:localToday(),ease:!!(has&&c.ease),usualPer:w?'week':'day',from:w?Math.round(r.usual.amount):+r.perDay||(c.limit||1)+2,perDay:w?String(r.usual.amount):r.perDay?String(r.perDay):'',cost:r.costPerDay?(w?+r.costPerDay*7:+r.costPerDay).toFixed(2):'',unit:u.v,oo:false};
+    t[k]=d;orig[k]=Object.assign({has},d);});
+  return {step:0,dir:'r',cheer:'',back:!!S.onboarded&&setupDue(),name:obName(),track:t,orig,base:clone(S.vices),medsOn:medicationTrackingEnabled(),nicLast:''};}
+const obWas=()=>clone({profile:S.profile,vices:S.vices,onboarded:S.onboarded});
+const trackDesc=(t,k)=>{if(!t.on)return 'Not tracking';if(t.mode==='track')return 'Just tracking';if(t.mode==='reduce')return 'Reduce · up to '+t.limit+(k?' '+uw(k,t.limit):'')+' '+limPhrase(t);const n=dBetween(localToday(),t.start);return n>0?`Quit day ${sdate(t.start)}${t.ease?' · cutting down until then':''}`:'Quit journey';};
+/* the steps adapt to what someone picks: one setup screen per chosen thing */
+const OBS=()=>{const t=V.ob.track;return [['start','Start here'],['profile','About you'],['why','Your why'],['track','What to track'],...HK.filter(k=>t[k].on).flatMap(k=>[[k,HB[k].n+' plan',1],[k+'2',HB[k].n+' details',1,1],...(t[k].mode==='quit'&&t[k].start>localToday()?[[k+'3',HB[k].n+' ease-in',1,1]]:[])]),...(V.ob.medsOn?[['meds','Medication',1]]:[]),['ideas','Focus & coping'],['theme','Theme'],['review','Review']];};
+const obKey=()=>OBS()[V.ob.step]?.[0];
+const LATER=`<div class="later">${I('bulb')}<div><b>Not now is completely fine.</b> Anything you skip can be turned on later in Settings, or you can walk through this setup again from there.</div></div>`;
+const nicMode=()=>{const t=V.ob.track;return t.smoke.on&&t.vape.on?'both':t.smoke.on?'smoke':t.vape.on?'vape':'none';};
+function obTrack(){
+  const o=V.ob,t=o.track,picked=OBS().filter(s=>s[2]),nm=nicMode(),nic=nm!=='none';
+  const tile=([k,i,c,n,d,on])=>`<button class="ptile ${on?'on':''}" role="checkbox" aria-checked="${on}" data-act="opick:${k}"><span class="itile ${c}">${I(i)}</span><span class="pt"><b>${n}</b><small>${d}</small></span><span class="tick">${I('check')}</span></button>`;
+  const nicq=nic?`<div class="nicq" role="radiogroup" aria-labelledby="nicql"><span class="lbl" id="nicql">Which do you use?</span><div class="nicopts">${[['smoke','🚬','Smoke'],['vape','💨','Vape'],['both','🚬💨','Both']].map(([v,e,l])=>`<button class="nico ${nm===v?'on':''}" role="radio" aria-checked="${nm===v}" data-act="onic:${v}"><span class="e" aria-hidden="true">${e}</span>${l}</button>`).join('')}</div><p class="help">${nm==='both'?'Each gets its own plan, so you could quit one and cut down the other.':'Use both? Pick Both and each gets its own plan.'}</p></div>`:'';
+  return `<div class="obq"><h1>What would you like support with?</h1><p>Pick any that fit. Each one gets its own short setup next.</p></div>
+  <div class="pick">${tile(['nic',nm==='vape'?'💨':'🚬','mint','Smoking or vaping','Cigarettes, a vape, or both',nic])}${nicq}${tile(['drink','🍷','sky','Drinking','Quit or cut down, at your own pace',t.drink.on])}${tile(['meds','pill','peach','Medication','Doses and gentle reminders',o.medsOn])}</div>
+  <div class="nextup" aria-live="polite">${picked.length?`${I('chev')}<span>Next: ${picked.map(s=>s[1]).join(' → ')}</span>`:`${I('heart')}<span>Nothing picked? That’s okay. Check-ins, your journal and support still work for you.</span>`}</div>
+  ${LATER}`;
+}
+const setNicOn=v=>{const t=V.ob.track;t.smoke.on=v==='smoke'||v==='both';t.vape.on=v==='vape'||v==='both';};
+function obPlan(k,part){
+  const t=V.ob.track[k],h=HB[k],u=unitOf(k).many;
+  if(part===1)return `<div class="obq"><div class="obicon ${h.tint}">${I(hemo(k))}</div><h1>Your ${h.v} plan</h1><p>Choose what feels right for now. You can change it anytime.</p></div>
+  ${k==='vape'&&V.ob.track.smoke.on?`<div class="later">${I('bulb')}<div><b>Vaping has its own plan.</b> Some people quit cigarettes first and cut down vaping later.</div></div>`:''}
+  ${hunitRow(k,1)}
+  <div class="plans" role="radiogroup" aria-label="${h.n} plan">${[['reduce','target','butter','Reduce','Set a gentle range, a day, some days or a week. Going over is just information, never a failure.'],['quit','flag','peach','Quit','Pick a quit day, today or later. Ease in first if you like, then count the days.'],['track','wave','sky','Just track','No limit. See what you log, with no over or under.']].map(([v,i,c,n,d])=>`<button class="plan ${t.mode===v?'on':''}" role="radio" aria-checked="${t.mode===v}" data-act="oplan:${k}:${v}"><span class="tick">${I('check')}</span><span class="itile ${c}">${I(i)}</span><b>${n}</b><span>${d}</span></button>`).join('')}</div>
+  ${k!=='drink'?'':`<div class="safe">${I('heart')}<span>If you drink heavily or have withdrawal symptoms, stopping suddenly can be medically risky. A healthcare professional can help you plan safely before starting a Quit plan.</span></div>`}`;
+  if(part===3){const n=dBetween(localToday(),t.start);return `<div class="obq"><div class="obicon ${h.tint}">${I(hemo(k))}</div><h1>Ease in first?</h1><p>Your quit day is ${n} day${n>1?'s':''} away, on ${dlab(t.start,{weekday:'long',month:'long',day:'numeric'})}.</p></div>
+  ${quitBlock(k,'ease')}`;}
+  return `<div class="obq"><div class="obicon ${h.tint}">${I(hemo(k))}</div><h1>${t.mode==='reduce'?'Your range':t.mode==='track'?'Just tracking':'Your quit day'}</h1><p>${t.mode==='reduce'?`How often it applies, how many ${u} feels right, and when the plan starts.`:t.mode==='track'?'No limit and no over or under. Add your usual amount if you like, so progress and money kept have a starting point.':'Pick a day, today or later. Ease in first if you like.'}</p></div>
+  ${t.mode==='reduce'?cadenceBlock(k,t,1)+`<div class="obcard center"><span class="lbl" id="liml-${k}">${limLabel(k,t)}</span><div class="bstep"><button data-act="lim:${k}:-1" aria-label="Fewer">−</button><span class="bigval" id="limv-${k}">${t.limit}</span><button data-act="lim:${k}:1" aria-label="More">+</button></div><p class="help">A range, not a rule. You can adjust it as you go.</p></div>`:''}
+  ${t.mode==='quit'?quitBlock(k,'date'):t.mode==='track'?'':`<div class="obcard"><label class="lbl" for="ost-${k}">When does this plan start?</label><input type="date" class="field" id="ost-${k}" value="${t.start}" max="${localToday()}" data-ob="${k}.start" style="max-width:240px"><p class="help">Started earlier? Choose that date and your days count from there.</p></div>`}
+  <details class="obopt" ${t.oo?'open':''} data-obopt="${k}"><summary><span>Optional details <span class="muted" style="font-weight:500">· usual amount and spend</span></span>${I('chev')}</summary>
+    ${usualRow(k,t,null,1)}
+    <p class="help" style="margin-top:10px">These help estimate progress and money kept in pocket. You can add them later.</p></details>`;
+}
+/* the medication form: the mockup's setup card on Settings' draft (V.md) and saveMedication, with the backfill offer */
+function medEditor(){
+  const d=V.md,n=FREQ.find(f=>f[0]===d.freq)[2];
+  return `<div class="obcard medit" id="medit"><b style="font-size:17px">${!d.id?'Add a medication':'Edit medication'}</b>
+    <div><label class="lbl" for="mdn">Name</label><input class="field" id="mdn" data-md="name" maxlength="40" value="${esc(d.name)}" placeholder="Type a name, or pick one below" autocomplete="off" list="medcat">${medSuggest()}
+      ${!d.id?`<div class="chips" style="margin-top:10px">${CATALOG.filter(c=>!medsList().some(m=>m.name===c)).map(c=>`<button class="chip sm ${d.name===c?'on':''}" data-act="ocat:${esc(c)}">${esc(c)}</button>`).join('')}</div>`:''}</div>
+    <div><label class="lbl" for="mdd">Dose from your label</label><div class="dose2"><input class="field" id="mdd" data-md="dose" inputmode="decimal" value="${esc(d.dose)}" placeholder="e.g. 150"><select class="field" data-md="unit" aria-label="Unit">${MED_UNITS.map(u=>`<option ${u===d.unit?'selected':''}>${u}</option>`).join('')}</select></div></div>
+    <div><span class="lbl">How often, from your label?</span><div class="chips">${FREQ.map(([v,l,,sl])=>`<button class="chip ${d.freq===v?'on':''}" data-act="ofreq:${v}">${ck()}${sl||l}</button>`).join('')}</div></div>
+    ${(()=>{const sd=`<div><label class="lbl" for="mds">Schedule starts</label><input type="date" class="field" id="mds" data-md="start" value="${d.start}" style="max-width:240px"></div>`;
+      if(n)return doseTimes(d,n,sd);
+      return `<div class="ffl"><div><label class="lbl" for="mdl">Daily limit ${OPT}</label><input class="field" id="mdl" type="number" min="1" data-md="limit" value="${esc(d.limit)}"></div>${sd}</div><p class="help" style="margin-top:-4px">If a note would go above the limit, the app checks with you first.</p>`;})()}
+    ${mbackHTML()}
+    <div class="exrow" style="margin:0"><button class="btn ghost" data-act="omedcancel">Cancel</button><button class="btn primary" data-act="omedsave">Save medication</button></div></div>`;
+}
+function obMeds(){
+  const ms=medsList();
+  return `<div class="obq"><div class="obicon peach">${I('pill')}</div><h1>Your medication</h1><p>Add what you take, using the details on your label. Scheduled doses show up on Today when they’re due.</p></div>
+  ${ms.length?`<div class="medlist">${ms.map(m=>V.md?.id===m.id?'':`<div class="medcard"><span class="itile" style="background:rgba(255,255,255,.65)">${I('pill')}</span><div><b>${medName(m)}</b><div style="font-size:13px;opacity:.75">${medSub(m)}</div></div><button class="btn sm x" data-act="omededit:${esc(m.id)}">Edit</button><button class="btn sm x" data-act="omedrm:${esc(m.id)}" aria-label="Remove ${esc(m.name)}">${I('x')}</button></div>`).join('')}</div>`:''}
+  ${V.md?medEditor():`<button class="addbig" data-act="omedadd">${I('plus')}<span>${ms.length?'Add another medication':'Add a medication'}</span></button>`}
+  <p class="help" style="text-align:center">${ms.length?'Personal notes and changes can be made later in Settings. This doesn’t change your prescriber’s instructions.':'Not ready to add one? You can go back and untick Medication, or add it later in Settings.'}</p>`;
+}
+const focOn=k=>foc().includes(FOCI.find(x=>x[0]===k)[1]),copeOn=k=>cope().includes(COPING.find(x=>x[0]===k)[1]);
+function obStep(){
+  const o=V.ob,g=goalInfo();
+  switch(obKey()){
+    case 'start':if(o.back)return obBack(o);return `<div class="welcome"><div class="breathe"><div class="seed">${I('leaf')}</div></div><div class="brcap"><i></i>Take one slow breath. There’s no rush here.</div><div class="obq"><h1>Welcome. Let’s begin gently.</h1><p>Reclaim is a calm place to notice moments, follow the plans that matter to you, and make room for the next small step.</p></div>
+      <div class="points">${[['leaf','mint','Choose what to track','Smoking, vaping, drinking, medication, or none of them.'],['book','lilac','Move at your own pace','No required target or perfect day.'],['sliders','butter','Change anything later','Takes about 2 minutes. Everything stays editable.']].map(([i,t,b,p])=>`<div class="point"><span class="itile ${t}">${I(i)}</span><div><b>${b}</b><p>${p}</p></div></div>`).join('')}</div>${obRestHTML()}</div>`;
+    case 'profile':return `<div class="obq"><h1>First, what should we call you?</h1><p>A first name or nickname is perfect.</p></div>
+      <div class="obcard"><label class="lbl" for="obname">Your name</label><input class="field" id="obname" maxlength="40" value="${esc(o.name)}" placeholder="e.g. Sam" autocomplete="given-name"><div class="obhello" id="obhello" aria-live="polite">${o.name?`Nice to meet you, ${esc(o.name)} 👋`:''}</div></div>
+      <div class="obcard"><label class="lbl" for="obcountry">Where do you need support? <span class="muted" style="font-weight:500">· optional</span></label><select class="field" id="obcountry">${countryOpts(country())}</select>${WHYCOUNTRY}</div>
+      <div class="obcard"><label class="lbl" for="obcur">Currency</label><select class="field" id="obcur">${curOpts()}</select><p class="help" style="margin-top:8px">Used for spend and money-kept estimates.</p></div>`;
+    case 'why':return `<div class="obq"><div class="obicon peach">${I('heart')}</div><h1>What’s your why?</h1><p>Your reasons show up in “Need support?”, for the harder moments. Skip anything you like.</p></div>
+      <div class="obcard"><label class="lbl" for="obwhy">Your reasons <span class="muted" style="font-weight:500">· one per line, up to 15</span></label><textarea class="field" id="obwhy" style="min-height:110px" placeholder="e.g. Be there for slow Saturday mornings">${esc(why().join('\n'))}</textarea></div>
+      <div class="obcard"><span class="lbl">Saving toward something? <span class="muted" style="font-weight:500">· optional</span></span><div class="ffl"><div><label class="lbl muted" for="obgoal">Goal</label><input class="field" id="obgoal" maxlength="60" value="${esc(g.name)}" placeholder="e.g. A weekend away"></div><div><label class="lbl muted" for="obamt">Amount (${curSym()})</label><input class="field" id="obamt" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(g.amt)}" placeholder="e.g. 400"></div></div><p class="help" style="margin-top:8px">Money kept from your plans counts toward it in Insights.</p></div>`;
+    case 'track':return obTrack();
+    case 'smoke':case 'vape':case 'drink':return obPlan(obKey(),1);
+    case 'smoke2':case 'vape2':case 'drink2':return obPlan(obKey().slice(0,-1),2);
+    case 'smoke3':case 'vape3':case 'drink3':return obPlan(obKey().slice(0,-1),3);
+    case 'meds':return obMeds();
+    case 'ideas':return `<div class="obq"><div class="obicon butter">${I('spark')}</div><h1>Small things that help</h1><p>Gentle options, never tasks. Pick a few that feel like you.</p></div>
+      <div class="obcard"><span class="lbl">Daily focus ideas <span class="muted" style="font-weight:500">· shown on Today</span></span><div class="chips">${FOCI.map(([k,l])=>`<button class="chip ${focOn(k)?'on':''}" data-act="ofocus:${k}">${ck()}${l}</button>`).join('')}</div></div>
+      <div class="obcard"><span class="lbl">When a craving hits, what helps? <span class="muted" style="font-weight:500">· shown in “Need support?”</span></span><div class="chips">${COPING.map(([k,l])=>`<button class="chip ${copeOn(k)?'on':''}" data-act="ocope:${k}">${ck()}${l}</button>`).join('')}</div></div>
+      <p class="help" style="text-align:center">You can add your own ideas later in Settings.</p>`;
+    case 'theme':return `<div class="obq"><div class="obicon lilac">${I('palette')}</div><h1>Pick a look</h1><p>It applies right away, so try them on.</p></div>
+      ${swatches()}`;
+    case 'review':{const t=o.track,NT='Not tracking · you can turn this on in Settings anytime',since=k=>t[k].mode==='quit'&&dBetween(localToday(),t[k].start)>0?'':' · from '+(t[k].start===localToday()?'today':dlab(t[k].start,{month:'short',day:'numeric'})),ms=medsList(),c=country();
+      const rows=[['user','lilac','About you',`${esc(o.name)||'—'} · ${c&&STATE_SUPPORT_COUNTRIES[c]?'helplines for '+STATE_SUPPORT_COUNTRIES[c]:'no country chosen'} · ${cur()}`,'profile'],
+        ...(t.smoke.on||t.vape.on?['smoke','vape'].filter(k=>t[k].on).map(k=>[hemo(k),HB[k].tint,HB[k].n,trackDesc(t[k],k)+since(k),k]):[['🚬','mint','Smoking or vaping',NT,'track',1]]),
+        [hemo('drink'),'sky','Drinking',t.drink.on?trackDesc(t.drink)+since('drink'):NT,t.drink.on?'drink':'track',!t.drink.on],
+        ['pill','peach','Medication',o.medsOn?(ms.map(m=>`${esc(m.name)} · ${medSub(m)}`).join('<br>')||'None added yet'):NT,o.medsOn?'meds':'track',!o.medsOn],
+        ['spark','butter','Focus & coping',`${foc().length} focus idea${foc().length===1?'':'s'} · ${cope().length} coping idea${cope().length===1?'':'s'}`,'ideas'],
+        ['palette','sky','Theme',THEMES.find(x=>x[0]===theme())[1],'theme']];
+      rows.splice(1,0,['heart','peach','Your why',`${why().length} reason${why().length===1?'':'s'}${g.name?` · saving toward ${esc(g.name)}${g.amt?' ('+curSym()+esc(g.amt)+')':''}`:''}`,'why']);
+      return `<div class="obq"><h1>Looks good${o.name?', '+esc(o.name):''}</h1><p>Here’s your setup. Tap Edit to change anything.</p></div>
+      <section class="card">${rows.map(([i,c,k,v,s,off])=>`<div class="rv ${off?'off':''}"><span class="itile ${off?'':c}" ${off?'style="background:var(--soft);color:var(--muted)"':''}>${I(i)}</span><div><div class="k">${k}</div><div class="muted">${v}</div></div><button class="link" data-act="ostep:${s}">${off?'Turn on':'Edit'}</button></div>`).join('')}</section>
+      <p class="help" style="text-align:center">Everything here can be changed in Settings, and you can walk through this setup again from there.</p>`;}
+  }
+}
+/* a sprout that grows one leaf per finished step */
+function sprout(n,mode,tot=OBS().length){
+  n=Math.min(n,tot);const gap=Math.min(13,104/tot),top=126-n*gap;let lv='';
+  for(let i=0;i<n;i++){const y=122-i*gap,l=i%2===0,an=mode==='all'?`new" style="animation-delay:${.25+i*.12}s`:mode==='new'&&i===n-1?'new':'';
+    lv+=`<path class="lf ${l?'l':'r'} ${an}" d="${l?`M60 ${y}C48 ${y-1} 39 ${y-9} 33 ${y-19}C46 ${y-21} 56 ${y-12} 60 ${y}`:`M60 ${y}C72 ${y-1} 81 ${y-9} 87 ${y-19}C74 ${y-21} 64 ${y-12} 60 ${y}`}Z" fill="currentColor"/>`;}
+  return `<svg class="sprout" viewBox="0 0 120 160" aria-hidden="true"><path d="M60 134V${top}" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>${lv}<path d="M36 134h48l-5 20a4 4 0 0 1-4 3H45a4 4 0 0 1-4-3z" fill="var(--accent)"/></svg>`;
+}
+const CHEER={start:()=>'Lovely. One small step at a time.',why:()=>'Those are worth coming back to.',profile:o=>o.name?`Nice to meet you, ${esc(o.name)}.`:'Nice to meet you.',
+  track:o=>{const n=HK.filter(k=>o.track[k].on).length+(o.medsOn?1:0);return n>=3?'Great. We’ll set each one up in turn.':n?'Got it. Anything else can be added later in Settings.':'That’s fine. You can add tracking later in Settings.';},
+  smoke:()=>'Got it.',vape:()=>'Got it.',drink:()=>'Got it.',smoke3:()=>'Good plan. You can adjust it anytime.',vape3:()=>'Good plan. Every step counts.',drink3:()=>'Good plan. Go gently with yourself.',smoke2:()=>'Good plan. You can adjust it anytime.',vape2:()=>'Good plan. Every step counts.',drink2:()=>'Good plan. Go gently with yourself.',meds:()=>medsList().length?'Doses will appear when they’re due.':'No problem. You can add medication later in Settings.',
+  ideas:()=>'Those will be close by when you need them.',theme:()=>'Looking good. Almost there.'};
+const minsLeft=s=>{const r=OBS().length-1-s,m=Math.ceil(r*13/60);return r<=0?'Last step':m<=1?'About a minute left':`About ${m} minutes left`;};
+/* the open step's fields into S; false (with a message) keeps the step open */
+function obCapture(k){const o=V.ob,p=S.profile;
+  if(k==='profile'){o.name=$('#obname').value.trim()||o.name;p.name=o.name;p.country=$('#obcountry').value;p.currency=$('#obcur').value;}
+  if(k==='why'){const all=$('#obwhy').value.split('\n').map(x=>x.trim()).filter(Boolean),av=$('#obamt').value,a=av===''?0:Number(av);
+    if(!isFinite(a)||a<0){toast('Enter a goal amount of 0 or more.');$('#obamt').focus();return false;}
+    if(all.length>15)toast('Keep up to 15 personal reasons. The first 15 are saved.');
+    p.reasons=all.slice(0,15);p.goal={name:$('#obgoal').value.trim(),amount:a};}
+  return true;}
+/* a habit's draft into S.vices, starting again from the plans setup opened with; '' or a message */
+function obHabit(k){const v=VK[k],t=V.ob.track[k],o=V.ob.orig[k],r=S.vices[v]=clone(V.ob.base[v]);
+  r.enabled=t.on;r.unit=t.unit;
+  const pw=t.usualPer==='week'?7:1,pc=t.usualPer!==o.usualPer;
+  if(t.perDay!==o.perDay||pc)setUsual(v,t.perDay,t.usualPer);
+  if(t.cost!==o.cost||pc)r.costPerDay=Math.round(Math.max(0,+t.cost||0)/pw*(pw>1?10000:100))/(pw>1?10000:100);
+  const cad={per:t.how==='week'?'week':'day',days:t.how==='days'?t.days:[]},cadSame=t.how===o.how&&t.days.join()===o.days.join();
+  if(!t.on||o.has&&cadSame&&['mode','limit','start','ease','from'].every(f=>t[f]===o[f]))return '';
+  if(t.mode==='quit')return setQuitPlan(v,{start:t.start,ease:t.ease,from:t.from,usualPer:t.usualPer});
+  if(t.mode==='track')return o.has&&o.mode==='track'?'':setReducePlan(v,0,{},'track');
+  const c=viceAt(v);
+  if(c&&c.mode==='reduce'&&!c.ease&&!viceQuitAhead(v)){if(t.limit!==o.limit||!cadSame)setReduceLimit(v,t.limit,null,cad);}
+  else{const e=setReducePlan(v,t.limit,cad);if(e)return e;}
+  return t.start!==(o.has&&o.mode==='reduce'?o.start:localToday())?setHabitDetails(v,t.start,r.costPerDay):'';}
+/* leaving a step: its fields and every habit draft into S, then one background save if anything changed */
+function obCommit(k){const was=V.ob.was||obWas();
+  if(!obCapture(k))return false;
+  S.profile.companion.trackMedications=V.ob.medsOn;
+  for(const h of HK){const e=obHabit(h);if(e){S.vices[VK[h]]=clone(V.ob.base[VK[h]]);toast(e);return false;}}
+  if(JSON.stringify(obWas())!==JSON.stringify(was))saveInBackground(()=>{Object.assign(S,clone(was));V.screen==='onboard'?obRefresh():renderAll();});
+  return true;}
+/* the welcome step for someone who set up before the new UI; what's new, then their setup filled in */
+const NEWS=[['cal','butter','Not every day? That’s fine','Set a limit per day, for chosen days, or as a total for the week.'],['leaf','mint','A usual amount that fits you','Say how much you usually have in a day or in a week, so savings and your steps down add up.'],['check','sky','Just track','Keep a record with no limit and no over or under. You can switch any habit to Just track in Settings if a limit isn’t for you.'],['book','lilac','Today and Tracking follow your plan','Weekly totals, rest days and “left this week” where they apply. Daily plans look the same as before.']];
+const obBack=o=>`<div class="welcome"><div class="obq"><h1>Welcome back${o.name?', '+esc(o.name):''}.</h1><p>Reclaim has something new for habits, so let’s look over your setup together once more. Everything you’ve saved is still here and already filled in. Just check it and change anything you like.</p></div>
+  <div class="eyebrow">What’s new</div><div class="points">${NEWS.map(([i,t,b,p])=>`<div class="point"><span class="itile ${t}">${I(i)}</span><div><b>${b}</b><p>${p}</p></div></div>`).join('')}</div></div>`;
+/* live: "Restore from a backup file" on the welcome step; a first run restores straight away, a rerun asks first */
+const obRestHTML=()=>`<div class="obrest" id="obrest">${V.obrst?`<div class="obcard"><b>Restore this backup?</b><p class="help" style="margin:4px 0 10px">It replaces the Reclaim data in the app with <b>${esc(V.obrst.name)}</b>. Make a backup first if you might want what’s here now.</p><div class="exrow" style="margin:0"><button class="btn sm ghost" data-act="obrestno">Cancel</button><button class="btn sm primary" data-act="obrestgo">Restore backup</button></div></div>`
+  :`<button class="link" data-act="obrestore">${I('up')}Restore from a backup file</button>`}<input type="file" id="obfile" accept=".json,application/json" hidden></div>`;
+function obRestore(r){const was=clone(S),ob=V.ob;applyState(r);S.onboarded=true;S.setupVersion=SETUP_VERSION;V.obrst=null;V.md=null;V.screen='today';V.view='today';renderAll();toast('Backup restored');
+  saveInBackground(()=>{applyState(was);V.ob=ob;V.screen='onboard';renderAll();});}
+function obHTML(){
+  const o=V.ob,st=OBS(),last=o.step===st.length-1;
+  if(o.step>=st.length)return obDone();
+  const grow=o.dir==='r'?'new':'';
+  return `<div class="ob"><div class="glow"><i></i><i></i><i></i></div>
+    <aside class="obside"><div class="logo"><span class="mark">${I('leaf')}</span>reclaim</div>${sprout(o.step,grow)}<ol class="steps">${(()=>{const ck=st[o.step]?.[0]||'',vis=st.map((x,i)=>[...x,i]).filter(x=>!x[3]);return vis.map(([k,s,sub,,i],j)=>{const cur=i===o.step||ck.replace(/[23]$/,'')===k,done=!cur&&i<o.step;return `<li class="${done?'done':cur?'cur':''} ${sub?'sub':''}" ${done?`data-act="ostep:${k}"`:''}><span class="n">${done?I('check'):j+1}</span>${s}</li>`;}).join('');})()}</ol><div class="note">There’s no wrong way to start.<small>Everything you choose stays private and editable in Settings.</small></div></aside>
+    <div class="obmain"><div class="obtop">${o.step?`<button class="iconbtn" data-act="oback" aria-label="Back">${I('back')}</button>`:''}<div class="obbar">${st.map((_,i)=>`<i class="${i<o.step?'done':i===o.step?'cur':''}"></i>`).join('')}</div><button class="btn sm ghost" data-act="oskip">Skip for now</button></div>
+    <div class="obbody"><div class="obcol in-${o.dir}">${o.cheer?`<div class="cheer">${I('spark')}${o.cheer}</div>`:''}<div class="obprog">${sprout(o.step,grow)}<div class="eyebrow">Step ${o.step+1} of ${st.length} · ${minsLeft(o.step)}</div></div>${obStep()}</div></div>
+    <div class="obfoot"><div class="inner">${o.step?`<button class="btn lg" data-act="oback">Back</button>`:''}<button class="btn primary lg" data-act="onext">${o.step===0?(o.back?'Review my setup':'Let’s begin'):last?'Finish setup':'Continue'}</button></div></div></div></div>
+    ${OBTOAST}`;
+}
+const OBTOAST=`<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"><span id="tmsg"></span><button id="tundo" data-act="undo" hidden>Undo</button></div><div class="toast savenote" id="savenote" role="status" aria-live="polite"></div>`;
+function obDone(){
+  const o=V.ob,t=o.track,rows=[['book','lilac',o.back?'Today’s check-in':'Your first check-in','About a minute, one question at a time']];
+  o.medsOn&&medsList().forEach(m=>rows.push(['pill','peach',medName(m),medSub(m)]));
+  const tr=HK.filter(k=>t[k].on).map(k=>HB[k].n+': '+trackDesc(t[k],k).toLowerCase());
+  rows.push(['leaf','mint',tr.length?`Tracking ${['one habit','two habits','three habits'][tr.length-1]}`:'Nothing tracked yet',tr.join(' · ')||'Add a habit in Settings whenever you like']);
+  return `<div class="obdone"><div class="glow"><i></i><i></i><i></i></div><div class="dcol">${sprout(9,'all',9)}<div class="eyebrow">${o.back?'All set':'Setup complete'}</div>
+    ${o.back?`<h1>You’re all set${o.name?', '+esc(o.name):''}.</h1><p>Your plans are up to date. Here’s what’s waiting for you today.</p>`:`<h1>You’ve taken the first step${o.name?', '+esc(o.name):''}.</h1><p>That matters more than it might feel like right now. Here’s what’s waiting for you today.</p>`}
+    <div class="firsts">${rows.map(([i,c,b,s])=>`<div><span class="itile ${c}">${I(i)}</span><span>${b}<small>${s}</small></span></div>`).join('')}</div>
+    ${(()=>{const sk=[!t.smoke.on&&!t.vape.on&&'Smoking or vaping',!t.drink.on&&'Drinking',!o.medsOn&&'Medication'].filter(Boolean);return sk.length?`<p style="font-size:14.5px">${sk.join(' and ').replace(/ and (?=.* and )/,', ')} ${sk.length>1?'aren’t':'isn’t'} set up yet. Add ${sk.length>1?'them':'it'} in Settings whenever you like.</p>`:'';})()}
+    <button class="btn primary lg" data-act="obgo">Go to Today ${I('chev')}</button><div style="font-size:13px;opacity:.75">Everything stays editable in Settings, and you can run this setup again from there.</div></div></div>
+    ${OBTOAST}`;
+}
+/* a new step: its heading takes focus, so screen readers hear where they are */
+function obGo(step){V.obrst=null;V.ob.dir=step>V.ob.step?'r':'l';V.ob.step=step;V.ob.was=obWas();renderOb();
+  requestAnimationFrame(()=>{const h=$('.obq h1,.obdone h1',app);if(h){h.tabIndex=-1;h.focus({preventScroll:true});}});}
+function renderOb(){app.innerHTML=obHTML();renderSaveNotice();requestAnimationFrame(placeSeg);}
+/* re-render the current step in place (no slide), keeping scroll */
+function obRefresh(){const y=$('.obbody')?.scrollTop||0;V.ob.dir='';renderOb();const b=$('.obbody');if(b)b.scrollTop=y;}
+/* Continue with the form open saves it if it has a name, else drops it */
+function obSaveDraft(){const d=V.md,n=FREQ.find(f=>f[0]===d.freq)[2],snap=medicationSnapshot(),err=saveMedication(Object.assign({},d,{freq:n||'prn'}));
+  if(err){restoreMedicationSnapshot(snap);toast(err);$({'#mn':'#mdn','#md':'#mdd'}[MERRF[err]]||MERRF[err])?.focus();return false;}
+  V.md=null;saveInBackground(()=>{restoreMedicationSnapshot(snap);if(V.screen==='onboard')obRefresh();});
+  return d.id?'Medication saved':d.backfill&&n?'Medication added. Earlier doses marked taken':'Medication added';}
+const obLeave=()=>{V.screen='today';V.md=null;renderAll();};
+/* the setup's own verbs; lim and hunit change the draft while setup is open */
+const SETLIM=ACT.lim,SETUNIT=ACT.hunit;
+Object.assign(ACT,{
+  startob:()=>{closeSheet();V.ob=obFresh();V.md=null;V.screen='onboard';V.ob.was=obWas();renderAll();},
+  onext:()=>{const o=V.ob,k=obKey();
+    if(k==='meds'&&V.md){if(V.md.name.trim()){if(!obSaveDraft())return;}else V.md=null;}
+    if(!obCommit(k))return;
+    o.cheer=CHEER[k]?.(o)||'';
+    if(k==='review'){const was=[S.onboarded,S.setupVersion];S.onboarded=true;S.setupVersion=SETUP_VERSION;saveInBackground(()=>{[S.onboarded,S.setupVersion]=was;});
+      obGo(OBS().length);[250,800,1400].forEach((d,i)=>setTimeout(()=>sparks($('.obdone .sprout'),14+i*4),d));return;}
+    obGo(o.step+1);},
+  obgo:()=>{const back=V.ob.back;V.view='today';obLeave();setTimeout(()=>{$('#now .task')?.classList.add('flash');toast(back?'Welcome back. Your check-in is ready when you are.':'Welcome in. Your first check-in is ready when you are.');},500);},
+  oback:()=>{V.ob.cheer='';if(!obCommit(obKey()))return;if(V.ob.step)obGo(V.ob.step-1);},
+  /* on the first run, Skip marks setup done with what's chosen so far; so does a run setup's new version asked for */
+  oskip:()=>{if(!obCommit(obKey()))return;if(setupDue()){const was=[S.onboarded,S.setupVersion];S.onboarded=true;S.setupVersion=SETUP_VERSION;saveInBackground(()=>{[S.onboarded,S.setupVersion]=was;});}obLeave();},
+  ostep:(b,e,x)=>{V.ob.cheer='';if(!obCommit(obKey()))return;obGo(Math.max(0,OBS().findIndex(st=>st[0]===x)));},
+  opick:(b,e,x)=>{if(x==='nic'){const m=nicMode();if(m!=='none'){V.ob.nicLast=m;setNicOn('none');}else setNicOn(V.ob.nicLast||'smoke');}else x==='meds'?V.ob.medsOn=!V.ob.medsOn:V.ob.track[x].on=!V.ob.track[x].on;obRefresh();},
+  onic:(b,e,x)=>{setNicOn(x);obRefresh();},
+  /* a new plan starts today, as Settings' Switch to Quit does; switching back restores the saved one's date */
+  oplan:(b,e,x,y)=>{const t=V.ob.track[x],o=V.ob.orig[x];if(t.mode===y)return;t.mode=y;t.start=o.has&&o.mode===y?o.start:localToday();obRefresh();},
+  lim:(b,e,x,y)=>{if(V.screen!=='onboard')return SETLIM(b,e,x,y);const t=V.ob.track[x],U=unitOf(x);t.limit=Math.max(U.ls,Math.min(limMax(x,t),+(t.limit+ +y*U.ls).toFixed(1)));const v=$('#limv-'+x);v.textContent=t.limit;bump(v);},
+  hunit:(b,e,x,y)=>{if(V.screen!=='onboard')return SETUNIT(b,e,x,y);const t=V.ob.track[x];if(t.unit===y)return;t.unit=y;const u=unitOf(x);if(u.def)t.limit=u.def;obRefresh();},
+  omedadd:()=>{V.md=mdraft();obRefresh();setTimeout(()=>$('#medit')?.scrollIntoView({behavior:'smooth',block:'nearest'}),60);},
+  omededit:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);if(!m)return;V.md=mdraft(m);obRefresh();},
+  omedcancel:()=>{V.md=null;obRefresh();},
+  omedsave:()=>{const msg=obSaveDraft();if(msg){obRefresh();toast(msg);}},
+  /* × removes a medicine with no doses yet and archives one with doses, with Undo */
+  omedrm:(b,e,x)=>{const m=S.meds.find(y=>y.id===x);if(!m)return;const snap=medicationSnapshot();medicationHasDoses(x)?setMedicationActive(x,false):removeMedication(x);obRefresh();
+    const back=()=>{restoreMedicationSnapshot(snap);if(V.screen==='onboard')obRefresh();};
+    toast(m.name+(medicationHasDoses(x)?' archived':' removed'),()=>{const now=medicationSnapshot();back();saveInBackground(()=>{restoreMedicationSnapshot(now);if(V.screen==='onboard')obRefresh();});});
+    saveInBackground(back);},
+  obrestore:()=>$('#obfile')?.click(),
+  obrestno:()=>{V.obrst=null;obRefresh();$('#obrest .link')?.focus();},
+  obrestgo:()=>{if(V.obrst)obRestore(V.obrst.r);},
+  ocat:(b,e,x)=>{const c=medicationCatalogMatch(x);c?mcatFill(c):V.md.name=x;$('#medit').outerHTML=medEditor();},
+  ofreq:(b,e,x)=>{const d=V.md,n=FREQ.find(f=>f[0]===x)[2];d.freq=x;d.slots=d.slots.slice(0,n);d.times=Array.from({length:n},(_,i)=>d.times[i]||['09:00','14:00','18:00','21:00'][i]);$('#medit').outerHTML=medEditor();},
+  /* ticking a preset adds it, unticking removes it; own ideas stay */
+  ofocus:(b,e,x)=>obIdea(foc(),FOCI,x,b),
+  ocope:(b,e,x)=>obIdea(cope(),COPING,x,b)
+});
+/* How often, weekday and usual-amount cadence choices on the draft (Settings' versions save straight away) */
+function obCad(kind,x,y){const t=V.ob.track[x];
+  if(kind==='chow'){if(t.how===y)return;const days=y==='days'?(t.days.length?t.days:[6,0]):[];t.limit=limFor(x,t,y,days);t.how=y;t.days=days;}
+  if(kind==='cday'){const d=+y,days=t.days.includes(d)?t.days.filter(i=>i!==d):t.days.concat(d);
+    if(!days.length){toast('Choose at least one day.');return;}if(days.length>6){toast('For all seven days, choose Every day.');return;}t.days=days;}
+  if(kind==='cusual'){if(t.usualPer===y)return;t.usualPer=y;}
+  obRefresh();}
+function obIdea(list,set,x,b){const l=set.find(s=>s[0]===x)[1],i=list.indexOf(l);
+  if(i<0&&list.length>=20){toast('You can save up to 20 ideas in each list.');return;}
+  i<0?list.push(l):list.splice(i,1);b.classList.toggle('on',i<0);}
+app.addEventListener('change',e=>{const t=e.target;if(t.id!=='obfile')return;const f=t.files[0];t.value='';if(!f)return;
+  readBackupFile(f).then(r=>{if(!S.onboarded){obRestore(r);return;}V.obrst={r,name:f.name};obRefresh();$('#obrest [data-act="obrestgo"]')?.focus();},err=>bkErr(err,'The backup was not restored.'));});
+app.addEventListener('input',e=>{const t=e.target;if(V.screen!=='onboard')return;
+  if(t.id==='obname'){const h=$('#obhello'),n=t.value.trim();h.textContent=n?`Nice to meet you, ${n} 👋`:'';if(n.length===1||!n){h.classList.remove('pop');void h.offsetWidth;h.classList.add('pop');}}
+  if(t.dataset.ob){const [k,f]=t.dataset.ob.split('.');V.ob.track[k][f]=t.value;}});
+app.addEventListener('toggle',e=>{const k=e.target.dataset?.obopt;if(k&&V.ob?.track[k])V.ob.track[k].oo=e.target.open;},true);
+</script>

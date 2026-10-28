@@ -1,0 +1,95 @@
+<script>
+  // Start-up: (sign in →) load → decodeLoadedState → S → renderAll(). The startup screen and its retry stay until the first render.
+  (window.reclaimSignIn ? window.reclaimSignIn.start() : Promise.resolve())
+    .then(() => loadState())
+    .then(async () => {
+      window.reclaimStartup.applyTheme(S.profile.companion.theme, true);
+      // A first run, or a setup that has changed since this person went through it, opens Guided setup.
+      if (setupDue()) { V.ob = obFresh(); V.screen = 'onboard'; V.ob.was = obWas(); }
+      renderAll();
+      renderSaveNotice();
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      window.reclaimStartup.finish();
+    })
+    .catch(error => {
+      window.reclaimStartup.fail(error);
+    });
+  // Another device or tab saved: load its data and redraw in place (a page reload would ask to sign in again).
+  // quiet: on returning to the tab, so it waits rather than interrupt Guided setup or an open sheet.
+  // message: a toast in place of the usual one.
+  let loadingLatest = false;
+  async function loadLatest(quiet, message) {
+    if (loadingLatest) return;
+    // A quiet update that has to wait (Guided setup or a sheet is open) runs when the sheet closes (closeSheet in ui.html).
+    if (quiet && (V.screen === 'onboard' || $('#sheet.open'))) { window.reclaimLatestWaiting = true; return; }
+    window.reclaimLatestWaiting = false;
+    loadingLatest = true;
+    try {
+      await loadState();
+      forgetUnsavedChanges();
+      closeSheet();
+      window.reclaimStartup.applyTheme(S.profile.companion.theme, true);
+      if (setupDue()) { V.ob = obFresh(); V.screen = 'onboard'; V.ob.was = obWas(); }
+      else if (V.screen === 'onboard') { V.screen = 'today'; V.md = null; }
+      renderAll();
+      toast(message || (quiet ? 'Updated with changes from another device or tab' : 'Loaded the latest from Google Drive'));
+    } catch (error) {
+      console.warn('Reclaim could not load the latest data:', error);
+      toast('Couldn’t load the latest. Check your connection, then try again.');
+    } finally {
+      loadingLatest = false;
+    }
+  }
+
+  window.addEventListener('online', retryUnsaved);
+
+  // Leaving with a change that hasn't reached Drive asks first (the browser shows its own wording).
+  window.addEventListener('beforeunload', event => {
+    if (leavingAllowed() || !hasUnsavedChanges()) return;
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  // Send a change that is still waiting, or pick up one made elsewhere. One check at a time: while it waits for
+  // sign-in, another would only queue behind it and load twice. Runs on returning to the tab, on the window getting
+  // focus (an installed app that was only covered never becomes hidden) and when a new sign-in token arrives.
+  let checkingForChanges = false, lastCheckAt = 0;
+  function checkForChanges() {
+    if (checkingForChanges || !window.reclaimStartup.ready || saveNotice.stale) return;
+    if (hasUnsavedChanges()) { retryUnsaved(); return; }
+    const store = reclaimStorage();
+    if (!store.changed) return;
+    checkingForChanges = true;
+    lastCheckAt = Date.now();
+    store.changed().then(changed => {
+      if (changed && !hasUnsavedChanges()) loadLatest(true);
+    }, error => console.warn('Reclaim could not check Drive for changes:', error))
+      .finally(() => { checkingForChanges = false; });
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkForChanges();
+  });
+  window.addEventListener('focus', () => {
+    if (Date.now() - lastCheckAt > 30000) checkForChanges();
+  });
+
+  // A new sign-in token (signin.html): once the saves and checks that waited for it are done, check again, so
+  // whatever another device saved meanwhile shows up now. On a computer the sign-in popup is its own window, so
+  // the tab never becomes hidden and nothing else would check. A waiting save that another device's change turned
+  // down has already been undone, so the latest loads straight away instead of waiting for Load latest.
+  let refreshingAfterSignIn = false;
+  async function refreshAfterSignIn() {
+    if (refreshingAfterSignIn) return;
+    refreshingAfterSignIn = true;
+    try {
+      const until = Date.now() + 30000;
+      do await new Promise(resolve => window.setTimeout(resolve, 200));
+      while ((pendingSaves || checkingForChanges || loadingLatest) && Date.now() < until);
+      if (saveNotice.stale) loadLatest(true, 'Reclaim was updated on another device or tab, so your last change wasn’t saved. Here’s the latest.');
+      else checkForChanges();
+    } finally {
+      refreshingAfterSignIn = false;
+    }
+  }
+
+</script>

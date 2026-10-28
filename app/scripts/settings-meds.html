@@ -1,0 +1,207 @@
+<script>
+  // Adding, editing, archiving and deleting medications (Settings and Guided setup), along with their dose times, which are
+  // kept as reminders in S.profile.companion.reminders under "medId:slot". Relies on core (MEDICATION_CATALOG, dateKey, logicObject).
+  // Changes S only; the screens save afterwards and use the snapshot below to roll back if that fails.
+  const MED_UNITS = ['mg', 'mcg', 'g', 'mL', 'IU', 'pill', 'patch', 'puff', 'drop'];
+  const MED_SLOT_LABELS = ['Morning', 'Afternoon', 'Evening', 'Night'];
+  // The suggested dose time for each dose name, filled in when a catalog medicine is picked.
+  const MED_SLOT_TIMES = { Morning: '09:00', Midday: '13:00', Afternoon: '14:00', Evening: '18:00', Bedtime: '21:00', Night: '21:00' };
+
+  // The dose names a catalog medicine starts with (the live app's defaultSlots): one a day at bedtime for a bedtime medicine.
+  function medicationDefaultSlots(freq, bedtime) {
+    if (freq === 'prn') return [];
+    const map = { 1: ['Morning'], 2: ['Morning', 'Evening'], 3: ['Morning', 'Afternoon', 'Evening'], 4: ['Morning', 'Midday', 'Evening', 'Bedtime'] };
+    const slots = (map[freq] || map[1]).slice();
+    if (bedtime && freq === 1) slots[0] = 'Bedtime';
+    return slots;
+  }
+
+  // The catalog entry whose name matches what was typed or picked (case does not matter).
+  function medicationCatalogMatch(name) {
+    const n = String(name || '').trim().toLocaleLowerCase();
+    return MEDICATION_CATALOG.flatMap(group => group.items).find(item => item.name.toLocaleLowerCase() === n) || null;
+  }
+
+  // Whether any dose note (taken or skipped) exists: that decides between removing a medication outright and keeping its history.
+  function medicationHasDoses(medId) {
+    return Object.values(S.doses).some(day => logicObject(day) && Array.isArray(day[medId]) && day[medId].length > 0);
+  }
+
+  // Each dose slot's saved time, or '' where none is set.
+  function medicationReminderTimes(med) {
+    return med.slots.map((slot, index) => {
+      const reminder = S.profile.companion.reminders[med.id + ':' + index];
+      return reminder && typeof reminder.time === 'string' ? reminder.time : '';
+    });
+  }
+
+  // Offer to note past doses only for a new scheduled medication whose start date is before today.
+  function shouldOfferMedicationBackfill(draft) {
+    return !!draft && !draft.id && draft.freq !== 'prn' &&
+      Number.isInteger(Number(draft.freq)) && Number(draft.freq) >= 1 &&
+      !!dateKey(draft.start) && dateKey(draft.start) < localToday();
+  }
+
+  // Everything a medication change can touch, for rolling back a failed save.
+  function medicationSnapshot() {
+    const c = S.profile.companion;
+    return JSON.parse(JSON.stringify({ meds: S.meds, doses: S.doses, reminders: c.reminders, reminderActions: c.reminderActions }));
+  }
+  function restoreMedicationSnapshot(snap) {
+    S.meds = snap.meds;
+    S.doses = snap.doses;
+    S.profile.companion.reminders = snap.reminders;
+    S.profile.companion.reminderActions = snap.reminderActions;
+  }
+
+  // Saves a draft {id, name, dose, unit, freq: 1–4 | 'prn', slots, times, limit, start, why, backfill}.
+  // Returns an error message, or '' once S has changed. A schedule change on a medication with
+  // dose history archives the old schedule and starts a new one, so earlier notes stay with it.
+  function saveMedication(draft) {
+    const name = String(draft.name || '').trim();
+    const doseText = String(draft.dose == null ? '' : draft.dose).trim();
+    const dose = doseText === '' ? 0 : Number(doseText);
+    const startDay = dateKey(draft.start);
+    const prn = draft.freq === 'prn';
+    const count = prn ? 0 : Number(draft.freq);
+    const slots = prn ? [] : Array.from({ length: count }, (_, i) =>
+      String((draft.slots || [])[i] || MED_SLOT_LABELS[i]).trim());
+    const times = prn ? [] : Array.from({ length: count }, (_, i) => (draft.times || [])[i] || '');
+    const limitText = String(draft.limit == null ? '' : draft.limit).trim();
+    const dailyLimit = !prn || limitText === '' ? null : Number(limitText);
+    const why = String(draft.why || '').trim();
+    if (!name) return 'Add a name for this medication';
+    if (name.length > 40) return 'Keep the name to 40 characters.';
+    if (!Number.isFinite(dose) || dose < 0) return 'Enter the dose as a number, like 150.';
+    if (!MED_UNITS.includes(draft.unit)) return 'Choose a unit for the dose.';
+    if (!startDay) return 'Choose the day the schedule starts.';
+    if (!prn && (!Number.isInteger(count) || count < 1 || count > 4)) return 'Choose how often you take it.';
+    if (dailyLimit !== null && (!Number.isInteger(dailyLimit) || dailyLimit < 1)) return 'Enter a daily limit of 1 or more, or leave it blank.';
+    if (times.some(time => time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))) return 'Enter valid dose times or leave them blank.';
+    if (slots.some(slot => slot.length > 20)) return 'Keep each dose name to 20 characters.';
+    if (why.length > 500) return 'Keep the note to 500 characters.';
+    const existingIndex = draft.id ? S.meds.findIndex(med => med.id === draft.id) : -1;
+    if (draft.id && existingIndex < 0) return 'This medication is no longer available.';
+    const previousMed = existingIndex >= 0 ? S.meds[existingIndex] : null;
+    const catalog = medicationCatalogMatch(name);
+    const sameName = !!previousMed && previousMed.name === name;
+    const catalogId = sameName ? previousMed.catalogId : catalog ? catalog.id : '';
+    const remindersChanged = !!previousMed && JSON.stringify(medicationReminderTimes(previousMed)) !== JSON.stringify(times);
+    // Renaming a dose keeps the schedule (doses are saved by position), as in the live app.
+    const scheduleChanged = !!previousMed && (
+      previousMed.name !== name ||
+      Number(previousMed.dose) !== dose ||
+      previousMed.unit !== draft.unit ||
+      previousMed.freq !== (prn ? 'prn' : count) ||
+      dateKey(previousMed.startDate) !== startDay
+    );
+    const preserveScheduleHistory = scheduleChanged && medicationHasDoses(previousMed.id);
+    const backfill = !!draft.backfill && shouldOfferMedicationBackfill({ id: draft.id, freq: prn ? 'prn' : count, start: startDay });
+    let id = draft.id;
+    if (!id || preserveScheduleHistory) {
+      do {
+        id = 'med-' + (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function'
+          ? globalThis.crypto.randomUUID()
+          : Date.now() + '-' + Math.random().toString(36).slice(2));
+      } while (S.meds.some(med => med.id === id));
+    }
+    const nextMedication = Object.assign({}, previousMed || {}, {
+      id: id,
+      catalogId: catalogId,
+      name: name,
+      dose: dose,
+      unit: draft.unit,
+      freq: prn ? 'prn' : count,
+      slots: slots,
+      startDate: new Date(startDay + 'T12:00:00').toISOString(),
+      active: previousMed ? !!previousMed.active : true,
+      timeline: catalog ? catalog.timeline || null : sameName ? previousMed.timeline || null : null,
+      alcohol: catalog ? catalog.alcohol || null : sameName ? previousMed.alcohol || null : null,
+      whyThisHelps: why,
+      dailyLimit: dailyLimit
+    });
+    if (preserveScheduleHistory) {
+      S.meds.splice(existingIndex, 1, Object.assign({}, previousMed, { active: false }));
+      S.meds.push(nextMedication);
+    } else if (existingIndex >= 0) S.meds.splice(existingIndex, 1, nextMedication);
+    else S.meds.push(nextMedication);
+
+    if (backfill) {
+      const lastDay = new Date(localToday() + 'T12:00:00');
+      lastDay.setDate(lastDay.getDate() - 1);
+      const endDay = dateKey(lastDay);
+      const cursor = new Date(startDay + 'T12:00:00');
+      while (dateKey(cursor) <= endDay) {
+        const day = dateKey(cursor);
+        if (!logicObject(S.doses[day])) S.doses[day] = {};
+        if (!Array.isArray(S.doses[day][id])) S.doses[day][id] = [];
+        slots.forEach((slot, index) => {
+          if (S.doses[day][id].some(event => Number(event.slot) === index)) return;
+          const takenAt = times[index] ? new Date(day + 'T' + times[index] + ':00') : new Date(day + 'T12:00:00');
+          S.doses[day][id].push({ slot: index, at: takenAt.toISOString() });
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    }
+
+    for (let index = 0; index < 4; index += 1) {
+      const key = id + ':' + index;
+      if (times[index]) S.profile.companion.reminders[key] = { time: times[index], label: slots[index] };
+      else delete S.profile.companion.reminders[key];
+      if ((scheduleChanged || remindersChanged) && !preserveScheduleHistory) delete S.profile.companion.reminderActions[key];
+    }
+    return '';
+  }
+
+  // Archive (false) or bring back (true). An archived medication keeps its history but leaves Today and Tracking.
+  function setMedicationActive(medId, active) {
+    const med = S.meds.find(item => item.id === medId);
+    if (med) med.active = !!active;
+    return !!med;
+  }
+
+  // Deleting hides an archived medication everywhere but Settings' Deleted list, with its history, so it can be restored.
+  function deleteMedication(medId) {
+    const med = S.meds.find(item => item.id === medId);
+    if (!med || med.active) return false;
+    med.deletedAt = new Date().toISOString();
+    return true;
+  }
+
+  // Back to the Archived list, as it was before it was deleted.
+  function restoreDeletedMedication(medId) {
+    const med = S.meds.find(item => item.id === medId);
+    if (!med || !med.deletedAt) return false;
+    delete med.deletedAt;
+    return true;
+  }
+
+  // Delete forever: the medication, its dose notes and its dose times. Older backups in Drive still hold it.
+  function purgeMedication(medId) {
+    const index = S.meds.findIndex(med => med.id === medId && med.deletedAt);
+    if (index < 0) return false;
+    S.meds.splice(index, 1);
+    Object.keys(S.doses).forEach(day => {
+      if (!logicObject(S.doses[day]) || !(medId in S.doses[day])) return;
+      delete S.doses[day][medId];
+      if (!Object.keys(S.doses[day]).length) delete S.doses[day];
+    });
+    for (let slot = 0; slot < 4; slot += 1) {
+      delete S.profile.companion.reminders[medId + ':' + slot];
+      delete S.profile.companion.reminderActions[medId + ':' + slot];
+    }
+    return true;
+  }
+
+  // Removes a medication that has no dose notes yet, with its dose times.
+  function removeMedication(medId) {
+    const index = S.meds.findIndex(med => med.id === medId);
+    if (index < 0 || medicationHasDoses(medId)) return false;
+    S.meds.splice(index, 1);
+    for (let slot = 0; slot < 4; slot += 1) {
+      delete S.profile.companion.reminders[medId + ':' + slot];
+      delete S.profile.companion.reminderActions[medId + ':' + slot];
+    }
+    return true;
+  }
+</script>

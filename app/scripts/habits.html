@@ -1,0 +1,385 @@
+<script>
+  // Habit plans and the numbers drawn from them: which plan (phase) applies on a day, limits, streaks,
+  // milestones, estimated savings, and the moment and wave records. Reads S.vices and S.slips with the date
+  // helpers in core; model, Tracking, Insights, Quick log, Guided setup and the appointment summary use it.
+  // The plan in force at `at`: the latest phase that has started by then, or null before the first one.
+  // `vice` can be a habit name or its record; a day key like "2026-05-01" is read as noon that day.
+  function viceAt(vice, at = new Date()) {
+    const record = viceRecord(vice);
+    const when = logicDate(at);
+    if (!record || !when || !Array.isArray(record.phases)) return null;
+    const timestamp = when.getTime();
+    return record.phases
+      .filter(phase => logicObject(phase) && logicDate(phase.at) && logicDate(phase.at).getTime() <= timestamp)
+      .sort((left, right) => logicDate(left.at).getTime() - logicDate(right.at).getTime())
+      .pop() || null;
+  }
+
+  // The newest phase, including one that has not started yet (a quit day ahead).
+  function vicePlan(vice) {
+    return viceAt(vice, new Date(8.64e15));
+  }
+
+  // The planned quit phase while its quit day is still ahead, otherwise null.
+  function viceQuitAhead(vice) {
+    const plan = vicePlan(vice);
+    return plan && plan.mode === 'quit' && logicDate(plan.at) > new Date() ? plan : null;
+  }
+
+  // Ease-in steps that have not finished yet, with the day each one ends.
+  function viceEaseSteps(vice) {
+    const record = viceRecord(vice);
+    if (!record || !Array.isArray(record.phases)) return [];
+    const now = new Date();
+    const phases = record.phases.slice().sort((left, right) => logicDate(left.at) - logicDate(right.at));
+    return phases
+      .map((phase, index) => ({ phase: phase, next: phases[index + 1] }))
+      .filter(item => item.phase.ease && item.next && logicDate(item.next.at) > now)
+      .map(item => ({ at: logicDate(item.phase.at), until: logicDate(item.next.at), target: item.phase.target }));
+  }
+
+  // A habit's moments between two times, both ends included, in saved order.
+  function slipsFor(vice, from, through) {
+    const name = viceName(vice);
+    const start = logicDate(from);
+    const end = logicDate(through);
+    if (!name || !start || !end) return [];
+    return S.slips.filter(slip => {
+      if (!slip || slip.vice !== name) return false;
+      const at = logicDate(slip.at);
+      return at && at >= start && at <= end;
+    });
+  }
+
+  // The total amount noted for a habit on one local calendar day.
+  function dailyUse(vice, day) {
+    const name = viceName(vice);
+    const key = dateKey(day);
+    if (!name || !key) return 0;
+    return S.slips.reduce((sum, slip) => {
+      if (!slip || slip.vice !== name || dateKey(slip.at) !== key) return sum;
+      const kind = slip.kind || 'slip';
+      return sum + Math.max(0, Number(slip.amount) || 0) *
+        (kind === 'use' || kind === 'slip' ? 1 : 0);
+    }, 0);
+  }
+
+  // One day's numbers for a cut-down plan, plus how many of the last 7 days stayed within their limit.
+  // Without a cut-down plan that day, the target is 0 and `used` is simply the day's total.
+  function reduceStats(vice, day = localToday()) {
+    const name = viceName(vice);
+    const record = viceRecord(vice);
+    const key = dateKey(day);
+    if (!record || !key) {
+      return { day: key, mode: null, target: 0, used: 0, remaining: 0, overBy: 0, withinGoal: false, daysWithinGoal: 0, daysInRange: 0 };
+    }
+
+    // Target and use come from limitStatus: per day, per week (rolling 7 days) or on chosen weekdays.
+    const status = limitStatus(vice, key);
+    const reduce = status.mode === 'reduce';
+    const target = reduce ? status.target : 0;
+    const used = reduce ? status.used : dailyUse(name, key);
+    let daysWithinGoal = 0;
+    let daysInRange = 0;
+    for (let offset = 6; offset >= 0; offset -= 1) {
+      const rangeDay = dayOffset(key, -offset);
+      const rangeStatus = limitStatus(vice, rangeDay);
+      if (rangeStatus.mode !== 'reduce') continue;
+      daysInRange += 1;
+      if (rangeStatus.within) daysWithinGoal += 1;
+    }
+
+    return {
+      day: key,
+      mode: status.mode,
+      target: target,
+      used: used,
+      remaining: Math.max(0, target - used),
+      overBy: Math.max(0, used - target),
+      withinGoal: reduce && status.within,
+      daysWithinGoal: daysWithinGoal,
+      daysInRange: daysInRange
+    };
+  }
+
+  // Where a habit stands against its limit on `day`, whatever the cadence (version 5).
+  //   per: "day" | "week"   target: the limit for that period (0 on a rest day)
+  //   used: amount in the period (weekly: the rolling 7 days ending on `day`, counting only days since the plan began)
+  //   within: used <= target (always true when just tracking)   allowedToday: false on a rest day
+  //   rest: amount left in the period, or null when there is no limit
+  // Plans with no `per` or `days` behave exactly as before: a daily limit read against the day's use.
+  function limitStatus(vice, day = localToday()) {
+    const name = viceName(vice);
+    const record = viceRecord(vice);
+    const key = dateKey(day);
+    if (!record || !key) {
+      return { day: key, mode: null, per: 'day', target: 0, used: 0, within: false, allowedToday: false, rest: 0 };
+    }
+
+    // An ease-in step saved this afternoon still sets today's range, as in reduceStats.
+    const current = key === localToday() ? viceAt(record, new Date()) : null;
+    const phase = current && current.ease ? current : viceAt(record, key);
+    const mode = phase ? phase.mode : null;
+    const dayUsed = dailyUse(name, key);
+    if (mode === 'track') {
+      return { day: key, mode: mode, per: 'day', target: 0, used: dayUsed, within: true, allowedToday: true, rest: null };
+    }
+    if (mode !== 'reduce') {
+      return { day: key, mode: mode, per: 'day', target: 0, used: dayUsed, within: dayUsed <= 0, allowedToday: false, rest: 0 };
+    }
+
+    const limit = Math.max(0, Number(phase.target) || 0);
+    if (phase.per === 'week' && !(Array.isArray(phase.days) && phase.days.length)) {
+      const start = dateKey(phase.at);
+      let used = 0;
+      for (let offset = 6; offset >= 0; offset -= 1) {
+        const rangeDay = dayOffset(key, -offset);
+        if (start && rangeDay < start) continue;
+        used += dailyUse(name, rangeDay);
+      }
+      return { day: key, mode: mode, per: 'week', target: limit, used: used, within: used <= limit, allowedToday: true, rest: Math.max(0, limit - used) };
+    }
+
+    const allowedToday = !(Array.isArray(phase.days) && phase.days.length) || phase.days.includes(dayDate(key).getDay());
+    const target = allowedToday ? limit : 0;
+    return { day: key, mode: mode, per: 'day', target: target, used: dayUsed, within: dayUsed <= target, allowedToday: allowedToday, rest: Math.max(0, target - dayUsed) };
+  }
+
+  // The words after a limit: "a day", "a week", "on weekends", "on Mon, Wed and Fri".
+  function cadencePhrase(phase) {
+    const days = phase && phase.mode === 'reduce' && Array.isArray(phase.days)
+      ? Array.from(new Set(phase.days.filter(day => Number.isInteger(day) && day >= 0 && day <= 6))).sort((a, b) => a - b)
+      : [];
+    if (days.length && days.length < 7) {
+      if (days.join() === '0,6') return 'on weekends';
+      if (days.join() === '1,2,3,4,5') return 'on weekdays';
+      const names = days.map(day => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day]);
+      return 'on ' + (names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1]);
+    }
+    return phase && phase.mode === 'reduce' && phase.per === 'week' ? 'a week' : 'a day';
+  }
+
+  // Days since the current plan began and since the last restart. A moment saved with action 'full'
+  // restarts both counts, 'streak' restarts only the streak, and 'log' restarts neither.
+  function streakHistory(vice, at = new Date()) {
+    const name = viceName(vice);
+    const record = viceRecord(vice);
+    const now = logicDate(at);
+    if (!name || !record || !now) {
+      return { vice: name, mode: null, startedAt: null, days: 0, streakStartedAt: null, streakDays: 0, slips: [] };
+    }
+    const phase = viceAt(record, now);
+    if (!phase) {
+      return { vice: name, mode: null, startedAt: null, days: 0, streakStartedAt: null, streakDays: 0, slips: [] };
+    }
+
+    const phaseStart = logicDate(phase.at);
+    const events = slipsFor(name, phaseStart, now).sort((left, right) =>
+      logicDate(left.at).getTime() - logicDate(right.at).getTime());
+    const fullRestart = events.filter(slip => slip.action === 'full').pop();
+    const streakRestart = events.filter(slip => slip.action === 'streak' || slip.action === 'full').pop();
+    const healthStart = fullRestart ? logicDate(fullRestart.at) : phaseStart;
+    const streakStart = streakRestart ? logicDate(streakRestart.at) : phaseStart;
+
+    return {
+      vice: name,
+      mode: phase.mode,
+      startedAt: healthStart ? healthStart.toISOString() : null,
+      days: dayDistance(healthStart, now),
+      streakStartedAt: streakStart ? streakStart.toISOString() : null,
+      streakDays: dayDistance(streakStart, now),
+      slips: events
+    };
+  }
+
+  // The next HABIT_MILESTONES day count past the current one, with its date; null with no plan or none left.
+  function nextMilestone(vice, at = new Date()) {
+    const history = streakHistory(vice, at);
+    if (!history.startedAt) return null;
+    const nextDays = HABIT_MILESTONES.find(days => days > history.days);
+    if (!nextDays) return null;
+    const started = logicDate(history.startedAt);
+    const due = new Date(started.getTime());
+    due.setDate(due.getDate() + nextDays);
+    return {
+      vice: history.vice,
+      days: nextDays,
+      daysRemaining: Math.max(0, nextDays - history.days),
+      at: due.toISOString(),
+      label: nextDays === 1 ? '1 day' : nextDays + ' days'
+    };
+  }
+
+  // Health milestones for smoking and drinking, counted from the last full restart. The wording is
+  // deliberately hedged ("may", "experiences vary") so it never promises a medical outcome.
+  const TRACKING_MILESTONES = {
+    smoking: [
+      { minutes: 20, label: '20 minutes', detail: 'Heart rate may begin settling.' },
+      { minutes: 12 * 60, label: '12 hours', detail: 'Carbon monoxide in the blood can return toward a typical level.' },
+      { minutes: 48 * 60, label: '48 hours', detail: 'Taste and smell may begin to change.' },
+      { minutes: 3 * 24 * 60, label: '3 days', detail: 'Nicotine levels continue to fall; experiences vary.' },
+      { minutes: 14 * 24 * 60, label: '2 weeks', detail: 'Circulation and lung function may begin improving over the following weeks.' },
+      { minutes: 30 * 24 * 60, label: '1 month', detail: 'Coughing and shortness of breath may continue to ease over the coming months.' },
+      { minutes: 365 * 24 * 60, label: '1 year', detail: 'Coronary heart disease risk is about half that of someone who continues to smoke.' },
+      { minutes: 5 * 365 * 24 * 60, label: '5 years', detail: 'Stroke risk continues to fall after quitting.' },
+      { minutes: 10 * 365 * 24 * 60, label: '10 years', detail: 'Lung cancer risk is about half that of someone who continues to smoke.' },
+      { minutes: 15 * 365 * 24 * 60, label: '15 years', detail: 'Coronary heart disease risk can approach that of someone who never smoked.' }
+    ],
+    drinking: [
+      { minutes: 24 * 60, label: '1 day', detail: 'A first day to notice how sleep, hydration, and mood feel for you.' },
+      { minutes: 3 * 24 * 60, label: '3 days', detail: 'Early changes in rest, appetite, or energy may become noticeable.' },
+      { minutes: 7 * 24 * 60, label: '1 week', detail: 'A week of practice; daily routines may begin to feel different.' },
+      { minutes: 14 * 24 * 60, label: '2 weeks', detail: 'Some people notice shifts in mornings, focus, or sleep.' },
+      { minutes: 30 * 24 * 60, label: '1 month', detail: 'Sleep, mood, digestion, or blood pressure may improve; experiences vary.' },
+      { minutes: 90 * 24 * 60, label: '3 months', detail: 'A useful point to reflect on the changes that matter to you.' },
+      { minutes: 180 * 24 * 60, label: '6 months', detail: 'Health and daily routines can continue to change over time.' },
+      { minutes: 365 * 24 * 60, label: '1 year', detail: 'A year of choices and learning; benefits and timelines are personal.' }
+    ]
+  };
+
+  // The 7 days ending on `at`, oldest first. A day is ok when within its limit (cutting down), always
+  // (just tracking), or when nothing was noted (quitting or no plan).
+  function habitWeek(vice, at = todayUI.now) {
+    const today = dateKey(at);
+    return Array.from({ length: 7 }, (_, index) => {
+      const day = dayOffset(today, index - 6);
+      const date = dayDate(day);
+      const amount = S.slips.reduce((total, slip) =>
+        slip && slip.vice === vice && dateKey(slip.at) === day
+          ? total + Math.max(0, Number(slip.amount) || 0)
+          : total, 0);
+      const status = limitStatus(vice, day);
+      const limit = status.mode === 'reduce' ? status.target : 0;
+      return {
+        day: day,
+        amount: amount,
+        limit: limit,
+        ok: status.mode === 'reduce' ? status.within : status.mode === 'track' ? true : amount === 0,
+        weekday: date ? date.toLocaleDateString(undefined, { weekday: 'short' }) : '',
+        dateLabel: date ? date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : '',
+        noted: amount > 0,
+        today: day === today
+      };
+    });
+  }
+
+  // Running totals from each enabled habit's first plan through `at`: its usual amount (perDay) on every
+  // day versus what was noted. Savings price each unit at costPerDay / perDay, so they're estimates;
+  // daysTracked is the longest-running habit's count.
+  function totals(at = new Date()) {
+    const endKey = dateKey(at);
+    const endDate = dayDate(endKey);
+    if (!endKey || !endDate) {
+      return Object.assign(Object.fromEntries(VICE_KEYS.map(vice => [vice, null])),
+        { unitsAvoided: 0, estimatedSavings: 0, daysTracked: 0 });
+    }
+
+    const byVice = {};
+    VICE_KEYS.forEach(name => {
+      const record = S.vices[name];
+      const phases = record && Array.isArray(record.phases) ? record.phases : [];
+      const firstPhase = phases
+        .map(phase => logicDate(phase && phase.at))
+        .filter(date => date && dateKey(date) <= endKey)
+        .sort((left, right) => left - right)[0];
+      if (!record || !record.enabled || !firstPhase) {
+        byVice[name] = { daysTracked: 0, baselineUnits: 0, loggedUnits: 0, unitsAvoided: 0, estimatedSavings: 0 };
+        return;
+      }
+
+      let baselineUnits = 0;
+      let loggedUnits = 0;
+      let daysTracked = 0;
+      let day = dateKey(firstPhase);
+      while (day && day <= endKey) {
+        const phase = viceAt(record, day);
+        if (phase) {
+          const baseline = Math.max(0, Number(record.perDay) || 0);
+          const observed = dailyUse(name, day);
+          baselineUnits += baseline;
+          loggedUnits += observed;
+          daysTracked += 1;
+        }
+        day = dayOffset(day, 1);
+      }
+      const unitsAvoided = Math.max(0, baselineUnits - loggedUnits);
+      const costPerUnit = Number(record.perDay) > 0
+        ? Math.max(0, Number(record.costPerDay) || 0) / Number(record.perDay)
+        : 0;
+      byVice[name] = {
+        daysTracked: daysTracked,
+        baselineUnits: baselineUnits,
+        loggedUnits: loggedUnits,
+        unitsAvoided: unitsAvoided,
+        estimatedSavings: unitsAvoided * costPerUnit
+      };
+    });
+
+    const all = Object.values(byVice);
+    return Object.assign({}, byVice, {
+      unitsAvoided: all.reduce((sum, item) => sum + item.unitsAvoided, 0),
+      estimatedSavings: all.reduce((sum, item) => sum + item.estimatedSavings, 0),
+      daysTracked: Math.max(...all.map(item => item.daysTracked))
+    });
+  }
+
+  // The same savings estimate for one day across enabled habits; a day above the usual amount adds 0, not less.
+  function dailyEstimatedSavings(day = todayUI.now) {
+    const key = dateKey(day);
+    if (!key) return 0;
+    return VICE_KEYS.reduce((total, vice) => {
+      const record = S.vices[vice];
+      if (!record || !record.enabled || !viceAt(record, key)) return total;
+      const baseline = Math.max(0, Number(record.perDay) || 0);
+      if (!baseline) return total;
+      const costPerUnit = Math.max(0, Number(record.costPerDay) || 0) / baseline;
+      const unitsAvoided = Math.max(0, baseline - dailyUse(vice, key));
+      return total + unitsAvoided * costPerUnit;
+    }, 0);
+  }
+  // Moved from the old moment dialog and Support screen: the records a moment and a wave are saved as.
+  const MOMENT_TRIGGERS = ['Stress', 'Social', 'Boredom', 'Craving', 'Celebration', 'Anxiety', 'Tired', 'Routine', 'Loneliness', 'Anger', 'Alcohol', 'Other'];
+  // A random UUID where the browser offers one, otherwise a prefixed timestamp-and-random id.
+  function newRecordId(prefix) {
+    return typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  }
+  // When the habit's first plan began; a moment can't be earlier.
+  // A first plan that hasn't started yet (a quit day ahead) doesn't block moments before it.
+  function viceTrackStart(vice) {
+    const record = viceRecord(vice);
+    const starts = (record && Array.isArray(record.phases) ? record.phases : []).map(phase => logicDate(phase && phase.at)).filter(Boolean);
+    return starts.length ? new Date(Math.min(...starts)) : null;
+  }
+  // A habit moment, or null when the amount, time or cost isn't valid (amount 1–1000, not in the future, cost ≥ 0 or blank).
+  // `kind` is 'use' under a cut-down plan and 'slip' otherwise; `action` sets what the moment restarts
+  // (see streakHistory).
+  function makeMoment(vice, { at = new Date(), amount = 1, cost = '', triggers = [], why = '', action = 'log', productType = '' } = {}) {
+    const when = new Date(at);
+    if (!VICE_KEYS.includes(vice) || !Number.isFinite(amount) || amount <= 0 || amount > 1000 ||
+        Number.isNaN(when.getTime()) || when > new Date()) return null;
+    const start = viceTrackStart(vice);
+    if (start && start <= new Date() && when < start) return null;
+    const price = cost === '' || cost == null ? '' : Number(cost);
+    if (price !== '' && (!Number.isFinite(price) || price < 0)) return null;
+    const phase = viceAt(vice, when);
+    return {
+      id: newRecordId('moment'),
+      vice: vice,
+      at: when.toISOString(),
+      amount: amount,
+      cost: price,
+      triggers: triggers.filter(value => MOMENT_TRIGGERS.includes(value)),
+      why: String(why || '').slice(0, 2000),
+      action: ['log', 'streak', 'full'].includes(action) ? action : 'log',
+      kind: phase && phase.mode === 'reduce' ? 'use' : 'slip',
+      productType: String(productType || ''),
+      createdAt: new Date().toISOString()
+    };
+  }
+  // A wave ridden out (a resisted craving) for an enabled habit.
+  function makeCraving(vice, at = new Date()) {
+    return { id: 'craving-' + newRecordId('c'), vice: vice, at: new Date(at).toISOString() };
+  }
+</script>

@@ -1,0 +1,82 @@
+<script>
+  // Real support resources for each support country (moved from the old Support script; Support uses them in M2).
+  // EU countries get 112 first and a findahelpline.com directory last.
+  const SUPPORT_RESOURCES = {
+    us: [
+      {
+        name: '988 Suicide & Crisis Lifeline',
+        detail: 'Call or text 988 · free, confidential support',
+        href: 'tel:988',
+        callLabel: 'Call 988',
+        messageHref: 'sms:988',
+        messageLabel: 'Text 988',
+        external: 'https://988lifeline.org/'
+      },
+      {
+        name: 'SAMHSA National Helpline',
+        detail: '1-800-662-HELP (4357) · treatment information and referrals',
+        href: 'tel:18006624357',
+        callLabel: 'Call 1-800-662-4357',
+        external: 'https://www.samhsa.gov/find-help/helplines/national-helpline'
+      }
+    ],
+    ca: [{
+      name: '988 Suicide Crisis Helpline',
+      detail: 'Call or text 988 · available across Canada',
+      href: 'tel:988',
+      callLabel: 'Call 988',
+      messageHref: 'sms:988',
+      messageLabel: 'Text 988',
+      external: 'https://988.ca/'
+    }],
+    uk: [{
+      name: 'Samaritans',
+      detail: 'Call 116 123 · free, 24 hours a day',
+      href: 'tel:116123',
+      callLabel: 'Call 116 123',
+      external: 'https://www.samaritans.org/how-we-can-help/contact-samaritan/'
+    }],
+    ie: [{
+      name: 'Samaritans Ireland',
+      detail: 'Call 116 123 · free, 24 hours a day',
+      href: 'tel:116123',
+      callLabel: 'Call 116 123',
+      external: 'https://www.samaritans.org/ireland/how-we-can-help/contact-samaritan/'
+    }],
+    au: [{
+      name: 'Lifeline Australia',
+      detail: 'Call 13 11 14 · crisis support',
+      href: 'tel:131114',
+      callLabel: 'Call 13 11 14',
+      external: 'https://www.lifeline.org.au/'
+    }],
+    nz: [{
+      name: '1737, Need to talk?',
+      detail: 'Call or text 1737 · free, confidential support',
+      href: 'tel:1737',
+      callLabel: 'Call 1737',
+      messageHref: 'sms:1737',
+      messageLabel: 'Text 1737',
+      external: 'https://1737.org.nz/'
+    }],
+    other: []
+  };
+  Object.entries(STATE_EU_COUNTRIES).forEach(([code, country]) => {
+    SUPPORT_RESOURCES[code] = [
+      {
+        name: 'Emergency services · 112',
+        detail: 'For immediate danger or a medical emergency. Free from fixed and mobile phones throughout the EU; not an emotional-support helpline.',
+        href: 'tel:112',
+        callLabel: 'Call 112',
+        external: 'https://europa.eu/youreurope/citizens/travel/security-and-emergencies/emergency/index_en.htm'
+      },
+      ...(SUPPORT_RESOURCES[code] || []),
+      {
+        name: 'Emotional support in ' + country,
+        detail: 'Find a Helpline directory · check each service for hours, languages and eligibility.',
+        external: 'https://findahelpline.com/countries/' + code,
+        externalLabel: 'Browse support directory'
+      }
+    ];
+  });
+</script>

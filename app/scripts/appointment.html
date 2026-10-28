@@ -1,0 +1,296 @@
+<script>
+  // Appointment page data. The screen is scripts/ui-appt.html. Everything is worked out from saved data
+  // for a range { start, end, label }, sorted the way a clinician tends to ask: what changed, medication, habits,
+  // mood / cravings / sleep, then the user's own questions and chosen notes.
+
+  const APPT_MOODS = ['Struggling', 'Heavy', 'Getting by', 'Doing okay', 'Going well'];
+  const apptShort = day => new Date(day + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const apptTime = at => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const apptPlural = (n, one, many = one + 's') => n + ' ' + (n === 1 ? one : many);
+  const apptAvg = list => list.length ? list.reduce((a, b) => a + b, 0) / list.length : null;
+  const apptOne = n => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(n);
+
+  // The saved date of the last appointment ('' when none or not a past date).
+  function apptLast() {
+    const k = S.profile.companion.lastAppointment;
+    return typeof k === 'string' && dateKey(k) === k && k <= localToday() ? k : '';
+  }
+  // Sets (or clears with '') the last appointment date; returns a function that puts the old one back.
+  function setApptLast(k) {
+    const c = S.profile.companion, had = Object.prototype.hasOwnProperty.call(c, 'lastAppointment'), was = c.lastAppointment;
+    if (k) c.lastAppointment = k; else delete c.lastAppointment;
+    return () => { if (had) c.lastAppointment = was; else delete c.lastAppointment; };
+  }
+  // Questions for the doctor, oldest first: [{ id, text, at }].
+  function apptQuestions() {
+    return Array.isArray(S.profile.companion.questions)
+      ? S.profile.companion.questions.filter(q => logicObject(q) && typeof q.text === 'string' && q.text.trim()) : [];
+  }
+  // Adds a question (max 20, 300 characters); returns an error message or the new question.
+  function addApptQuestion(text) {
+    const t = String(text || '').trim();
+    if (!t) return 'Type a question first.';
+    if (t.length > 300) return 'Keep a question under 300 characters.';
+    const list = apptQuestions();
+    if (list.length >= 20) return 'You can keep up to 20 questions.';
+    const q = { id: 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: t, at: new Date().toISOString() };
+    S.profile.companion.questions = [...list, q];
+    return q;
+  }
+  // Removes a question; returns a function that puts it back in its place.
+  function removeApptQuestion(id) {
+    const list = apptQuestions(), i = list.findIndex(q => q.id === id);
+    if (i < 0) return null;
+    const q = list[i];
+    S.profile.companion.questions = list.filter(x => x.id !== id);
+    return () => { const now = apptQuestions(); now.splice(Math.min(i, now.length), 0, q); S.profile.companion.questions = now; };
+  }
+
+  // 'since' (the last appointment; null when none is saved), '14', '30', '90', or a custom { start, end }.
+  function apptRange(per) {
+    if (per === 'since') {
+      const last = apptLast();
+      if (!last) return null;
+      return { start: last, end: localToday(), label: 'Since your appointment on ' + insightsDateLabel(last) };
+    }
+    return insightsDateRange(per);
+  }
+  function apptDays(range) {
+    const out = [];
+    for (let day = range.start; day <= range.end; day = dayOffset(day, 1)) out.push(day);
+    return out;
+  }
+  // Monday weeks, clipped to the range, oldest first.
+  function apptWeeks(range) {
+    const weeks = [];
+    apptDays(range).forEach(day => {
+      const monday = (new Date(day + 'T12:00:00').getDay() + 6) % 7 === 0;
+      if (!weeks.length || monday) weeks.push({ days: [] });
+      weeks[weeks.length - 1].days.push(day);
+    });
+    return weeks.map(w => {
+      const a = w.days[0], b = w.days[w.days.length - 1];
+      const same = a.slice(0, 7) === b.slice(0, 7);
+      return { days: w.days, start: a, end: b, label: a === b ? apptShort(a) : apptShort(a) + ' – ' + (same ? String(Number(b.slice(8))) : apptShort(b)) };
+    });
+  }
+
+  // A night's sleep, saved on the day after: the morning check-in's, else the day's own.
+  function apptSleep(day) {
+    const j = S.journal[day] || {}, c = ((j.checkins || {}).morning || {}).sleepHours, h = c != null && c !== '' ? c : j.sleepHours;
+    return h != null && h !== '' && isFinite(h) && h >= 0 && h <= 24 ? Number(h) : null;
+  }
+  function apptCheckins(day) {
+    const c = (S.journal[day] || {}).checkins;
+    return logicObject(c) ? Object.values(c).filter(logicObject) : [];
+  }
+  const apptUsed = m => m && ['use', 'slip'].includes(m.kind || 'slip');
+
+  // Deleted medications never appear. By default: active ones that have started, plus archived ones with doses in the range.
+  const apptMedShown = (med, range, days) => logicObject(med) && !med.deletedAt && (
+    (med.active && (!med.startDate || dateKey(med.startDate) <= range.end)) ||
+    days.some(day => medicationEvents(med, day).length));
+
+  // Every medication the summary could include, for the picker: { id, name, archived, on } where on is the default.
+  function apptMedChoices(range) {
+    if (!medicationTrackingEnabled()) return [];
+    const days = apptDays(range);
+    return S.meds.filter(med => logicObject(med) && !med.deletedAt)
+      .map(med => ({ id: med.id, name: med.name, archived: !med.active, on: apptMedShown(med, range, days) }));
+  }
+
+  // selected: a Set of medication ids the person picked, or null for the default.
+  function apptMeds(range, selected) {
+    if (!medicationTrackingEnabled()) return [];
+    const days = apptDays(range), reminders = S.profile.companion.reminders || {};
+    return S.meds.filter(med => selected
+      ? logicObject(med) && !med.deletedAt && selected.has(med.id)
+      : apptMedShown(med, range, days))
+      .map(med => {
+        const dose = med.dose ? formatQuantity(med.dose) + ' ' + med.unit : '';
+        const title = med.name + (dose ? ' ' + dose : '');
+        if (med.freq === 'prn') {
+          let total = 0, daysWith = 0, over = 0;
+          const limit = Number(med.dailyLimit) || 0;
+          days.forEach(day => {
+            const n = medicationEvents(med, day).filter(e => Number(e.slot) === -1 && !e.skipped).length;
+            total += n; if (n) daysWith += 1; if (limit && n > limit) over += 1;
+          });
+          const plan = 'As needed' + (limit ? ' · up to ' + limit + ' a day' : '');
+          const line = total ? apptPlural(total, 'dose') + ' on ' + apptPlural(daysWith, 'day') + (over ? ' · over the personal limit on ' + apptPlural(over, 'day') : '') : 'No doses noted';
+          return { id: med.id, title, plan, prn: true, archived: !med.active, line, glance: title + ': ' + line.charAt(0).toLowerCase() + line.slice(1) };
+        }
+        const times = (Array.isArray(med.slots) ? med.slots : []).map((label, i) => {
+          const r = reminders[med.id + ':' + i];
+          return label + (r && /^\d\d:\d\d$/.test(r.time) ? ' ' + r.time : '');
+        });
+        let sched = 0, complete = 0, skips = 0, late = 0;
+        const reasons = new Map();
+        days.forEach(day => {
+          const st = medDayStatus(med, day);
+          if (!st.expected) return;
+          sched += 1;
+          if (st.complete) complete += 1;
+          st.doses.forEach(d => {
+            if (d.skipped) { skips += 1; if (d.reason) reasons.set(d.reason, (reasons.get(d.reason) || 0) + 1); }
+            const r = reminders[med.id + ':' + d.slot];
+            if (d.noted && d.at && r && /^\d\d:\d\d$/.test(r.time) && dateKey(d.at) === day) {
+              const t = new Date(d.at), due = Number(r.time.slice(0, 2)) * 60 + Number(r.time.slice(3));
+              if (t.getHours() * 60 + t.getMinutes() > due + 60) late += 1;
+            }
+          });
+        });
+        const why = [...reasons].map(([r, n]) => r + (n > 1 ? ' (' + n + ')' : '')).join(', ');
+        const parts = [sched ? 'All doses taken on ' + complete + ' of ' + apptPlural(sched, 'day') : 'No scheduled days in this period'];
+        if (skips) parts.push(apptPlural(skips, 'dose') + ' skipped' + (why ? ': ' + why : ''));
+        if (late) parts.push(apptPlural(late, 'dose') + ' taken over an hour late');
+        return { id: med.id, title, plan: times.join(', ') || 'Scheduled', prn: false, archived: !med.active, line: parts.join(' · '),
+          glance: title + ': ' + (sched ? 'all doses on ' + complete + ' of ' + apptPlural(sched, 'day') : 'no scheduled days') + (skips ? ' · ' + skips + ' skipped' + (why ? ' (' + why + ')' : '') : '') };
+      });
+  }
+
+  // Per-day use before vs in the last 7 days, when the range is long enough to compare.
+  function apptTrend(values) {
+    if (values.length < 14) return null;
+    const before = apptAvg(values.slice(0, -7)), recent = apptAvg(values.slice(-7));
+    return before == null || recent == null ? null : { before, recent };
+  }
+  function apptTrendWords(t, unit) {
+    if (!t) return '';
+    const b = apptOne(t.before), r = apptOne(t.recent);
+    return b === r ? 'steady at ' + r + unit : (t.recent < t.before ? 'down' : 'up') + ' from ' + b + ' to ' + r + unit + ' in the last 7 days';
+  }
+
+  function apptHabits(range) {
+    const days = apptDays(range), weeks = apptWeeks(range), endAt = new Date(range.end + 'T23:59:59');
+    return VICE_KEYS.map(v => {
+      const moments = S.slips.filter(m => apptUsed(m) && m.vice === v && dateKey(m.at) >= range.start && dateKey(m.at) <= range.end);
+      const on = S.vices[v] && S.vices[v].enabled;
+      if (!on && !moments.length) return null;
+      const name = viceInfo(v).label, plan = viceAt(v, endAt), unit = viceUnit(v);
+      const phases = (S.vices[v].phases || []).filter(p => logicObject(p) && logicDate(p.at) && logicDate(p.at) <= endAt && !p.ease);
+      const quitFrom = plan && plan.mode === 'quit' ? (phases.filter(p => p.mode === 'quit').pop() || plan) : null;
+      // null when the day has no limit; otherwise whether the habit stayed within it (weekly: the rolling 7 days)
+      const target = day => { const p = viceAt(v, new Date(day + 'T23:59:59')); return p && p.mode === 'reduce' ? limitStatus(v, day).within : null; };
+      const planText = !plan ? 'No plan set' : plan.mode === 'quit'
+        ? 'Quit day ' + insightsDateLabel(dateKey(quitFrom.at))
+        : plan.mode === 'track' ? 'Just tracking'
+        : 'Cut down · limit ' + formatQuantity(plan.target) + ' ' + habitUnitLabel(v, plan.target) + ' ' + cadencePhrase(plan);
+      const use = days.map(day => dailyUse(v, day));
+      const rows = weeks.map(w => {
+        const amt = w.days.reduce((a, day) => a + dailyUse(v, day), 0), n = moments.filter(m => w.days.includes(dateKey(m.at))).length;
+        const lim = w.days.filter(day => target(day) != null), within = lim.filter(day => target(day)).length;
+        return { label: w.label, n, amt: formatQuantity(amt), perDay: apptOne(amt / w.days.length), within: lim.length ? within + ' of ' + lim.length : '–', free: w.days.filter(day => !dailyUse(v, day)).length + ' of ' + w.days.length };
+      });
+      const last = moments.map(m => dateKey(m.at)).sort().pop();
+      const since = last ? Math.max(0, dayDistance(new Date(last + 'T12:00:00'), new Date(range.end + 'T12:00:00'))) : null;
+      let glance;
+      if (plan && plan.mode === 'quit') {
+        // Only moments from the quit day on are slips; the ones before it were the habit as usual.
+        const qd = dateKey(quitFrom.at), slips = moments.filter(m => dateKey(m.at) >= qd).length;
+        const lead = qd > range.start ? name + ' (quit day ' + apptShort(qd) + '): ' : name + ' (quit): ';
+        glance = lead + (slips ? apptPlural(slips, 'slip') + (qd > range.start ? ' since the quit day' : '') + (since ? ', none in the last ' + apptPlural(since, 'day') : ', the latest on ' + apptShort(last))
+          : 'no slips' + (qd > range.start ? ' since the quit day' : ' noted')) + (qd > range.start && moments.length > slips ? ' · ' + (moments.length - slips) + ' moments before it' : '');
+      } else {
+        const limDays = days.filter(day => target(day) != null), within = limDays.filter(day => target(day)).length;
+        const t = apptTrendWords(apptTrend(use), ' a day');
+        glance = name + (plan && plan.mode === 'reduce' ? ' (limit ' + formatQuantity(plan.target) + ' ' + cadencePhrase(plan) + ')' : '') + ': ' + apptOne(apptAvg(use)) + ' ' + unit.many + ' a day on average' + (t ? ', ' + t : '') + (limDays.length ? ' · within the limit on ' + within + ' of ' + apptPlural(limDays.length, 'day') : '');
+      }
+      return { key: v, name, unit: unit.many, plan: planText, quit: !!(plan && plan.mode === 'quit'), reduce: !!(plan && plan.mode === 'reduce'), moments: moments.length, rows, glance };
+    }).filter(Boolean);
+  }
+
+  function apptWellbeing(range) {
+    const days = apptDays(range), weeks = apptWeeks(range);
+    const moods = day => apptCheckins(day).map(c => Number(c.mood)).filter(m => Number.isInteger(m) && m >= 1 && m <= 5);
+    const cravings = day => apptCheckins(day).map(c => c.craving).filter(c => Number.isInteger(c) && c >= 0 && c <= 10);
+    const waves = day => S.cravings.filter(c => c && dateKey(c.at) === day).length;
+    const word = avg => avg == null ? '–' : APPT_MOODS[Math.min(4, Math.max(0, Math.round(avg) - 1))];
+    const rows = weeks.map(w => {
+      const m = w.days.flatMap(moods), c = w.days.flatMap(cravings), s = w.days.map(apptSleep).filter(h => h != null);
+      return { label: w.label, mood: word(apptAvg(m)), craving: c.length ? apptOne(apptAvg(c)) : '–', sleep: s.length ? apptOne(apptAvg(s)) + ' h' : '–', waves: w.days.reduce((a, d) => a + waves(d), 0), checkins: w.days.reduce((a, d) => a + apptCheckins(d).filter(c => c.updatedAt).length, 0) };
+    });
+    const allMoods = days.flatMap(moods), allCrav = days.flatMap(cravings), nights = days.filter(d => apptSleep(d) != null);
+    const count = [0, 0, 0, 0, 0]; allMoods.forEach(m => count[m - 1]++);
+    const most = allMoods.length ? APPT_MOODS[count.indexOf(Math.max(...count))] : '';
+    const glance = [];
+    if (allMoods.length) glance.push('Mood: mostly ' + most + ' (' + apptPlural(allMoods.length, 'check-in') + ')');
+    const ct = apptTrend(days.map(d => apptAvg(cravings(d))).filter(x => x != null));
+    if (allCrav.length) glance.push('Cravings: average ' + apptOne(apptAvg(allCrav)) + '/10' + (ct ? ', ' + apptTrendWords(ct, '') : ''));
+    if (nights.length) glance.push('Sleep: average ' + apptOne(apptAvg(nights.map(apptSleep))) + ' hours over ' + apptPlural(nights.length, 'night'));
+    const waveTotal = days.reduce((a, d) => a + waves(d), 0);
+    if (waveTotal) glance.push('Waves ridden out: ' + waveTotal);
+
+    // Patterns the data supports, each only with enough to go on.
+    const patterns = [];
+    const inRange = at => dateKey(at) >= range.start && dateKey(at) <= range.end;
+    const times = [...S.slips.filter(m => apptUsed(m) && inRange(m.at)), ...S.cravings.filter(c => c && inRange(c.at))].map(x => new Date(x.at).getHours());
+    if (times.length >= 5) {
+      let best = 0, at = 0;
+      for (let h = 0; h < 24; h++) { const n = times.filter(t => (t - h + 24) % 24 < 3).length; if (n > best) { best = n; at = h; } }
+      const hl = h => new Date(2000, 0, 1, h % 24).toLocaleTimeString(undefined, { hour: 'numeric' });
+      patterns.push('Cravings and moments were most common between ' + hl(at) + ' and ' + hl(at + 3) + ' (' + best + ' of ' + times.length + ').');
+    }
+    const short = nights.filter(d => apptSleep(d) < 6), long = nights.filter(d => apptSleep(d) >= 7);
+    const dayMood = d => apptAvg(moods(d));
+    const sm = short.map(dayMood).filter(x => x != null), lm = long.map(dayMood).filter(x => x != null);
+    if (sm.length >= 2 && lm.length >= 2 && word(apptAvg(sm)) !== word(apptAvg(lm))) {
+      patterns.push('Mood after nights under 6 hours: ' + word(apptAvg(sm)) + '; after 7 hours or more: ' + word(apptAvg(lm)) + '.');
+    }
+    const used = d => S.slips.filter(m => apptUsed(m) && dateKey(m.at) === d).length;
+    if (short.length >= 2 && long.length >= 2) {
+      const a = apptAvg(short.map(used)), b = apptAvg(long.map(used));
+      if (apptOne(a) !== apptOne(b)) patterns.push('Moments on days after under 6 hours of sleep: ' + apptOne(a) + ' a day; after 7 hours or more: ' + apptOne(b) + '.');
+    }
+    const tc = {};
+    S.slips.filter(m => apptUsed(m) && inRange(m.at)).forEach(m => (Array.isArray(m.triggers) ? m.triggers : []).forEach(t => { tc[t] = (tc[t] || 0) + 1; }));
+    const top = Object.entries(tc).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    if (top.length) patterns.push('Most noted triggers: ' + top.map(([t, n]) => t + ' (' + n + ')').join(', ') + '.');
+    return { rows, glance, patterns, any: allMoods.length || allCrav.length || nights.length || waveTotal };
+  }
+
+  // Check-in notes, old day notes and weekly reflections in the range, newest first; each has a stable id.
+  function apptNotes(range) {
+    const notes = [];
+    Object.entries(S.journal).forEach(([day, record]) => {
+      if (dateKey(day) !== day || day < range.start || day > range.end || !logicObject(record)) return;
+      if (typeof record.text === 'string' && record.text.trim() && !apptCheckins(day).some(c => c.text === record.text)) {
+        notes.push({ id: day + ':day', day, label: 'Day note', text: record.text.trim() });
+      }
+      Object.entries(record.checkins || {}).forEach(([slot, c]) => {
+        if (logicObject(c) && typeof c.text === 'string' && c.text.trim()) {
+          notes.push({ id: day + ':' + slot, day, label: slot.charAt(0).toUpperCase() + slot.slice(1) + ' check-in', text: c.text.trim() });
+        }
+      });
+    });
+    Object.entries(S.profile.companion.reflections || {}).forEach(([week, text]) => {
+      if (dateKey(week) !== week || dayOffset(week, 6) < range.start || week > range.end || typeof text !== 'string' || !text.trim()) return;
+      notes.push({ id: week + ':week', day: week, label: 'Weekly reflection', text: text.trim() });
+    });
+    const order = { day: 0, morning: 1, afternoon: 2, evening: 3, week: 4 };
+    return notes.sort((a, b) => b.day.localeCompare(a.day) || order[b.id.split(':')[1]] - order[a.id.split(':')[1]]);
+  }
+
+  function apptData(range, selectedMeds) {
+    const meds = apptMeds(range, selectedMeds), habits = apptHabits(range), well = apptWellbeing(range);
+    const glance = [...meds.filter(m => !m.archived || !m.line.startsWith('No')).map(m => m.glance), ...habits.map(h => h.glance), ...well.glance];
+    return { range, meds, habits, well, glance, questions: apptQuestions(), notes: apptNotes(range) };
+  }
+
+  // Plain text of the page for Copy text: the sections that are on, and the chosen notes.
+  function apptText(d, on, picked) {
+    const L = ['Reclaim · Appointment summary' + (S.profile.name.trim() ? ' · ' + S.profile.name.trim() : ''),
+      d.range.label + ' (' + insightsDateLabel(d.range.start) + ' – ' + insightsDateLabel(d.range.end) + ')', ''];
+    const sec = (title, lines) => { L.push(title.toUpperCase(), ...lines, ''); };
+    if (on.glance) sec('At a glance', d.glance.length ? d.glance.map(g => '- ' + g) : ['Nothing noted in this period.']);
+    if (on.meds) sec('Medication', d.meds.length ? d.meds.flatMap(m => [m.title + (m.archived ? ' (stopped)' : '') + ' · ' + m.plan, '  ' + m.line]) : ['No medications tracked.']);
+    if (on.habits) sec('Habits', d.habits.length ? d.habits.flatMap(h => [h.name + ' · ' + h.plan,
+      ...h.rows.map(r => '  ' + r.label + ': ' + (h.quit ? apptPlural(r.n, 'moment') + ', ' + r.free + ' days without' : r.amt + ' ' + h.unit + ' (' + r.perDay + '/day)' + (h.reduce ? ', within limit ' + r.within + ' days' : '')))]) : ['No habits tracked.']);
+    if (on.well) sec('Mood, cravings and sleep', d.well.any ? [...d.well.rows.map(r => '  ' + r.label + ': mood ' + r.mood + ', cravings ' + r.craving + (r.craving === '–' ? '' : '/10') + ', sleep ' + r.sleep + ', waves ' + r.waves),
+      ...d.well.patterns.map(p => '- ' + p)] : ['Nothing noted in this period.']);
+    if (on.q) sec('Questions for my doctor', d.questions.length ? d.questions.map((q, i) => (i + 1) + '. ' + q.text) : ['None yet.']);
+    const notes = d.notes.filter(n => picked.has(n.id));
+    if (on.notes && notes.length) sec('My notes', notes.map(n => insightsDateLabel(n.day) + ' · ' + n.label + ': ' + n.text));
+    return L.join('\n').trim() + '\n';
+  }
+</script>

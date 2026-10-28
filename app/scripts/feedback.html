@@ -1,0 +1,66 @@
+<script>
+  /* ---------- feedback ---------- (from the design mockup) */
+  // Sparks, pops and ripples are skipped under reduced motion; the message always shows.
+  const calm=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+  // The ripple sits in its own clipping box (.ripplebox), so a button needn't clip its overflow (and its hit area) for it.
+  function ripple(b,e){if(calm())return;const r=b.getBoundingClientRect(),s=Math.max(r.width,r.height)*2,x=(e.clientX||r.left+r.width/2)-r.left,y=(e.clientY||r.top+r.height/2)-r.top,box=document.createElement('span'),d=document.createElement('span');box.className='ripplebox';d.className='ripple';Object.assign(d.style,{width:s+'px',height:s+'px',left:x-s/2+'px',top:y-s/2+'px'});box.appendChild(d);b.appendChild(box);d.animate([{transform:'scale(0)',opacity:.18},{transform:'scale(1)',opacity:0}],{duration:600,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish=()=>box.remove();}
+  function sparks(el,n=10){if(!el||calm())return;const a=app.getBoundingClientRect(),r=el.getBoundingClientRect(),cx=r.left+r.width/2-a.left,cy=r.top+r.height/2-a.top,cols=['#2F9E6B','#F2A65A','#EF8A6A','#8F7FE0','#5AA3E6'];
+    for(let i=0;i<n;i++){const s=document.createElement('i');s.className='spark';s.setAttribute('aria-hidden','true');s.style.left=cx-3+'px';s.style.top=cy-3+'px';s.style.background=cols[i%5];app.appendChild(s);const ang=i/n*Math.PI*2+Math.random()*.4,d=38+Math.random()*28;
+      s.animate([{transform:'translate(0,0) scale(1)',opacity:1},{transform:`translate(${Math.cos(ang)*d}px,${Math.sin(ang)*d}px) scale(.3)`,opacity:0}],{duration:560+Math.random()*200,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish=()=>s.remove();}}
+  function bump(el){if(calm())return;el?.animate([{transform:'scale(1)'},{transform:'scale(1.28)'},{transform:'scale(1)'}],{duration:450,easing:'cubic-bezier(.34,1.56,.64,1)'});}
+  let tt,undoFn=null;
+  function toast(msg,undo){const t=$('#toast');if(!t)return;$('#tmsg').textContent=msg;undoFn=undo||null;$('#tundo').hidden=!undo;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3400);}
+
+  // Save notices the mockup lacks (Saving…, not saved yet, failed with Try again, stale Load latest, upgrade backup),
+  // in the toast's style above it. saveNotice is plain data; every change redraws #savenote.
+  // queued: false | 'offline' | 'busy' (core.html keeps retrying); failed: false | true | 'full' (Drive is full).
+  const DRIVE_FULL_MESSAGE = 'Your Google Drive is full, so that wasn’t saved. Free up some space in Drive, then try again.';
+  const saveNotice = new Proxy({ signin: false, stale: false, saving: false, queued: false, failed: false, upgradeBackupFailed: false }, {
+    set(target, key, value) { target[key] = value; renderSaveNotice(); return true; }
+  });
+  function renderSaveNotice() {
+    const box = $('#savenote');
+    if (!box) return;
+    const n = saveNotice;
+    const row = (text, buttons) => `<span>${esc(text)}</span>${buttons}`;
+    // The upgrade note waits for Guided setup to finish: its Back up opens a sheet, which setup's screen doesn't have.
+    const upgrade = n.upgradeBackupFailed && V.screen !== 'onboard';
+    let html = '';
+    if (n.signin) html = row('Your Google sign-in has ended. Sign in again to keep saving.', '<button data-act="savesignin">Sign in</button>');
+    else if (n.stale) html = row('Reclaim was updated on another device or tab, so your last change wasn’t saved. Load the latest to carry on.', '<button data-act="saveload">Load latest</button>');
+    else if (n.failed) html = row(n.failed === 'full' ? DRIVE_FULL_MESSAGE : 'Couldn’t save, try again.', '<button data-act="saveretry">Try again</button><button data-act="savedismiss" aria-label="Dismiss save error">×</button>');
+    else if (n.queued) html = row(n.queued === 'offline'
+      ? 'You’re offline, so your latest change isn’t saved yet. Reclaim will save it when you’re back online.'
+      : 'Your latest change isn’t saved yet. Google Drive isn’t responding, so Reclaim will keep trying.', '<button data-act="saveretry">Try again</button>');
+    else if (upgrade) html = row('Reclaim was updated, but a copy of your old data couldn’t be saved first. Make a backup now.', '<button data-act="saveupgrade">Back up</button><button data-act="saveupgradeno" aria-label="Dismiss backup note">×</button>');
+    else if (n.saving) html = row('Saving…', '');
+    // Role before content, so screen readers announce an alert as one.
+    box.setAttribute('role', n.signin || n.stale || n.failed || n.queued || upgrade ? 'alert' : 'status');
+    box.innerHTML = html;
+    box.classList.toggle('show', !!html);
+  }
+  Object.assign(ACT, {
+    savesignin: () => window.reclaimSignIn.request(),
+    saveload: () => loadLatest(),
+    saveretry: () => retrySave(),
+    savedismiss: () => dismissSaveFailed(),
+    saveupgrade: () => openUpgradeBackup(),
+    saveupgradeno: () => { saveNotice.upgradeBackupFailed = false; }
+  });
+
+  // Instant save: the screen has already changed, so save in the background.
+  // If the save fails, rollback() puts the change back and the message says so. A save that
+  // couldn't reach Drive isn't a failure: it resolves, the change stays and core.html retries it.
+  // A stale save keeps its own Load latest banner.
+  function saveInBackground(rollback) {
+    return saveState().then(() => true, error => {
+      console.warn('Reclaim could not save:', error);
+      if (typeof rollback === 'function') rollback();
+      if (!isStaleSaveError(error)) {
+        saveNotice.failed = false;
+        toast(error && error.reason === 'storageQuotaExceeded' ? DRIVE_FULL_MESSAGE : 'Couldn’t save that. Please try again.');
+      }
+      return false;
+    });
+  }
+</script>

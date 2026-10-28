@@ -1,0 +1,171 @@
+<script>
+  // Today's lists: doses and check-ins that are due, done or coming up, the Day story, and the Quick log
+  // counts. Reads S (meds, journal, slips, cravings) at todayUI.now with the core and meds helpers;
+  // model and Quick log use it.
+  // Minutes after midnight as a local clock time, e.g. 540 -> "9:00 AM".
+  function todayTimeLabel(minutes, reference = todayUI.now) {
+    const time = new Date(reference);
+    time.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+    return time.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  }
+
+  // Today's doses and check-ins, split into due, done and upcoming. A dose needs a reminder time to be
+  // scheduled; untimed doses are listed separately, and as-needed medicines aren't listed at all. Check-ins
+  // run morning to noon, afternoon to 5 PM, evening to midnight; an earlier one that was missed is dropped.
+  function todayActions() {
+    const now = todayUI.now;
+    const day = dateKey(now);
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    const tasks = [];
+    const untimedDoses = [];
+    activeMedications().filter(med => !med.startDate || dateKey(med.startDate) <= day)
+      .forEach(med => {
+        if (med.freq === 'prn') return;
+        medDayStatus(med, day).doses.forEach(dose => {
+          // "Not taking it today" settles the dose: it goes to Done today as skipped, not taken.
+          const reminder = S.profile.companion.reminders[med.id + ':' + dose.slot];
+          const time = reminder && /^([01]\d|2[0-3]):[0-5]\d$/.test(reminder.time)
+            ? reminder.time : '';
+          const detail = dose.label + (time ? ' · ' + time : ' · Scheduled today · no time set');
+          if (!time) {
+            untimedDoses.push({
+              id: med.id + ':' + dose.slot, kind: 'dose', medId: med.id, slot: dose.slot,
+              title: med.name + (med.dose ? ' · ' + med.dose + ' ' + med.unit : ''),
+              detail: detail, noted: dose.noted, skipped: dose.skipped, reason: dose.reason, at: dose.at, timed: false
+            });
+            return;
+          }
+          const due = Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+          tasks.push({
+            id: med.id + ':' + dose.slot, kind: 'dose', medId: med.id, slot: dose.slot,
+            title: med.name + (med.dose ? ' · ' + med.dose + ' ' + med.unit : ''),
+            detail: detail, noted: dose.noted, skipped: dose.skipped, reason: dose.reason, at: dose.at, due: due, time: due, order: due, timed: true,
+            nextLabel: dose.label + ' dose · ' + todayTimeLabel(due, now)
+          });
+        });
+      });
+    const currentSlot = minutes < 720 ? 'morning' : minutes < 1020 ? 'afternoon' : 'evening';
+    const checkins = (S.journal[day] || {}).checkins || {};
+    [['morning', 0, 720], ['afternoon', 720, 1020], ['evening', 1020, 1440]].forEach(([slot, due, end]) => {
+      const saved = checkins[slot];
+      if (slot !== currentSlot && due <= minutes && !saved) return;
+      tasks.push({
+        id: 'checkin-' + slot, kind: 'checkin', slot: slot,
+        title: slot.charAt(0).toUpperCase() + slot.slice(1) + ' check-in',
+        detail: slot === 'morning' ? 'Mood, a note, and how you feel' : 'A brief pause for mood and a note',
+        noted: !!saved, at: saved && (saved.createdAt || saved.updatedAt), mood: saved && Number(saved.mood), due: due, order: end, timed: true,
+        nextLabel: slot.charAt(0).toUpperCase() + slot.slice(1) + ' check-in · ' + todayTimeLabel(due, now)
+      });
+    });
+    // A check-in sorts by the end of its time of day, so a 3 PM dose comes before the afternoon check-in.
+    const ordered = tasks.sort((left, right) => left.order - right.order);
+    const settled = task => task.noted || task.skipped;
+    const due = ordered.filter(task => !settled(task) && task.due <= minutes);
+    const completed = ordered.filter(settled);
+    const upcoming = ordered.filter(task => !settled(task) && task.due > minutes).sort((left, right) => left.due - right.due);
+    return {
+      day: day,
+      due: due,
+      completed: completed,
+      upcoming: upcoming,
+      unscheduled: untimedDoses,
+      visibleTasks: due.concat(completed).sort((left, right) => left.order - right.order)
+        .concat(untimedDoses)
+    };
+  }
+
+  // A task's short name: the time of day for a check-in, the medicine's name for a dose.
+  function todayTaskShort(task) {
+    return task.kind === 'checkin' ? task.slot.charAt(0).toUpperCase() + task.slot.slice(1) : task.title.split(' · ')[0];
+  }
+
+  // Everything saved today, oldest first, for the Day story.
+  function todayStoryItems(day = localToday()) {
+    const journal = S.journal[day] || {};
+    const time = at => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return [
+      ...Object.entries(journal.checkins || {})
+        .filter(([, checkin]) => checkin && checkin.updatedAt)
+        .map(([slot, checkin]) => ({
+          id: 'checkin-' + slot, at: checkin.createdAt || checkin.updatedAt, icon: 'book', tint: 'lilac',
+          title: slot.charAt(0).toUpperCase() + slot.slice(1) + ' check-in',
+          detail: (Number(checkin.mood) ? ['😣', '🙁', '😐', '🙂', '😄'][checkin.mood - 1] + ' ' : '') + (checkin.text || checkin.intention || 'A moment captured')
+        })),
+      ...(S.profile.companion.trackMedications ? Object.entries(S.doses[day] || {})
+        .flatMap(([medId, events]) => (Array.isArray(events) ? events : [])
+          .filter(event => event && event.at)
+          .map((event, index) => ({
+            id: 'dose-' + medId + '-' + index, at: event.at, icon: 'pill', tint: event.slot === -1 ? 'sky' : 'peach',
+            title: (S.meds.find(med => med.id === medId) || {}).name || 'Medication dose',
+            detail: event.skipped ? 'Not taking it today' + (event.reason ? ' · ' + event.reason : '') : event.slot === -1 ? 'As-needed dose' : 'Dose noted'
+          }))) : []),
+      ...S.cravings
+        .filter(item => dateKey(item.at) === day)
+        .map(item => ({ id: 'craving-' + item.id, at: item.at, icon: 'wave', tint: 'peach', title: 'Craving noticed', detail: 'A wave met in its own time' })),
+      ...S.slips
+        .filter(item => dateKey(item.at) === day)
+        .map(item => ({
+          id: 'moment-' + item.id, at: item.at, emoji: viceInfo(item.vice).emoji,
+          tint: viceInfo(item.vice).tint,
+          title: viceInfo(item.vice).label + ' moment',
+          detail: (item.triggers || []).join(', ') || item.why || 'A moment captured'
+        })),
+      ...(journal.updatedAt && !Object.keys(journal.checkins || {}).length
+        ? [{ id: 'journal-summary', at: journal.updatedAt, icon: 'pen', tint: 'butter', title: 'Journal note', detail: journal.text || 'A day summary saved' }]
+        : [])
+    ].sort((left, right) => new Date(left.at) - new Date(right.at))
+      .map(item => Object.assign(item, { time: time(item.at) }));
+  }
+
+  // Tracking: a scheduled dose with a reminder time, not noted 30 minutes after it.
+  function trackingDoseLate(dose, at = todayUI.now) {
+    if (dose.noted || !dose.reminderTime) return false;
+    const due = Number(dose.reminderTime.slice(0, 2)) * 60 + Number(dose.reminderTime.slice(3));
+    return at.getHours() * 60 + at.getMinutes() >= due + 30;
+  }
+
+  // Moved from the old Quick log: today's counts and the doses still to note (Quick log uses them in M2).
+  // Today's counts and the current check-in state shown on the Quick log tiles.
+  function quickLogCounts(at = todayUI.now) {
+    const day = dateKey(at);
+    const minutes = at.getHours() * 60 + at.getMinutes();
+    const slot = minutes < 720 ? 'morning' : minutes < 1020 ? 'afternoon' : 'evening';
+    const checkins = ((S.journal[day] || {}).checkins) || {};
+    const enabled = VICE_KEYS.filter(vice => S.vices[vice] && S.vices[vice].enabled);
+    const names = enabled.map((vice, index) => index ? vice : vice.charAt(0).toUpperCase() + vice.slice(1));
+    const last = names.pop();
+    return {
+      slot: slot,
+      slotLabel: slot.charAt(0).toUpperCase() + slot.slice(1),
+      checkinDone: !!(checkins[slot] && checkins[slot].updatedAt),
+      next: slot === 'morning' ? 'Afternoon' : slot === 'afternoon' ? 'Evening · ' + todayTimeLabel(1020, at) : 'Tomorrow morning',
+      waves: S.cravings.filter(item => item && dateKey(item.at) === day).length,
+      moments: S.slips.filter(item => item && dateKey(item.at) === day).length,
+      doses: Object.values(S.doses[day] || {}).reduce((total, events) => total + (Array.isArray(events) ? events.filter(event => !(event && event.skipped)).length : 0), 0),
+      habits: last ? (names.length ? names.join(', ') + ' or ' : '') + last : 'Turn on a habit in Settings'
+    };
+  }
+
+  // The doses Quick log can note: one as-needed entry (slot -1) per as-needed medicine, plus today's
+  // scheduled doses not yet noted or skipped. Empty when medication tracking is off.
+  function quickDoseOptions(at = todayUI.now) {
+    const day = dateKey(at);
+    if (!day || !medicationTrackingEnabled()) return [];
+    return activeMedications().filter(med => {
+      const start = dateKey(med.startDate);
+      return !start || start <= day;
+    }).flatMap(med => {
+      const doseLabel = med.name + (med.dose ? ' · ' + med.dose + ' ' + med.unit : '');
+      if (med.freq === 'prn') {
+        return [{ medId: med.id, slot: -1, label: doseLabel + ' · As needed' }];
+      }
+      return medDayStatus(med, day).doses
+        .filter(dose => !dose.noted && !dose.skipped)
+        .map(dose => ({
+          medId: med.id,
+          slot: dose.slot,
+          label: doseLabel + ' · ' + dose.label
+        }));
+    });
+  }
+</script>

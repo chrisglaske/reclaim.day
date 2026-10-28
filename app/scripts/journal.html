@@ -1,0 +1,60 @@
+<script>
+  // The Journal's data logic; its view is scripts/ui-journal.
+  function validateSleepHours(value) {
+    if (value === '' || value === null || typeof value === 'undefined') {
+      return { valid: true, value: null, error: '' };
+    }
+    const hours = Number(value);
+    if (!Number.isFinite(hours) || hours < 0 || hours > 24) {
+      return { valid: false, value: null, error: 'Enter a sleep duration between 0 and 24 hours.' };
+    }
+    return { valid: true, value: Math.round(hours * 100) / 100, error: '' };
+  }
+
+  function journalRecord(day) {
+    const key = dateKey(day);
+    return key && logicObject(S.journal[key]) ? S.journal[key] : null;
+  }
+
+  function journalDoseNoted(key) {
+    return !!S.profile.companion.trackMedications && S.meds.some(med => med.freq !== 'prn' &&
+      Array.isArray((S.doses[key] || {})[med.id]) &&
+      S.doses[key][med.id].some(event => event && !event.skipped && Number(event.slot) >= 0));
+  }
+
+  function journalPeriod(at) {
+    const date = new Date(at);
+    const minutes = date.getHours() * 60 + date.getMinutes();
+    return minutes < 720 ? 'morning' : minutes < 1020 ? 'afternoon' : 'evening';
+  }
+
+  // Moments, waves and doses saved on a day, oldest first, each tagged with its part of the day.
+  function journalDayEvents(day) {
+    const time = at => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const events = [
+      ...S.slips.filter(item => item && dateKey(item.at) === day).map(item => ({
+        id: 'moment-' + item.id, at: item.at, type: 'use', kind: item.vice,
+        label: viceInfo(item.vice).label,
+        emoji: viceInfo(item.vice).emoji, tint: viceInfo(item.vice).tint,
+        text: (item.productType ? item.productType + ' · ' : '') + item.amount + ' ' + habitUnitLabel(item.vice, item.amount),
+        detail: (item.triggers || []).join(', ')
+      })),
+      ...S.cravings.filter(item => item && dateKey(item.at) === day).map(item => ({
+        id: 'wave-' + item.id, at: item.at, type: 'wave', label: 'Wave ridden out', icon: 'wave', tint: 'peach',
+        text: 'Rode out a wave', detail: VICE_BY_KEY[item.vice] ? VICE_BY_KEY[item.vice].label : ''
+      })),
+      ...(S.profile.companion.trackMedications ? Object.entries(S.doses[day] || {})
+        .flatMap(([medId, list]) => (Array.isArray(list) ? list : []).filter(event => event && event.at).map((event, index) => {
+          const med = S.meds.find(item => item.id === medId) || {};
+          return {
+            id: 'dose-' + medId + '-' + index, medId: medId, index: index, at: event.at, type: 'dose', label: 'Dose', icon: 'pill', tint: 'butter',
+            text: (med.name || 'Medication') + (med.dose ? ' · ' + med.dose + ' ' + med.unit : '') + (event.skipped ? ' · skipped' : ''),
+            detail: event.skipped ? event.reason || '' : Number(event.slot) < 0 ? 'As needed' : ''
+          };
+        })) : [])
+    ];
+    return events
+      .sort((left, right) => new Date(left.at) - new Date(right.at))
+      .map(event => Object.assign(event, { time: time(event.at), period: journalPeriod(event.at) }));
+  }
+</script>

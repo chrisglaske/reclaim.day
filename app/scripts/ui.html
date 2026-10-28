@@ -1,0 +1,146 @@
+<script>
+  // The design mockup's shared view code, copied as is. Its own S (view state only) is V here;
+  // saved data is S (scripts/state) and is read through scripts/model.
+let kbd=false;addEventListener('keydown',()=>kbd=true,true);addEventListener('pointerdown',()=>kbd=false,true);
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const P={sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+ leaf:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.2-6.1C9.5 14.4 12 13 13 12"/>',
+ book:'<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',chart:'<path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/>',
+ sliders:'<path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',check:'<path d="M5 12.5l4.5 4.5L19 7"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',chev:'<path d="m9 6 6 6-6 6"/>',back:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+ wave:'<path d="M2 7c2.5-2 5-2 7.5 0s5 2 7.5 0 3.5-1 5-.5"/><path d="M2 12c2.5-2 5-2 7.5 0s5 2 7.5 0 3.5-1 5-.5"/><path d="M2 17c2.5-2 5-2 7.5 0s5 2 7.5 0 3.5-1 5-.5"/>',
+ pill:'<path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z"/><path d="m8.5 8.5 7 7"/>',pen:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+ wallet:'<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
+ life:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="m4.9 4.9 4.3 4.3M14.8 14.8l4.3 4.3M14.8 9.2l4.3-4.3M4.9 19.1l4.3-4.3"/>',
+ eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',eyeoff:'<path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 8 10 8a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20"/><path d="M14.1 14.1a3 3 0 0 1-4.2-4.2"/>',
+ glass:'<path d="M8 22h8M12 15v7M7 2h10l-1 7a4 4 0 0 1-8 0Z"/>',spark:'<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+ palette:'<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.6-.4-1.1 0-.8.7-1.5 1.5-1.5H16a6 6 0 0 0 6-6c0-4.9-4.5-8.8-10-8.8Z"/>',
+ db:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',
+ heart:'<path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>',
+ target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+ up:'<path d="m6 11 6-6 6 6M12 19V5"/>',moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/>',lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+ bulb:'<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2Z"/>',file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+ alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/>',
+ smile:'<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9.5h.01M15 9.5h.01"/>',cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',flag:'<path d="M4 22V4a1 1 0 0 1 1-1h12l-2 4 2 4H5"/>'};
+const I=(n,cls='')=>!P[n]?`<svg class="ic emo ${cls}" viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="13" text-anchor="middle" dominant-baseline="central" font-size="25">${n}</text></svg>`:`<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${P[n]}</svg>`;
+const MOODS=[['😣','Struggling'],['🙁','Heavy'],['😐','Getting by'],['🙂','Doing okay'],['😄','Going well']];
+const V={screen:'today',device:innerWidth<860?'phone':'desktop',view:'today',tmin:{},hmin:{},sall:false,snew:false,amedit:false,flow:null,sset:'profile',jq:'',jswap:false};
+const app=$('#app');
+const now=()=>new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const blur=v=>hide()?'••':v;
+const dk=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const pd=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);};
+const addD=(k,n)=>{const d=pd(k);d.setDate(d.getDate()+n);return dk(d);};
+const dlab=(k,o={weekday:'long',month:'long',day:'numeric'})=>pd(k).toLocaleDateString('en-US',o);
+const mins=t=>{const m=String(t).match(/(\d+):(\d+)\s*(AM|PM)?/i);if(!m)return 0;let h=+m[1];if(m[3]){h%=12;if(/pm/i.test(m[3]))h+=12;}return h*60+ +m[2];};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hi=(t,q)=>{const e=esc(t);if(!q)return e;return e.replace(new RegExp('('+esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');};
+const dBetween=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
+const ck=()=>`<span class="ck">${I('check')}</span>`;
+const SLOTS=[['morning','sun','butter','Morning'],['afternoon','sun','sky','Afternoon'],['evening','moon','lilac','Evening']];
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const sdate=k=>dlab(k,{month:'short',day:'numeric'});
+const seg=(name,opts,val)=>`<div class="seg" data-seg="${name}"><span class="sp"></span>${opts.map(([v,l])=>`<button class="${v===val?'on':''}" data-act="seg:${name}:${v}">${l}</button>`).join('')}</div>`;
+function placeSeg(){$$('.seg',app).forEach(s=>{const on=$('button.on',s),p=$('.sp',s);if(on&&s.offsetParent){p.style.left=on.offsetLeft+'px';p.style.width=on.offsetWidth+'px';}});}
+function swap(id,html){const el=$('#'+id);if(!el)return;const y=$('#main').scrollTop;el.outerHTML=html;$('#main').scrollTop=y;}
+
+/* ---------- shell ---------- */
+const NAV=[['today','sun','Today'],['tracking','leaf','Tracking'],['journal','book','Journal'],['insights','chart','Insights'],['settings','sliders','Settings']];
+const nvBtn=([k,i,l])=>`<button class="nv ${V.view===k?'on':''}" data-act="nav:${k}">${I(i)}${l}</button>`;
+function shell(){
+  return `<a class="skip-link" href="#main">Skip to main content</a><div class="shell">
+    <aside class="side"><div class="logo"><span class="mark">${I('leaf')}</span>reclaim</div>
+      <button class="btn primary qlog" data-act="qpop" aria-haspopup="menu" aria-expanded="false" aria-controls="qpop">${I('plus')}Quick log<span class="kbd" aria-hidden="true">N</span></button>
+      <nav><span class="navpill"></span>${NAV.map(nvBtn).join('')}</nav>
+      <div class="sfoot"><div class="supcard"><b>Need support?</b><span class="muted">Breathing, coping tools and people to reach.</span><button class="btn sm" data-act="sos">${I('life')}Open support</button></div>
+      <div class="srow"><span><span class="dot"></span>All changes saved</span><button class="iconbtn ${hide()?'on':''}" data-act="hide" title="Hide counters" aria-pressed="${hide()}">${I(hide()?'eyeoff':'eye')}</button></div></div></aside>
+    <header class="mtop"><div class="logo"><span class="mark">${I('leaf')}</span>reclaim</div>
+      <button class="iconbtn ${hide()?'on':''}" data-act="hide" aria-label="Hide counters" aria-pressed="${hide()}">${I(hide()?'eyeoff':'eye')}</button>
+      <button class="iconbtn lifebtn" data-act="sos" aria-label="Need support">${I('life')}</button>
+      <button class="avatar" data-act="nav:settings" aria-label="Settings">${esc(initial())}</button></header>
+    <main id="main" tabindex="-1"><div class="wrap enter" id="view"></div></main>
+    <nav class="tabbar"><span class="navpill"></span>${nvBtn(NAV[0])}${nvBtn(NAV[1])}<button class="plus" data-act="quick" aria-label="Quick log">${I('plus')}</button>${nvBtn(NAV[2])}${nvBtn(NAV[3])}</nav>
+  </div>
+  <div class="sheetw" id="sheet"><div class="scrim" data-act="sclose"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Dialog"><div class="shead"><span class="grab"></span><button class="sx" data-act="sclose" aria-label="Close without saving" title="Close">${I('x')}</button></div><div id="sheetc"></div></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"><span id="tmsg"></span><button id="tundo" data-act="undo">Undo</button></div>
+  <div class="toast savenote" id="savenote" role="status" aria-live="polite"></div>
+  <div class="tip" id="tip" role="tooltip"></div>
+  <div class="qpop" id="qpop" role="menu" aria-label="Quick log"></div>
+  <div class="sos" id="sos" role="dialog" aria-modal="true" aria-label="Support"></div>
+  <div class="flow" id="flow" role="dialog" aria-modal="true" aria-label="Check-in"></div>`;
+}
+
+/* Screens not yet connected to the real data show one card, never the mockup's made-up data. */
+const pendingView=()=>`<section class="card"><div class="ctitle"><h2>This screen is being connected.</h2></div></section>`;
+const VIEWS={today:pendingView,tracking:pendingView,journal:pendingView,insights:pendingView,settings:pendingView};
+function renderView(){
+  const v=$('#view');v.innerHTML=VIEWS[V.view]();if(V.view==='insights')animInsights();
+  v.classList.remove('enter');void v.offsetWidth;v.classList.add('enter');$('#main').scrollTop=0;
+  requestAnimationFrame(()=>{placePills();jSpy();placeSeg();});
+}
+/* re-render in place for the counters toggle: keep scroll, skip the page entrance, and fade in only what changed */
+function swapView(){
+  const v=$('#view'),m=$('#main'),top=m.scrollTop,old=v.cloneNode(true);
+  v.innerHTML=VIEWS[V.view]();
+  const own=e=>[...e.childNodes].filter(c=>c.nodeType===3).map(c=>c.textContent).join('');
+  const diff=(o,n)=>{if(o.outerHTML===n.outerHTML)return;
+    if(o.tagName!==n.tagName||o.children.length!==n.children.length||o.className!==n.className||own(o)!==own(n)){n.classList.add('swapin');return;}
+    const before=$$('.swapin',n).length;[...n.children].forEach((c,i)=>diff(o.children[i],c));
+    if($$('.swapin',n).length===before)n.classList.add('swapin');};
+  if(old.children.length===v.children.length)[...v.children].forEach((c,i)=>diff(old.children[i],c));else v.classList.add('swapin');
+  v.getAnimations({subtree:true}).forEach(an=>{const t=an.effect?.target;if(t&&!t.closest('.swapin')&&isFinite(an.effect.getComputedTiming().endTime))an.finish();});
+  if(V.view==='insights')$$('.ring .rv,.mtrack .dot',v).forEach(e=>{e.style.transition='none';if(e.dataset.off)e.style.strokeDashoffset=e.dataset.off;if(e.dataset.left)e.style.left=e.dataset.left;void e.offsetWidth;e.style.transition='';});
+  m.scrollTo({top,behavior:'instant'});requestAnimationFrame(placePills);
+}
+function placePills(){$$('.side nav,.tabbar',app).forEach(n=>{const on=$('.nv.on',n),p=$('.navpill',n);if(!n.offsetParent)return;if(!on){p.style.opacity=0;return;}p.style.opacity=1;Object.assign(p.style,{left:on.offsetLeft+'px',top:on.offsetTop+'px',width:on.offsetWidth+'px',height:on.offsetHeight+'px'});});}
+new ResizeObserver(()=>{placePills();}).observe(app);
+
+/* The theme comes from the startup script; the mockup sets it on .app. */
+/* Zine looks also get the site's details (.zine in app.html). */
+const ZINE_LOOKS=['zine'];
+function applyAppTheme(){const t=document.documentElement.dataset.theme||'pine';app.className='app '+V.device+(window.reclaimStartup.isDark(t)?' dark':'')+(ZINE_LOOKS.includes(t)?' zine':'');app.dataset.theme=t;}
+function renderAll(){
+  applyAppTheme();
+  if(V.screen==='onboard'){renderOb();return;}
+  app.innerHTML=shell();renderView();renderSaveNotice();
+}
+addEventListener('resize',()=>{const d=innerWidth<860?'phone':'desktop';if(d!==V.device){V.device=d;applyAppTheme();requestAnimationFrame(placePills);}});
+
+function openSheet(html){const c=$('#sheetc'),was=$('#sheet').classList.contains('open');if(!was)V.sheetFrom=document.activeElement;c.innerHTML=html;const hd=c.querySelector('h2,h3'),sl=$('#sheet .sheet');if(hd){hd.id='sheett';sl.setAttribute('aria-labelledby','sheett');}else sl.removeAttribute('aria-labelledby');if(was){c.classList.remove('swapc');void c.offsetWidth;c.classList.add('swapc');}$('#sheetc').scrollTop=0;$('#sheet').classList.add('open');if(!was){const sh=$('#sheet .sheet');sh.tabIndex=-1;sh.focus({preventScroll:true});}}
+function closeSheet(){const was=$('#sheet.open');$('#sheet')?.classList.remove('open');$('.plus',app)?.classList.remove('open');
+  /* focus goes back to where the sheet was opened from */
+  if(!was)return;if(window.reclaimLatestWaiting)setTimeout(()=>loadLatest(true),250);const from=V.sheetFrom;V.sheetFrom=null;if(from?.isConnected&&from!==document.body&&from.getClientRects().length)from.focus({preventScroll:true});else($('#flow.open')||$('#sos.open')||$('#main'))?.focus({preventScroll:true});}
+
+/* ---------- actions ---------- */
+/* One handler per data-act verb; each screen's file adds its own with Object.assign(ACT, {...}). */
+const ACT={
+  nav:(b,e,x)=>{closeSheet();if(V.view===x)return;V.view=x;$$('.nv',app).forEach(n=>n.classList.toggle('on',n.dataset.act==='nav:'+x));renderView();},
+  sclose:()=>closeSheet(),
+  undo:()=>{undoFn?.();undoFn=null;$('#toast').classList.remove('show');},
+  toast:(b,e,x)=>toast(x),
+  tag:b=>b.classList.toggle('on'),
+  one:b=>{const g=b.parentNode;$$('.chip',g).forEach(c=>c.classList.toggle('on',c===b));},
+  seg:(b,e,x,y)=>{if(x==='mwhen')$('#mwhent').hidden=y!=='earlier';if(x==='sosm'){$('#sbox').hidden=y!=='box';$('#spause').hidden=y!=='pause';}if(x==='mkind'){$('#mk-sched').hidden=y!=='sched';$('#mk-prn').hidden=y!=='prn';}$$(`[data-seg="${x}"] button`,app).forEach(s=>s.classList.toggle('on',s===b));placeSeg();if(x==='mwhen'&&typeof mguide==='function')mguide();},
+  hide:b=>{const was=hide();setHide(!was);$$('.iconbtn[data-act="hide"]',app).forEach(h=>{h.classList.toggle('on',hide());h.setAttribute('aria-pressed',hide());h.innerHTML=I(hide()?'eyeoff':'eye');});if(V.view==='settings'){b.setAttribute('aria-checked',hide());flashSaved(b);}else swapView();toast(hide()?'Counters hidden':'Counters shown');
+    saveInBackground(()=>{setHide(was);renderAll();});}
+};
+function act(b,e){const [a,x,y]=b.dataset.act.split(':');ACT[a]?.(b,e,x,y);}
+
+app.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');
+  if(!b)return;
+  if(b.matches('.btn,.qbtn,.chip,.tile,.sw,.lrow'))ripple(b,e);
+  act(b,e);
+});
+function showTip(el){const t=$('#tip');if(!t)return;t.innerHTML=el.dataset.tip;const a=app.getBoundingClientRect(),r=el.getBoundingClientRect();
+  let x=r.left+r.width/2-a.left;const w=t.offsetWidth/2+8;x=Math.max(w,Math.min(a.width-w,x));t.style.left=x+'px';t.style.top=r.top-a.top+'px';t.classList.add('show');}
+const hideTip=()=>$('#tip')?.classList.remove('show');
+app.addEventListener('pointerover',e=>{const el=e.target.closest('[data-tip]');el?showTip(el):hideTip();});
+app.addEventListener('focusin',e=>{const el=e.target.closest('[data-tip]');el?showTip(el):hideTip();});
+app.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if($('#sheet.open'))closeSheet();else if($('#sos.open'))closeSos();closeQ();return;}
+  /* focus stays inside an open sheet */
+  const sh=$('#sheet.open .sheet');if(sh&&e.key==='Tab'){const f=$$('button,input,select,textarea,[href]',sh).filter(x=>!x.disabled&&x.offsetParent),a=f[0],z=f[f.length-1];
+    if(e.shiftKey&&(document.activeElement===a||document.activeElement===sh)){e.preventDefault();z?.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a?.focus();}}});
+</script>
