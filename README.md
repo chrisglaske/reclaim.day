@@ -54,7 +54,7 @@ Everything you log is one JSON file in a `Reclaim` folder in **your own Drive**,
 
 🚫 No ads &nbsp;·&nbsp; 👀 No trackers or analytics &nbsp;·&nbsp; 🔕 No notifications &nbsp;·&nbsp; 🗑️ Delete it any time
 
-This repository is public so you can check all of that for yourself: [`storage-drive.html`](app/scripts/storage-drive.html) is every call the app makes to Drive, and [`signin.html`](app/scripts/signin.html) the Google sign-in.
+This repository is public so you can check all of that for yourself: [`storage-drive.html`](app/scripts/storage-drive.html) is every call the app makes to Drive, and [`signin.html`](app/scripts/signin.html) the Google sign-in. [How Reclaim works](ARCHITECTURE.md) walks through it, with the format of your data file.
 
 **The live app is this code.** The build is reproducible, so building this repository gives exactly the files app.reclaim.day serves. A [check](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml) compares them byte for byte on every change and once a day, and you can run it yourself: `node tools/build-app.mjs && node tools/verify-live.mjs`.
 
@@ -83,7 +83,7 @@ Works in any modern browser. Add it to your home screen (or install it from Chro
 
 ## 🛠️ How it's built
 
-Plain HTML, CSS and JavaScript: no frameworks, no CDNs, self-hosted fonts. One small build step inlines the app into a single page.
+Plain HTML, CSS and JavaScript: no frameworks, no CDNs, self-hosted fonts. One small build step inlines the app into a single page. [How Reclaim works](ARCHITECTURE.md) explains the pieces and the data format.
 
 | Folder | What's in it |
 |---|---|
