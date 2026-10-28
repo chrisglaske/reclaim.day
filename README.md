@@ -9,9 +9,9 @@ A free, calm companion for quitting, cutting back or just keeping track of<br>
 smoking, vaping, drinking and medication.
 
 <a href="https://app.reclaim.day"><img src="https://img.shields.io/badge/Open_Reclaim-app.reclaim.day-2A51B8?style=for-the-badge" alt="Open Reclaim"></a>
+<a href="https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml"><img src="https://img.shields.io/github/actions/workflow/status/chrisglaske/reclaim.day/live.yml?branch=main&style=for-the-badge&label=live%20app%20matches%20this%20code&logo=githubactions&logoColor=white" alt="Live app matches this code"></a>
 
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-2A51B8)](LICENSE)
-[![Live app matches this code](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml/badge.svg)](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml)
 ![Free](https://img.shields.io/badge/price-free-2F9E6B)
 ![No server](https://img.shields.io/badge/server-none-2A51B8)
 ![No trackers](https://img.shields.io/badge/trackers-none-2A51B8)
