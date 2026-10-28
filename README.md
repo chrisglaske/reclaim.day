@@ -56,7 +56,7 @@ Everything you log is one JSON file in a `Reclaim` folder in **your own Drive**,
 
 This repository is public so you can check all of that for yourself: [`storage-drive.html`](app/scripts/storage-drive.html) is every call the app makes to Drive, and [`signin.html`](app/scripts/signin.html) the Google sign-in. [How Reclaim works](ARCHITECTURE.md) walks through it, with the format of your data file.
 
-**The live app is this code.** The build is reproducible, so building this repository gives exactly the files app.reclaim.day serves. A [check](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml) compares them byte for byte on every change and once a day, and you can run it yourself: `node tools/build-app.mjs && node tools/verify-live.mjs`.
+**The live app is this code.** The build is reproducible, so building this repository gives exactly the files app.reclaim.day serves. A [check](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml) compares them byte for byte on every change to the app and once a day, and you can run it yourself: `node tools/build-app.mjs && node tools/verify-live.mjs`.
 
 </td>
 <td>

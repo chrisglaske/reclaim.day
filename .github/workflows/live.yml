@@ -1,10 +1,16 @@
 # Builds the app from this repository and checks that app.reclaim.day serves exactly those files,
-# on every push to main, once a day, and on request. It only reads public URLs, so it needs no secrets.
+# on pushes to main that change the app or its build, once a day, and on request. It only reads public URLs, so it needs no secrets.
 name: live app matches this code
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'app/**'
+      - 'tools/build-app.mjs'
+      - 'tools/lib/**'
+      - 'tools/verify-live.mjs'
+      - '.github/workflows/live.yml'
   schedule:
     - cron: '17 6 * * *'
   workflow_dispatch:

@@ -1,9 +1,15 @@
-# Builds the app and both Cloudflare Workers on every push and pull request.
-# Deploys stay manual.
+# Builds the app and both Cloudflare Workers on every pull request, and on pushes that change them.
+# Pull requests always run it, since "build" is their required check. Deploys stay manual.
 name: checks
 
 on:
   push:
+    paths:
+      - 'app/**'
+      - 'app-host/**'
+      - 'site/**'
+      - 'tools/**'
+      - '.github/workflows/checks.yml'
   pull_request:
 
 permissions:
