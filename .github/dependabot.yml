@@ -1,0 +1,23 @@
+# Monthly update pull requests for the GitHub Actions and the build tools of the site and the app host.
+# The app itself has no dependencies. New releases wait two weeks before they're proposed.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: npm
+    directories: [/site, /app-host]
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 14
+    groups:
+      build-tools:
+        patterns: ['*']
