@@ -83,6 +83,24 @@
   .dopts>button.lrow{border:0;background:none;text-align:left;font:inherit;color:inherit;width:calc(100% + 16px);min-height:56px}
   .dopts>button.lrow+button.lrow{border-top:1px solid var(--line)}
   .chips.dsr{margin-top:14px}
+  #culine:empty{display:none}
+  .culine{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:16px;background:var(--soft);margin:14px 0}
+  #medc .culine{margin:0 0 10px}
+  .cugo{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
+  .cugo b{flex:1;min-width:0;font-size:14.5px}
+  .cugo .itile{width:36px;height:36px;border-radius:11px}
+  .cuadd{display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:700;white-space:nowrap}.cuadd .ic{width:15px;height:15px}
+  #culist{margin-top:6px}
+  .cuday{padding-top:12px}
+  .cudh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+  .cudh h4{margin:0;font-size:14px;font-weight:700}
+  .curow{padding:10px 12px;border-radius:16px;background:var(--soft)}.curow+.curow{margin-top:8px}
+  .curow.done{background:color-mix(in srgb,var(--c-dose) 12%,var(--card))}
+  .curow .tt{font-weight:700}.curow .td{font-size:13.5px;color:var(--muted)}
+  .cuhd{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .cuact{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+  .cuact .field{flex:1 1 112px;width:auto;min-width:0}
+  .cuok{margin:14px 0 0;font-weight:700}
   .dose.skip{background:var(--soft)}.dose.skip .td{color:var(--muted)}
   /* M8h: a skipped dose in Today's Done today and timeline */
   .task.skip .td{color:var(--muted)}

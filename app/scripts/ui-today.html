@@ -121,7 +121,7 @@ function today(){
   const h=new Date().getHours(),g=h<12?'Good morning':h<18?'Good afternoon':'Good evening',nm=S.profile.name.trim();
   return `<div class="hello"><div><div class="eyebrow">${dlab(localToday())}</div><h1>${g}${nm?', '+esc(nm):''}</h1></div>
     <div class="hstrip">${dMood()}${hchips()}</div></div>
-    <div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
+    ${cuLine()}<div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
 }
 VIEWS.today=today;
 

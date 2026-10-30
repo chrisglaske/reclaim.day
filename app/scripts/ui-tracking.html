@@ -64,7 +64,7 @@ function medsCard(){
   const ds=trackDoses(),ps=prnMeds(),ms=schedMeds();if(!ds.length&&!ps.length)return '';
   const dn=ds.filter(t=>t.done).length,TODAY=localToday(),why=activeMedications().filter(m=>String(m.whyThisHelps||'').trim());
   return `<section class="card" id="medc"><div class="ctitle"><h2>Today’s doses</h2>${ds.length?`<span class="badge">${blur(dn)} of ${ds.length} scheduled</span>`:''}</div>
-    <div class="lrows">${ds.map(doseRow).join('')}${ps.map(prnRow).join('')}</div>
+    ${cuLine()}<div class="lrows">${ds.map(doseRow).join('')}${ps.map(prnRow).join('')}</div>
     ${ms.length?`<details class="acc" style="margin-top:10px"><summary>History and routine ${I('chev')}</summary>
       ${hide()?'<p>Your history is here when you want it.</p>':ms.map(m=>{const hist=medWeek(m);return `<p>${esc(m.name)} noted on ${sum(hist)} of the last 7 days</p><div class="wk7">${hist.map((h,i)=>{const k=addD(TODAY,i-6),l=dlab(k,{weekday:'short',month:'short',day:'numeric'});return `<i class="${h?'':'no'}" data-tip="<b>${l}</b> · ${h?'dose noted':'no dose noted'}" aria-label="${l}, ${h?'dose noted':'no dose noted'}" role="img">${h?I('check'):''}</i>`;}).join('')}</div>`;}).join('')}
       <details class="acc"><summary>Why this routine can help ${I('chev')}</summary><p>A schedule can make a dose easier to bring to mind. Follow the directions given to you by your prescriber.</p></details>

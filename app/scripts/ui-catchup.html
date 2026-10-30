@@ -1,0 +1,38 @@
+<script>
+/* Catching up on doses: a quiet line on Today and Tracking while recent scheduled doses have no note, and one list to note them.
+   The line asks about the last 7 days only, so an old gap ages out, and Hide puts it away until tomorrow (kept on this device only). */
+const CUDAYS=7;
+try{V.cuhide=localStorage.getItem('reclaim-catchup-hidden')||'';}catch(error){V.cuhide='';}
+function cuLine(){const n=V.cuhide===localToday()?0:missedDoses(CUDAYS).length;if(!n)return '<div id="culine"></div>';
+  const t=hide()?'Some recent doses aren’t noted yet':n===1?'1 dose from recent days isn’t noted yet':`${n} doses from recent days aren’t noted yet`;
+  return `<div id="culine" class="culine"><button class="cugo" data-act="cuopen" aria-haspopup="dialog"><span class="itile peach">${I('pill')}</span><b>${t}</b><span class="cuadd">Add ${I('chev')}</span></button><button class="iconbtn" data-act="cuhide" aria-label="Hide until tomorrow">${I('x')}</button></div>`;}
+const cuDose=r=>medDayStatus(r.medId,r.day).doses.find(d=>d.slot===r.slot)||{};
+const cuOpen=r=>{const d=cuDose(r);return !d.noted&&!d.skipped;};
+function cuRow(r,i){const d=cuDose(r),m=resolveMedication(r.medId),nm=esc(m?m.name:'Medication'),tt=`<div class="tt">${esc(m?medTitle(m):'Medication')}</div>`;
+  if(d.noted||d.skipped)return `<div class="curow ${d.noted?'done':'skip'}" id="cu-${i}"><div class="cuhd"><div>${tt}<div class="td">${esc(r.label)} · ${d.noted?`Taken at ${tstr(d.at)}`:'Not taken'}</div></div><button class="btn sm ghost" data-act="cuundo:${i}" aria-label="Undo ${nm}, ${esc(r.label)}">Undo</button></div>
+    ${d.skipped?`<div class="chips dsr" role="group" aria-label="Reason, optional">${SKIP_REASONS.map((x,n)=>`<button class="chip ${d.reason===x?'on':''}" data-act="cur:${i}:${n}" aria-pressed="${d.reason===x}"><span class="ck">${I('check')}</span>${x}</button>`).join('')}</div>`:''}</div>`;
+  return `<div class="curow" id="cu-${i}">${tt}<div class="td">${esc(r.label)}</div><div class="cuact"><input type="time" class="field" id="cut-${i}" value="${r.time||'12:00'}" aria-label="What time you took ${nm}, ${esc(r.label)}"><button class="btn sm primary" data-act="cuyes:${i}" aria-label="Taken: ${nm}, ${esc(r.label)}">Taken</button><button class="btn sm" data-act="cuno:${i}" aria-label="Not taken: ${nm}, ${esc(r.label)}">Not taken</button></div></div>`;}
+function cuList(){const days=[...new Set(V.cu.map(r=>r.day))],left=V.cu.filter(cuOpen).length;
+  return days.map(k=>{const rs=V.cu.map((r,i)=>[r,i]).filter(([r])=>r.day===k),open=rs.filter(([r])=>cuOpen(r)).length;
+    return `<section class="cuday" aria-label="${dlab(k)}"><div class="cudh"><h4>${dlab(k,{weekday:'short',month:'short',day:'numeric'})}</h4>${open>1?`<button class="link" data-act="cuall:${k}">All taken</button>`:''}</div>${rs.map(([r,i])=>cuRow(r,i)).join('')}</section>`;}).join('')
+    +(left?'':'<p class="cuok">You’re all caught up.</p>');}
+/* keeps any changed times, redraws the list and the line behind it; Close then returns to the line, or the top of the page once it's gone */
+function cuDraw(focus){V.cu.forEach((r,i)=>{const f=$('#cut-'+i);if(f&&f.value)r.time=f.value;});const c=$('#culist');if(c)c.innerHTML=cuList();
+  swap('culine',cuLine());V.sheetFrom=$('#culine .cugo')||$('#view button');if(focus)(c&&($('#'+focus+' button',c)||$('#culist button,#cuclose')))?.focus({preventScroll:true});}
+const cuAt=(r,i)=>{const v=$('#cut-'+i)?.value;return v?new Date(r.day+'T'+v):null;};
+/* the time comes from the row's field; a day past is never in the future, so addDoseEvent only has the dose itself to check */
+const cuTaken=(r,i)=>{const at=cuAt(r,i);if(!at){toast('Choose the time the dose was taken');$('#cut-'+i)?.focus();return null;}r.time=$('#cut-'+i).value;return addDoseEvent(r.medId,r.slot,at);};
+Object.assign(ACT,{
+  cuopen:()=>{V.cu=missedDoses(CUDAYS);if(!V.cu.length){swap('culine',cuLine());return;}
+    openSheet(`<div class="grab"></div><h3>Catch up on doses</h3><p class="muted" style="margin:0">Just for your records. Follow your prescriber’s directions on missed doses.</p><div id="culist">${cuList()}</div><div class="exrow"><button class="btn primary" id="cuclose" data-act="sclose">Done</button></div>`);},
+  cuhide:()=>{V.cuhide=localToday();try{localStorage.setItem('reclaim-catchup-hidden',V.cuhide);}catch(error){/* device storage is optional */}
+    swap('culine',cuLine());$('#view button')?.focus({preventScroll:true});toast('Hidden until tomorrow');},
+  cuyes:(b,e,x)=>{const r=V.cu[+x],ev=cuTaken(r,+x);if(!ev)return;cuDraw('cu-'+x);saveInBackground(()=>{removeDoseEvent(r.medId,ev);cuDraw();});},
+  cuno:(b,e,x)=>{const r=V.cu[+x],ev=skipDoseEvent(r.medId,r.slot,'',cuAt(r,+x)||new Date(r.day+'T12:00'));if(!ev)return;cuDraw('cu-'+x);saveInBackground(()=>{removeDoseEvent(r.medId,ev);cuDraw();});},
+  cuall:(b,e,x)=>{const evs=[];for(const [r,i] of V.cu.map((r,i)=>[r,i]).filter(([r])=>r.day===x&&cuOpen(r))){const ev=cuTaken(r,i);if(ev)evs.push([r,ev]);}if(!evs.length)return;
+    cuDraw('cu-'+V.cu.indexOf(evs[0][0]));saveInBackground(()=>{evs.forEach(([r,ev])=>removeDoseEvent(r.medId,ev));cuDraw();});},
+  cuundo:(b,e,x)=>{const r=V.cu[+x],ev=dayDoseEvent(r.day,r.medId,r.slot);if(!ev)return;removeDoseEvent(r.medId,ev);cuDraw('cu-'+x);saveInBackground(()=>{restoreDoseEvent(r.medId,ev);cuDraw();});},
+  cur:(b,e,x,y)=>{const r=V.cu[+x],ev=dayDoseEvent(r.day,r.medId,r.slot),re=SKIP_REASONS[+y];if(!ev)return;const was=ev.reason;if(was===re)delete ev.reason;else ev.reason=re;cuDraw();$(`#cu-${x} [data-act="cur:${x}:${y}"]`)?.focus({preventScroll:true});
+    saveInBackground(()=>{if(was)ev.reason=was;else delete ev.reason;cuDraw();});}
+});
+</script>

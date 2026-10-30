@@ -43,6 +43,7 @@ Only these small `localStorage` entries, none with health data:
 | `reclaim-theme` | Your color look, so the loading screen uses it before your data arrives |
 | `reclaim-signed-in` | `1` after you've signed in, so the screen says "Welcome back" (no account details; cleared on Sign out) |
 | `reclaim-today-min` | Which Today sections you've collapsed |
+| `reclaim-catchup-hidden` | The day you hid the line about recent doses |
 
 Without sign-in (the local preview and the website's demo), the app keeps its data in `localStorage` under `reclaim-state-dev` instead of Drive.
 
