@@ -65,7 +65,7 @@ function ratioCard(d){
 function heatCard(d){
   const start=pd(d.heatStart),act=d.heat.filter(x=>x>0).length;
   const lv=['No notes','1–2 notes','3–4 notes','5+ notes'];
-  const cells=Array.from({length:35},(_,i)=>{const dt=new Date(start);dt.setDate(start.getDate()+i);const lab=dt.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+  const cells=Array.from({length:35},(_,i)=>{const dt=new Date(start);dt.setDate(start.getDate()+i);const lab=dt.toLocaleDateString(dateLocale(), {weekday:'short',month:'short',day:'numeric'});
     if(i>=d.heat.length)return `<span class="c fut" style="--d:${i}" aria-hidden="true"></span>`;
     return `<span class="c l${d.heat[i]} ${i===d.heat.length-1?'today':''}" style="--d:${i}" tabindex="0" data-tip="<b>${lab}</b> · ${lv[d.heat[i]]}" aria-label="${lab}: ${lv[d.heat[i]]}"></span>`;}).join('');
   return `<section class="card"><div class="ctitle"><h2>Showing up</h2><span class="badge">${act} of ${d.heat.length} days</span></div>
@@ -118,7 +118,8 @@ function medCard(m){
 }
 function toolsCard(){
   return `<section class="card"><div class="ctitle"><h2>Take it further</h2></div><div class="lrows">
-    <button class="lrow" data-act="apopen" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile lilac">${I('file')}</span><span><b>Appointment summary</b><div class="muted" style="font-size:13px">${apptLast()?`Last appointment ${sdate(apptLast())} · what changed since then`:'What changed, ready to show or print'}</div></span>${I('chev','chev')}</button>
+    <button class="lrow" data-act="apps" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile sky">${I('cal')}</span><span><b>Appointments</b><div class="muted" style="font-size:13px">${apptUpcoming()[0]?apptLabel(apptUpcoming()[0]):'Get ready for a visit and keep what came of it'}</div></span>${I('chev','chev')}</button>
+    <button class="lrow" data-act="apopen" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile lilac">${I('file')}</span><span><b>Look back</b><div class="muted" style="font-size:13px">Any dates, ready to show or print</div></span>${I('chev','chev')}</button>
     <button class="lrow" data-act="irefl" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile butter">${I('pen')}</span><span><b>Weekly reflection</b><div class="muted" style="font-size:13px">What helped this week?</div></span>${I('chev','chev')}</button>
   </div></section>`;
 }

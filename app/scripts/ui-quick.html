@@ -11,7 +11,7 @@ function qDoseTile(){
   if(nx){const m=resolveMedication(nx.medId);return ['qdose:'+nx.medId+'-'+nx.slot,'pill','sky','Next dose',esc(m.name+' · '+nx.label.split(' · ').pop())];}
   return on?['nav:tracking','pill','sky','Doses','All of today’s doses are noted']:['sosset:meds','pill','sky','Medication','Turn it on in Settings'];
 }
-const QUICK=()=>[['wave','wave','peach','Rode out a wave','A craving came and went'],['moment','leaf','mint','Log a moment',HK.filter(k=>track(k).on).map((k,i)=>i?HB[k].v:HB[k].n).join(', ').replace(/, (?=[^,]*$)/,' or ')||'Turn on a habit in Settings'],ckQuick(),qDoseTile()];
+const QUICK=()=>[['wave','wave','peach','Rode out a wave','A craving came and went'],['moment','leaf','mint','Log a moment',HK.filter(k=>track(k).on).map((k,i)=>i?HB[k].v:HB[k].n).join(', ').replace(/, (?=[^,]*$)/,' or ')||'Turn on a habit in Settings'],ckQuick(),qDoseTile(),['apnew','cal','butter','Plan an appointment',apptUpcoming()[0]?'Next: '+esc(apptLabel(apptUpcoming()[0])):'Set a date and get ready for it']];
 /* Quick log check-in: once this period's check-in is saved, show it as done with the next time, and open it for review */
 function ckQuick(){const sl=curSlot(),c=ckDay(localToday())[sl];
   if(!c)return ['flow:now','pen','lilac','Check in','Mood and a few words, step by step'];
@@ -23,7 +23,7 @@ function qtiles(kb){const q=QUICK(),tot=HK.reduce((n,k)=>n+mlist(k).length,0),dn
   const stat={wave:waves()+' today',moment:tot+' today',prn:(dn?quickLogCounts(new Date()).doses:qprnN())+' today'};
   return `<div class="qgrid" ${kb?'':'role="menu" aria-label="Quick log"'}>${q.map(([a,i,t,l,sub,bd],n)=>{const k=n===3?'prn':a,st=bd?`<span class="qts ok">${I('check')}Done</span>`:a.startsWith('flow')?'<span class="qts now">Now</span>':hide()||!stat[k]||a.startsWith('sosset')?'':`<span class="qts">${stat[k]}</span>`;
     return `<button class="qt ${t} ${bd?'isdone':''}" role="menuitem" data-act="${a}" style="--i:${n}"><span class="qti">${I(i)}</span>${st}<span class="qtl">${l}</span><small>${sub}</small>${kb?`<span class="kbd" aria-hidden="true">${n+1}</span>`:''}</button>`;}).join('')}</div>`;}
-const qrows=()=>`<div class="qhd"><b>Quick log</b><span>${new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span></div>${qtiles(1)}<div class="qhint">Press <b>N</b> anywhere to open, then a number.</div>`;
+const qrows=()=>`<div class="qhd"><b>Quick log</b><span>${new Date().toLocaleTimeString(dateLocale(), clockOptions())}</span></div>${qtiles(1)}<div class="qhint">Press <b>N</b> anywhere to open, then a number.</div>`;
 /* a tile pulses, its count ticks up, then the panel closes and the action runs */
 function qFire(b,next){if(!b?.classList.contains('qt'))return false;if(b.dataset.go){delete b.dataset.go;return false;}if(b.dataset.fired)return true;b.dataset.fired=1;b.classList.add('fired');
   const st=$('.qts',b);if(st&&!hide()){st.textContent=next()+' today';bump(st);}sparks($('.qti',b),12);
@@ -41,8 +41,10 @@ const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
 const hresRow=(n,d,num,btns)=>`<div class="hres"><div><b>${esc(n)}</b><small>${d}</small></div><span class="num">${esc(num)}</span>${btns}</div>`;
 const hlink=(href,l,ext)=>`<a class="btn sm" href="${esc(href)}"${ext?' target="_blank" rel="noopener"':''}>${l}</a>`;
 function helpList(){const c=V.hc,all=SUPPORT_RESOURCES[c]||[],em=EMERG[c];
-  const rows=all.filter(r=>r.href!=='tel:112'&&r.href).map(r=>{const d=r.detail.includes(' · ')&&/^Call/.test(r.detail)?cap(r.detail.split(' · ').slice(1).join(' · ')):r.detail;
-    return hresRow(r.name,`${esc(d)}${r.external?` · <a href="${esc(r.external)}" target="_blank" rel="noopener">Website</a>`:''}`,r.callLabel.replace(/^Call /,''),hlink(r.href,'Call')+(r.messageHref?hlink(r.messageHref,'Text'):''));});
+  /* doctors someone chose to show come first */
+  const docs=apptDoctors().filter(d=>d.support&&d.phone).map(d=>hresRow(d.name,esc(d.specialty||'Your doctor'),d.phone,hlink('tel:'+d.phone.replace(/[^\d+]/g,''),'Call')));
+  const rows=[...docs,...all.filter(r=>r.href!=='tel:112'&&r.href).map(r=>{const d=r.detail.includes(' · ')&&/^Call/.test(r.detail)?cap(r.detail.split(' · ').slice(1).join(' · ')):r.detail;
+    return hresRow(r.name,`${esc(d)}${r.external?` · <a href="${esc(r.external)}" target="_blank" rel="noopener">Website</a>`:''}`,r.callLabel.replace(/^Call /,''),hlink(r.href,'Call')+(r.messageHref?hlink(r.messageHref,'Text'):''));})];
   /* the emergency number is shown without a Call link (user, 2026-10-24), so it can't be dialled by a stray tap */
   if(em)rows.push(hresRow('Emergency services','If you may be in immediate danger',em,''));
   const dir=all.find(r=>!r.href&&r.external)?.external||(!em?'https://findahelpline.com/':'');
@@ -80,6 +82,12 @@ function closeSos(){const s=$('#sos');if(!s?.classList.contains('open'))return;s
 
 /* doses noted from Quick log redraw whichever screen shows them */
 const qDoseRedraw=()=>{if(V.view==='tracking')refreshMeds();else if(V.view==='today')refreshHero();};
+const qDoseKey=x=>{const i=x.lastIndexOf('-');return [x.slice(0,i),+x.slice(i+1)];};
+/* the dose, if its set time has already passed today */
+const qDoseLate=(medId,slot)=>{const t=new Date(),d=trackingDoseSchedule(medId,dk(t),t).find(v=>v.slot===slot);return d?.reminderTime&&d.reminderTime<`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`?d:null;};
+function qDoseNote(medId,slot,at=new Date()){const ev=addDoseEvent(medId,slot,at);if(!ev)return;closeSheet();qDoseRedraw();
+  toast(resolveMedication(medId).name+' taken',()=>{removeDoseEvent(medId,ev);qDoseRedraw();saveInBackground(()=>{restoreDoseEvent(medId,ev);qDoseRedraw();});});
+  saveInBackground(()=>{removeDoseEvent(medId,ev);qDoseRedraw();});}
 Object.assign(ACT,{
   quick:b=>{if($('#sheet').classList.contains('open')){closeSheet();return;}b.classList.add('open');openSheet(`<div class="grab"></div><div class="qhd"><h3>Quick log</h3><span>Takes a second. Every note counts.</span></div>${qtiles()}`);},
   qpop:()=>{$('#qpop').classList.contains('open')?closeQ():openQ();},
@@ -88,9 +96,13 @@ Object.assign(ACT,{
     openSheet(`<div class="grab"></div><h3>Log a moment</h3><p class="muted" style="margin:0">A moment captured is information, not a verdict.</p><div class="bigopts">${on.map(k=>`<button class="qbtn" data-act="mlog:${k}"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><span>${HB[k].n}<small>${hsum(k)}</small></span></button>`).join('')||`<p class="empty">Nothing is being tracked right now. You can turn habits on in Settings.</p>`}</div>`);},
   prn:(b,e,x)=>{if(qFire(b,()=>qprnN()+1))return;closeSheet();ACT.prnadd(b,e,x,'q');},
   qprn:b=>{if(qFire(b,()=>qprnN()+1))return;openSheet(`<div class="grab"></div><h3>Which one?</h3><p class="muted" style="margin:0">Each one counts toward its own limit.</p><div class="bigopts">${prnMeds().map(p=>`<button class="qbtn" data-act="prn:${p.id}"><span class="itile sky">${I('pill')}</span><span>${esc(p.title)}<small>${hide()?'As needed':p.n+' today'+(p.limit?' · personal limit '+p.limit:'')}</small></span></button>`).join('')}</div>`);},
-  qdose:(b,e,x)=>{if(qFire(b,()=>quickLogCounts(new Date()).doses+1))return;const i=x.lastIndexOf('-'),medId=x.slice(0,i),slot=+x.slice(i+1),ev=addDoseEvent(medId,slot);if(!ev)return;closeSheet();qDoseRedraw();
-    toast(resolveMedication(medId).name+' taken',()=>{removeDoseEvent(medId,ev);qDoseRedraw();saveInBackground(()=>{restoreDoseEvent(medId,ev);qDoseRedraw();});});
-    saveInBackground(()=>{removeDoseEvent(medId,ev);qDoseRedraw();});},
+  qdose:(b,e,x)=>{const [medId,slot]=qDoseKey(x),due=qDoseLate(medId,slot);
+    /* before its time it's simply noted; once the time has passed, ask whether it was taken just now or earlier */
+    if(due){closeQ();openSheet(`<div class="grab"></div><h3>When did you take it?</h3><p class="muted" style="margin:0">${esc(resolveMedication(medId).name)} was due at ${esc(due.timeLabel)}.</p><div class="exrow" style="margin-top:16px"><button class="btn" data-act="qdearly:${esc(x)}">Earlier</button><button class="btn primary" data-act="qdnow:${esc(x)}">Just now</button></div>`);return;}
+    if(qFire(b,()=>quickLogCounts(new Date()).doses+1))return;qDoseNote(medId,slot);},
+  qdnow:(b,e,x)=>{const [medId,slot]=qDoseKey(x);qDoseNote(medId,slot);},
+  qdearly:(b,e,x)=>{const [medId,slot]=qDoseKey(x),due=qDoseLate(medId,slot);jTimeSheet('When did you take it?','Choose the time you took it.',new Date(localToday()+'T'+(due?.reminderTime||'12:00')+':00'),'qdat:'+esc(x));},
+  qdat:(b,e,x)=>{const at=jTimeVal();if(!at)return;const [medId,slot]=qDoseKey(x);qDoseNote(medId,slot,at);},
   sos:()=>openSos(),
   sosclose:()=>closeSos(),
   /* "I rode it out" counts a wave and closes */

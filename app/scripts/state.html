@@ -181,6 +181,11 @@
   }
 
   // Rebuilds the state from scratch so every known field exists with the right type and a safe value.
+  // The named fields that are non-empty strings, cut to max characters.
+  function stateStringFields(from, names, max) {
+    return Object.fromEntries(names.filter(name => typeof from[name] === 'string' && from[name].trim()).map(name => [name, from[name].slice(0, max)]));
+  }
+
   // Unknown top-level, profile and record fields are dropped; doses, journal and the companion maps
   // (intentionDays, reflections, reminders, reminderActions) are kept as they are.
   function normalizeState(data) {
@@ -221,14 +226,31 @@
           // Auto was removed (2026-10-25): a saved "auto" becomes the day look it used.
           theme: stateTheme(companion.theme === 'auto' ? companion.autoLight : companion.theme),
           autoLight: STATE_DAY_THEMES.includes(companion.autoLight) ? companion.autoLight : 'pine',
+          // Optional: left out to follow the device.
+          ...(companion.dateFormat === 'us' || companion.dateFormat === 'intl' ? { dateFormat: companion.dateFormat } : {}),
           // Optional: the last appointment date and questions for the doctor; left out when not set.
           ...(typeof companion.lastAppointment === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(companion.lastAppointment)
             ? { lastAppointment: companion.lastAppointment } : {}),
           ...(Array.isArray(companion.questions) && companion.questions.length ? {
             questions: companion.questions
               .filter(q => stateObject(q) && typeof q.id === 'string' && typeof q.text === 'string' && q.text.trim())
-              .slice(0, 20)
-              .map(q => ({ id: q.id, text: q.text.slice(0, 300), at: typeof q.at === 'string' ? q.at : '' }))
+              .slice(0, 300)
+              .map(q => ({ id: q.id, text: q.text.slice(0, 300), at: typeof q.at === 'string' ? q.at : '',
+                ...(typeof q.apptId === 'string' && q.apptId ? { apptId: q.apptId } : {}),
+                ...(typeof q.answeredIn === 'string' && q.answeredIn ? { answeredIn: q.answeredIn } : {}), ...stateStringFields(q, ['answer'], 2000) }))
+          } : {}),
+          // Optional: saved doctors and appointments; left out when there are none.
+          ...(Array.isArray(companion.doctors) && companion.doctors.length ? {
+            doctors: companion.doctors.filter(d => stateObject(d) && typeof d.id === 'string' && typeof d.name === 'string' && d.name.trim()).slice(0, 50)
+              .map(d => ({ id: d.id, name: d.name.slice(0, 120), ...stateStringFields(d, ['specialty', 'clinic', 'address', 'phone'], 200), ...(d.support === true && d.phone ? { support: true } : {}) }))
+          } : {}),
+          ...(Array.isArray(companion.appointments) && companion.appointments.length ? {
+            appointments: companion.appointments.filter(a => stateObject(a) && typeof a.id === 'string' && typeof a.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(a.day)).slice(0, 500)
+              .map(a => ({ id: a.id, day: a.day, ...(typeof a.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(a.time) ? { time: a.time } : {}),
+                ...stateStringFields(a, ['type', 'doctorId', 'reason', 'since'], 300), ...stateStringFields(a, ['outcome', 'nextSteps'], 5000),
+                ...(Array.isArray(a.meds) && a.meds.length ? { meds: a.meds.filter(m => stateObject(m) && typeof m.id === 'string').slice(0, 100)
+                  .map(m => ({ id: m.id, ...stateStringFields(m, ['note'], 500) })) } : {}),
+                ...(Number.isInteger(a.felt) && a.felt >= 1 && a.felt <= 5 ? { felt: a.felt } : {}), ...(a.ready === true ? { ready: true } : {}), ...(a.missed === true ? { missed: true } : {}), ...(a.done === true ? { done: true } : {}) }))
           } : {})
         }
       },
@@ -315,6 +337,24 @@
 
   // The one live state object, shared by the whole app. It is never replaced: applyState updates it in place.
   const S = defaultState();
+
+  // How dates and times read: the saved `dateFormat` ("us" or "intl"), or left out to follow this device.
+  // The words stay English either way, so a device only decides the order of the date and the clock.
+  const DEVICE_DATES = (() => {
+    const parts = new Intl.DateTimeFormat(undefined).formatToParts(new Date(2000, 1, 3)).map(p => p.type);
+    return {
+      locale: parts.indexOf('month') < parts.indexOf('day') ? 'en-US' : 'en-GB',
+      hour12: new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12 !== false
+    };
+  })();
+  const DATE_FORMATS = { us: { locale: 'en-US', hour12: true }, intl: { locale: 'en-GB', hour12: false }, device: DEVICE_DATES };
+  const dateFormat = () => DATE_FORMATS[S.profile.companion.dateFormat] ? S.profile.companion.dateFormat : 'device';
+  const dateLocale = (format = dateFormat()) => DATE_FORMATS[format].locale;
+  // hourOnly is for "between 4 PM and 7 PM"; a 24-hour clock keeps its minutes there.
+  function clockOptions(hourOnly, format = dateFormat()) {
+    const hour12 = DATE_FORMATS[format].hour12;
+    return hourOnly && hour12 ? { hour: 'numeric', hour12 } : { hour: 'numeric', minute: '2-digit', hour12 };
+  }
 
   // Migrates any saved data and copies it into S in place, removing keys the new data lacks.
   function applyState(data) {

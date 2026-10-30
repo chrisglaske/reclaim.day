@@ -88,8 +88,8 @@ Dates and times are ISO 8601 strings in UTC. Day keys are `YYYY-MM-DD` in your l
 |---|---|
 | `version` | The format version, `5` |
 | `onboarded`, `setupVersion` | Whether you've finished Guided setup, and for which release of it |
-| `profile` | Your name, currency (`USD`, `CAD`, `EUR`, `GBP`, `AUD`, `NZD`), reasons, savings goal and optional country for support resources |
-| `profile.companion` | Your toolkit, daily intentions, weekly reflections, questions for your doctor, dose times, look and display choices |
+| `profile` | Your name, currency (`USD`, `CAD`, `EUR`, `GBP`, `AUD`, `NZD`), reasons, savings goal optional country for support resources, and how dates and times read (`companion.dateFormat`: `us` or `intl`, left out to follow the device) |
+| `profile.companion` | Your toolkit, daily intentions, weekly reflections, questions for your doctor, saved doctors and appointments, dose times, look and display choices |
 | `vices` | One entry each for `smoking`, `vaping` and `drinking`: on or off, your usual amount and spend, the count unit, and `phases` |
 | `vices.*.phases` | Your goals over time, oldest first. `mode` is `quit`, `reduce` (with a `target` per day, per week, or on chosen weekdays) or `track` (no limit). A phase can start in the future, like a planned quit day |
 | `meds` | Your medications: name, dose and unit, how often (`1` to `4` a day, or `prn` for as needed), dose times, start date, and whether it's active or archived |

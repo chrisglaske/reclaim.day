@@ -30,7 +30,7 @@
 
   // Moments, waves and doses saved on a day, oldest first, each tagged with its part of the day.
   function journalDayEvents(day) {
-    const time = at => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const time = at => new Date(at).toLocaleTimeString(dateLocale(), clockOptions());
     const events = [
       ...S.slips.filter(item => item && dateKey(item.at) === day).map(item => ({
         id: 'moment-' + item.id, at: item.at, type: 'use', kind: item.vice,

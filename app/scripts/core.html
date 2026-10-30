@@ -247,7 +247,7 @@
       await upgradeBackup;
       const result = await persistState();
       const time = new Date(result && result.savedAt ? result.savedAt : Date.now())
-        .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        .toLocaleTimeString(dateLocale(), clockOptions());
       unsavedChanges = false;
       window.clearTimeout(saveRetryTimer);
       saveNotice.queued = false;

@@ -13,7 +13,7 @@ function jCal(){
   const cells=Array.from({length:lead},()=>'<span></span>').join('')+Array.from({length:n},(_,i)=>{const k=dk(new Date(y,m,i+1)),inf=dayInfo(k),fut=k>td;
     const al=dlab(k)+(inf?`${inf.mood!=null?', mood '+MOODS[inf.mood][1]:''}${inf.smoke?', smoking moment noted':''}${inf.vape?', vaping moment noted':''}${inf.drink?', drinking moment noted':''}${inf.dose?', scheduled dose noted':''}`:'');
     return `<button class="cd ${k===V.jday?'on':''} ${k===td?'today':''}" data-act="jpick:${k}" ${fut?'disabled':''} aria-pressed="${k===V.jday}" aria-label="${al}">${i+1}<span class="e">${inf&&inf.mood!=null?MOODS[inf.mood][0]:''}</span>${marks(inf)}</button>`;}).join('');
-  return `<section class="card" id="jcal"><div class="calhd" style="margin-bottom:12px"><button class="iconbtn" data-act="jmon:-1" aria-label="Previous month"><span style="display:grid;transform:scaleX(-1)">${I('chev')}</span></button><h2 style="text-align:center;font-size:19px">${first.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</h2><button class="iconbtn" data-act="jmon:1" aria-label="Next month" ${V.jmon>=monthNo(td)?'disabled':''}>${I('chev')}</button></div>
+  return `<section class="card" id="jcal"><div class="calhd" style="margin-bottom:12px"><button class="iconbtn" data-act="jmon:-1" aria-label="Previous month"><span style="display:grid;transform:scaleX(-1)">${I('chev')}</span></button><h2 style="text-align:center;font-size:19px">${first.toLocaleDateString(dateLocale(), {month:'long',year:'numeric'})}</h2><button class="iconbtn" data-act="jmon:1" aria-label="Next month" ${V.jmon>=monthNo(td)?'disabled':''}>${I('chev')}</button></div>
     <div class="cal">${['M','T','W','T','F','S','S'].map(x=>`<span class="wd">${x}</span>`).join('')}${cells}</div>
     ${calLegend()}</section>`;
 }
@@ -23,7 +23,7 @@ function ckFacts(c){
   if(c.craving!=null)f.push(`Craving ${c.craving}/10`);(c.tags||[]).forEach(t=>f.push(esc(t)));healthWords(c).forEach(t=>f.push(esc(t)));
   return f.length?`<div class="facts">${f.map(x=>`<span>${x}</span>`).join('')}</div>`:'';
 }
-const EVI={s:['🚬','mint'],v:['💨','butter'],d:['🍷','sky'],w:['wave','peach'],m:['pill','butter']};
+const EVI={s:['🚬','mint'],v:['💨','butter'],d:['🍷','sky'],w:['wave','peach'],m:['pill','butter'],a:['cal','sky']};
 /* Journal day: the three check-ins sit at the top in a pinned header, so they are always one tap away while scrolling.
    Below, the timeline is grouped by time of day; a finished check-in appears in its section with its details. */
 const SLOTFROM={morning:'From morning',afternoon:'From 12:00 PM',evening:'From 5:00 PM'};
@@ -31,8 +31,8 @@ const SLOTSPAN={morning:'Until 12 PM',afternoon:'12 – 5 PM',evening:'After 5 P
 function slotState(k,sl){const c=ckDay(k)[sl];if(c)return 'done';if(k!==localToday())return 'none';
   const i=SLOTS.findIndex(s=>s[0]===sl),cur=SLOTS.findIndex(s=>s[0]===curSlot());return i===cur?'now':i<cur?'late':'later';}
 const perOf=w=>{const m=mins(w);return m<720?'morning':m<1020?'afternoon':'evening';};
-const EVL={s:'Smoking',v:'Vaping',d:'Drinking',w:'Wave ridden out',m:'Dose'};
-const JF=[['all','All'],['ck','Check-ins'],['use','Moments',['s','v','d']],['m','Doses',['m']],['w','Waves',['w']]];
+const EVL={s:'Smoking',v:'Vaping',d:'Drinking',w:'Wave ridden out',m:'Dose',a:'Appointment'};
+const JF=[['all','All'],['ck','Check-ins'],['use','Moments',['s','v','d']],['m','Doses',['m']],['w','Waves',['w']],['a','Appointments',['a']]];
 const jfShow=ty=>{const f=JF.find(x=>x[0]===(V.jf||'all'));return f[0]==='all'||(f[2]||[]).includes(ty);};
 const ckShow=()=>['all','ck'].includes(V.jf||'all');
 function jTask(k,sl,l){
@@ -68,8 +68,8 @@ function jDay(){
     const task=ckShow()&&st==='done'?jTask(k,sl,l):'';
     if(!task&&!items.length)return '';
     return `<section class="jper" id="jp-${sl}" data-sl="${sl}" aria-label="${l}"><div class="jph"><b>${l}</b><span>${SLOTSPAN[sl]}</span><i></i><span>${items.length?items.length+' logged':''}</span></div>${task}
-      ${items.length?`<ol class="jev">${items.map(([w,ty,txt,tr,id,dn,wv])=>{const a=id?['moment','jed:'+esc(id),'jrm:'+esc(id)]:dn?['dose note','jde:'+esc(dn),'jrd:'+esc(dn)]:wv?['wave','jwe:'+esc(wv),'jrw:'+esc(wv)]:null;
-        return `<li class="t-${ty}"><time>${w}</time><span class="dt" style="background:var(--${EVI[ty][1]});color:var(--on-pastel)">${I(EVI[ty][0])}</span><div><span class="jk">${EVL[ty]}</span><b>${esc(txt)}</b>${tr&&tr.length?`<span class="muted"> · ${tr.map(esc).join(', ')}</span>`:''}</div>${a?`<span class="jact"><button class="iconbtn jrm" data-act="${a[1]}" aria-label="Edit ${a[0]} from ${w}">${I('pen')}</button><button class="iconbtn jrm" data-act="${a[2]}" aria-label="Remove ${a[0]} from ${w}">${I('x')}</button></span>`:''}</li>`;}).join('')}</ol>`
+      ${items.length?`<ol class="jev">${items.map(([w,ty,txt,tr,id,dn,wv,ap])=>{const a=id?['moment','jed:'+esc(id),'jrm:'+esc(id)]:dn?['dose note','jde:'+esc(dn),'jrd:'+esc(dn)]:wv?['wave','jwe:'+esc(wv),'jrw:'+esc(wv)]:null;
+        return `<li class="t-${ty}"><time>${w}</time><span class="dt" style="background:var(--${EVI[ty][1]});color:var(--on-pastel)">${I(EVI[ty][0])}</span><div><span class="jk">${EVL[ty]}</span><b>${esc(txt)}</b>${tr&&tr.length?`<span class="muted"> · ${tr.map(esc).join(', ')}</span>`:''}</div>${a?`<span class="jact"><button class="iconbtn jrm" data-act="${a[1]}" aria-label="Edit ${a[0]} from ${w}">${I('pen')}</button><button class="iconbtn jrm" data-act="${a[2]}" aria-label="Remove ${a[0]} from ${w}">${I('x')}</button></span>`:ap?`<span class="jact"><button class="btn sm" data-act="asopen:${esc(ap.id)}:${asFirst(ap)}" aria-label="Open appointment: ${esc(txt)}">Open</button></span>`:''}</li>`;}).join('')}</ol>`
         :`<p class="jnone">${task?'Nothing else logged':'Nothing logged'} ${sl==='evening'?'this evening':'this '+sl}${isT&&st!=='done'&&st!=='late'&&st!=='now'?' yet':''}.</p>`}</section>`;}).join('');
   const lg=earlierDay(k),lgl=lg&&lgLine(lg);
   return `<section class="card jday ${V.jswap?'swap':''}" id="jdayc">

@@ -71,7 +71,7 @@ function hero(){
   return `<section class="hero ${p.length?'':'calm'}" id="now">
     <div class="hhead"><div><h2>${p.length?'When you’re ready':'All caught up'}</h2><div class="hsub">${p.length?'Then you’re set until <span class="nw">'+L.time+'</span>.':`Next: ${esc(L.title)} · <span class="nw">${L.time}</span>`}</div></div><span class="count num">${d.length}/${live().length+(L.tomorrow?0:1)} done</span></div>
     <div class="tl">${all.map(x=>`<div class="st ${x.st}"><span class="d">${x.st==='done'?I('check'):x.st==='skip'?I('x'):''}</span><span>${x.s}</span></div>`).join('')}</div>
-    ${p.length?`<div class="tasks">${p.map(taskHTML).join('')}</div>`:''}
+    ${asTask()||p.length?`<div class="tasks">${asTask()}${p.map(taskHTML).join('')}</div>`:''}
     ${p.length?`${dg}<div class="hfoot"><span><b>Later:</b> ${esc(L.title)} · ${L.time}</span>${fs}</div>`:`<div class="hfoot calmf">${dg}${fs}</div>`}
   </section>`;
 }
@@ -121,7 +121,7 @@ function today(){
   const h=new Date().getHours(),g=h<12?'Good morning':h<18?'Good afternoon':'Good evening',nm=S.profile.name.trim();
   return `<div class="hello"><div><div class="eyebrow">${dlab(localToday())}</div><h1>${g}${nm?', '+esc(nm):''}</h1></div>
     <div class="hstrip">${dMood()}${hchips()}</div></div>
-    ${cuLine()}<div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
+    ${apLine()}${cuLine()}<div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
 }
 VIEWS.today=today;
 

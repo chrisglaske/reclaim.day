@@ -4,46 +4,159 @@
   // mood / cravings / sleep, then the user's own questions and chosen notes.
 
   const APPT_MOODS = ['Struggling', 'Heavy', 'Getting by', 'Doing okay', 'Going well'];
-  const apptShort = day => new Date(day + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  const apptTime = at => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const apptShort = day => new Date(day + 'T12:00:00').toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric' });
+  const apptTime = at => new Date(at).toLocaleTimeString(dateLocale(), clockOptions());
   const apptPlural = (n, one, many = one + 's') => n + ' ' + (n === 1 ? one : many);
   const apptAvg = list => list.length ? list.reduce((a, b) => a + b, 0) / list.length : null;
   const apptOne = n => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(n);
 
-  // The saved date of the last appointment ('' when none or not a past date).
+  // The saved doctors: [{ id, name, specialty, clinic, address, phone }].
+  function apptDoctors() {
+    return Array.isArray(S.profile.companion.doctors) ? S.profile.companion.doctors.filter(d => logicObject(d) && typeof d.name === 'string' && d.name.trim()) : [];
+  }
+  const apptDoctor = id => apptDoctors().find(d => d.id === id) || null;
+  // Adds a doctor, or updates the one with this id; returns the saved doctor.
+  function saveApptDoctor(fields, id) {
+    const list = apptDoctors(), doctor = Object.assign({ id: id || apptId('d') }, fields);
+    if (!doctor.support) delete doctor.support;
+    S.profile.companion.doctors = id ? list.map(d => d.id === id ? doctor : d) : [...list, doctor];
+    return doctor;
+  }
+  const APPT_TYPES = ['Check-up', 'Follow-up', 'Medication review', 'Therapy', 'Specialist', 'Test or scan', 'Other'];
+  // Appointments: [{ id, day, time?, type?, doctorId?, reason?, since?, done?, felt?, outcome?, nextSteps? }]. since is where its look back starts: a past appointment's id, '30', '90' or 'saved'; left out for the default. A deleted doctor just leaves its appointments without a name.
+  function apptList() {
+    return Array.isArray(S.profile.companion.appointments)
+      ? S.profile.companion.appointments.filter(a => logicObject(a) && typeof a.day === 'string' && dateKey(a.day) === a.day) : [];
+  }
+  const apptId = prefix => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const apptFind = id => apptList().find(a => a.id === id) || null;
+  const apptWhen = a => a.day + (a.time || '');
+  // Not yet happened, soonest first.
+  function apptUpcoming() {
+    const today = localToday();
+    return apptList().filter(a => !a.done && a.day >= today).sort((a, b) => apptWhen(a).localeCompare(apptWhen(b)));
+  }
+  // Happened, newest first.
+  function apptPast() {
+    const today = localToday();
+    return apptList().filter(a => a.done || a.day < today).sort((a, b) => apptWhen(b).localeCompare(apptWhen(a)));
+  }
+  // Adds an appointment, or updates the one with this id; returns the saved appointment.
+  function saveAppt(fields, id) {
+    const list = apptList(), old = id ? apptFind(id) : null, appt = Object.assign({}, old, { id: id || apptId('a') }, fields);
+    ['time', 'type', 'doctorId', 'reason', 'since'].forEach(k => { if (!appt[k]) delete appt[k]; });
+    if (!appt.meds || !appt.meds.length) delete appt.meds;
+    ['ready', 'missed', 'done'].forEach(k => { if (!appt[k]) delete appt[k]; });
+    S.profile.companion.appointments = old ? list.map(a => a.id === id ? appt : a) : [...list, appt];
+    return appt;
+  }
+  // The medications to talk about at this appointment, each with its name and optional note.
+  function apptTopics(appt) {
+    return ((appt && appt.meds) || []).map(m => ({ id: m.id, note: m.note || '', med: resolveMedication(m.id) })).filter(m => m.med)
+      .map(m => ({ id: m.id, note: m.note, title: medTitle(m.med) }));
+  }
+  // A calendar file (iCalendar) for one appointment holding only what `on` turns on: type, doctor, reason, meds, questions.
+  // A time is left as local time with no zone, so the visit stays at that clock time; with no time it's an all-day event.
+  function apptIcs(appt, on) {
+    const doc = apptDoctor(appt.doctorId), stamp = new Date().toISOString().replace(/[-:]|\.\d+/g, ''), day = appt.day.replace(/-/g, '');
+    const text = v => String(v).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+    const pad = n => String(n).padStart(2, '0'), end = new Date(appt.day + 'T' + (appt.time || '00:00') + ':00');
+    end.setHours(end.getHours() + 1);
+    const local = d => '' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
+    const about = [on.doctor && doc && doc.phone, on.reason && appt.reason,
+      ...(on.meds ? apptTopics(appt).map(m => m.title + (m.note ? ': ' + m.note : '')) : []),
+      ...(on.questions ? apptQuestionsFor(appt).filter(q => !q.answeredIn).map(q => q.text) : [])].filter(Boolean);
+    const place = on.doctor && doc ? [doc.clinic, doc.address].filter(Boolean).join(', ') : '';
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Reclaim//Appointments//EN', 'CALSCALE:GREGORIAN', 'BEGIN:VEVENT',
+      'UID:' + appt.id + '@reclaim.day', 'DTSTAMP:' + stamp,
+      ...(appt.time ? ['DTSTART:' + local(new Date(appt.day + 'T' + appt.time + ':00')), 'DTEND:' + local(end)]
+        : ['DTSTART;VALUE=DATE:' + day, 'DTEND;VALUE=DATE:' + dayOffset(appt.day, 1).replace(/-/g, '')]),
+      'SUMMARY:' + text([on.type && appt.type || 'Appointment', on.doctor && doc && doc.name].filter(Boolean).join(' · ')),
+      ...(place ? ['LOCATION:' + text(place)] : []), ...(about.length ? ['DESCRIPTION:' + text(about.join('\n'))] : []),
+      'END:VEVENT', 'END:VCALENDAR'];
+    // Lines longer than 75 bytes continue on the next line, starting with a space.
+    const bytes = c => new TextEncoder().encode(c).length;
+    const fold = line => { const out = []; let cur = '', n = 0;
+      for (const c of line) { if (n + bytes(c) > 74) { out.push(cur); cur = ' '; n = 1; } cur += c; n += bytes(c); }
+      return [...out, cur].join('\r\n'); };
+    return lines.map(fold).join('\r\n') + '\r\n';
+  }
+  // A function that puts appointments, doctors and questions back as they are now (an Undo, or a failed save).
+  function apptSnapshot() {
+    const c = S.profile.companion, was = JSON.stringify({ appointments: c.appointments, doctors: c.doctors, questions: c.questions });
+    return () => { const old = JSON.parse(was); ['appointments', 'doctors', 'questions'].forEach(k => { if (old[k]) c[k] = old[k]; else delete c[k]; }); };
+  }
+  // The date of the last appointment ('' when none): the latest that has happened, or the date saved before appointments had their own list.
   function apptLast() {
-    const k = S.profile.companion.lastAppointment;
-    return typeof k === 'string' && dateKey(k) === k && k <= localToday() ? k : '';
+    const k = S.profile.companion.lastAppointment, today = localToday();
+    const days = apptPast().map(a => a.day).filter(day => day <= today);
+    if (typeof k === 'string' && dateKey(k) === k && k <= today) days.push(k);
+    return days.sort().pop() || '';
   }
-  // Sets (or clears with '') the last appointment date; returns a function that puts the old one back.
-  function setApptLast(k) {
-    const c = S.profile.companion, had = Object.prototype.hasOwnProperty.call(c, 'lastAppointment'), was = c.lastAppointment;
-    if (k) c.lastAppointment = k; else delete c.lastAppointment;
-    return () => { if (had) c.lastAppointment = was; else delete c.lastAppointment; };
+  // The visits before an appointment, newest first.
+  function apptBefore(appt) {
+    return apptPast().filter(a => a.id !== appt.id && a.day < appt.day && !a.missed);
   }
-  // Questions for the doctor, oldest first: [{ id, text, at }].
-  function apptQuestions() {
+  // What an appointment can look back from: 'Your last visit' options, then each earlier visit, then plain periods. Value '' is the default.
+  function apptSinceChoices(appt) {
+    const before = apptBefore(appt), name = a => apptDoctor(a.doctorId)?.name || a.type || a.reason || 'Appointment';
+    const k = S.profile.companion.lastAppointment, saved = typeof k === 'string' && dateKey(k) === k && k < appt.day ? k : '';
+    return [{ value: '', label: 'Automatic: ' + apptPeriod(Object.assign({}, appt, { since: '' })).label },
+      ...before.map(a => ({ value: a.id, label: insightsDateLabel(a.day) + ' · ' + name(a) })),
+      ...(saved ? [{ value: 'saved', label: insightsDateLabel(saved) + ' · Last appointment' }] : []),
+      { value: '30', label: 'The last 30 days' }, { value: '90', label: 'The last 3 months' }];
+  }
+  // What an appointment looks back over: from its chosen start; by default since the last visit with the same doctor, else the last visit of any kind, else 30 days.
+  function apptPeriod(appt) {
+    const today = localToday(), end = appt.day < today ? appt.day : today, before = apptBefore(appt), k = S.profile.companion.lastAppointment;
+    const saved = typeof k === 'string' && dateKey(k) === k && k < appt.day ? k : '', days = n => Object.assign(apptRange({ start: dayOffset(end, 1 - n), end }), { label: n === 30 ? 'The last 30 days' : 'The last 3 months' });
+    const since = (day, who) => Object.assign(apptRange({ start: day <= end ? day : end, end }), { label: 'Since your ' + (who ? 'visit with ' + who : 'appointment') + ' on ' + insightsDateLabel(day) });
+    if (appt.since === '30') return days(30);
+    if (appt.since === '90') return days(90);
+    if (appt.since === 'saved' && saved) return since(saved);
+    const chosen = appt.since && before.find(a => a.id === appt.since);
+    if (chosen) return since(chosen.day, apptDoctor(chosen.doctorId)?.name);
+    const same = appt.doctorId && before.find(a => a.doctorId === appt.doctorId);
+    if (same) return since(same.day, apptDoctor(same.doctorId)?.name);
+    const last = [...before.map(a => a.day), ...(saved ? [saved] : [])].sort().pop();
+    return last ? since(last) : days(30);
+  }
+  // Questions for the doctor, oldest first: [{ id, text, at, apptId?, answeredIn?, answer? }]; open ones unless all is set.
+  function apptQuestions(all) {
     return Array.isArray(S.profile.companion.questions)
-      ? S.profile.companion.questions.filter(q => logicObject(q) && typeof q.text === 'string' && q.text.trim()) : [];
+      ? S.profile.companion.questions.filter(q => logicObject(q) && typeof q.text === 'string' && q.text.trim() && (all || !q.answeredIn)) : [];
   }
-  // Adds a question (max 20, 300 characters); returns an error message or the new question.
-  function addApptQuestion(text) {
+  // One appointment's questions: those added to it and, for the next one, any carried over. Once it's done, the ones answered there.
+  function apptQuestionsFor(appt) {
+    if (appt.done) return apptQuestions(true).filter(q => q.answeredIn === appt.id);
+    const next = apptUpcoming()[0];
+    return apptQuestions(true).filter(q => q.answeredIn === appt.id || (!q.answeredIn && (q.apptId === appt.id || (!q.apptId && next && next.id === appt.id) || (!q.apptId && !next))));
+  }
+  // Adds a question (20 open at most, 300 characters), to one appointment if given; returns an error message or the new question.
+  function addApptQuestion(text, forAppt) {
     const t = String(text || '').trim();
     if (!t) return 'Type a question first.';
     if (t.length > 300) return 'Keep a question under 300 characters.';
-    const list = apptQuestions();
-    if (list.length >= 20) return 'You can keep up to 20 questions.';
-    const q = { id: 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), text: t, at: new Date().toISOString() };
-    S.profile.companion.questions = [...list, q];
+    if (apptQuestions().length >= 20) return 'You can keep up to 20 questions.';
+    const q = { id: apptId('q'), text: t, at: new Date().toISOString() };
+    if (forAppt) q.apptId = forAppt;
+    S.profile.companion.questions = [...apptQuestions(true), q];
     return q;
   }
   // Removes a question; returns a function that puts it back in its place.
   function removeApptQuestion(id) {
-    const list = apptQuestions(), i = list.findIndex(q => q.id === id);
+    const list = apptQuestions(true), i = list.findIndex(q => q.id === id);
     if (i < 0) return null;
     const q = list[i];
     S.profile.companion.questions = list.filter(x => x.id !== id);
-    return () => { const now = apptQuestions(); now.splice(Math.min(i, now.length), 0, q); S.profile.companion.questions = now; };
+    return () => { const now = apptQuestions(true); now.splice(Math.min(i, now.length), 0, q); S.profile.companion.questions = now; };
+  }
+  // Saves how a visit went and marks it done. Questions it didn't answer move on to the next appointment.
+  function finishAppt(id, fields) {
+    const appt = saveAppt(Object.assign({}, fields, { done: true }), id);
+    ['outcome', 'nextSteps', 'felt'].forEach(k => { if (!appt[k]) delete appt[k]; });
+    apptQuestions().filter(q => q.apptId === id).forEach(q => { delete q.apptId; });
+    return appt;
   }
 
   // 'since' (the last appointment; null when none is saved), '14', '30', '90', or a custom { start, end }.
@@ -242,7 +355,7 @@
     if (times.length >= 5) {
       let best = 0, at = 0;
       for (let h = 0; h < 24; h++) { const n = times.filter(t => (t - h + 24) % 24 < 3).length; if (n > best) { best = n; at = h; } }
-      const hl = h => new Date(2000, 0, 1, h % 24).toLocaleTimeString(undefined, { hour: 'numeric' });
+      const hl = h => new Date(2000, 0, 1, h % 24).toLocaleTimeString(dateLocale(), clockOptions(true));
       patterns.push('Cravings and moments were most common between ' + hl(at) + ' and ' + hl(at + 3) + ' (' + best + ' of ' + times.length + ').');
     }
     const short = nights.filter(d => apptSleep(d) < 6), long = nights.filter(d => apptSleep(d) >= 7);
@@ -292,10 +405,11 @@
   }
 
   // Plain text of the page for Copy text: the sections that are on, and the chosen notes.
-  function apptText(d, on, picked) {
+  function apptText(d, on, picked, appt) {
     const L = ['Reclaim · Appointment summary' + (S.profile.name.trim() ? ' · ' + S.profile.name.trim() : ''),
       d.range.label + ' (' + insightsDateLabel(d.range.start) + ' – ' + insightsDateLabel(d.range.end) + ')', ''];
     const sec = (title, lines) => { L.push(title.toUpperCase(), ...lines, ''); };
+    if (apptTopics(appt).length) sec('Medications to discuss', apptTopics(appt).map(m => '- ' + m.title + (m.note ? ': ' + m.note : '')));
     if (on.glance) sec('At a glance', d.glance.length ? d.glance.map(g => '- ' + g) : ['Nothing noted in this period.']);
     if (on.meds) sec('Medication', d.meds.length ? d.meds.flatMap(m => [m.title + (m.archived ? ' (stopped)' : '') + ' · ' + m.plan, '  ' + m.line]) : ['No medications tracked.']);
     if (on.health) sec('Health complaints', d.health.length ? d.health.map(h => h.tag + ': ' + apptPlural(h.days.length, 'day') + ' (' + h.days.map(insightsDateLabel).join(', ') + ')') : ['None noted in this period.']);
@@ -303,7 +417,7 @@
       ...h.rows.map(r => '  ' + r.label + ': ' + (h.quit ? apptPlural(r.n, 'moment') + ', ' + r.free + ' days without' : r.amt + ' ' + h.unit + ' (' + r.perDay + '/day)' + (h.reduce ? ', within limit ' + r.within + ' days' : '')))]) : ['No habits tracked.']);
     if (on.well) sec('Mood, cravings and sleep', d.well.any ? [...d.well.rows.map(r => '  ' + r.label + ': mood ' + r.mood + ', cravings ' + r.craving + (r.craving === '–' ? '' : '/10') + ', sleep ' + r.sleep + ', waves ' + r.waves),
       ...d.well.patterns.map(p => '- ' + p)] : ['Nothing noted in this period.']);
-    if (on.q) sec('Questions for my doctor', d.questions.length ? d.questions.map((q, i) => (i + 1) + '. ' + q.text) : ['None yet.']);
+    if (on.q) sec('Questions for my doctor', d.questions.length ? d.questions.flatMap((q, i) => [(i + 1) + '. ' + q.text, ...(q.answer ? ['   ' + q.answer] : [])]) : ['None yet.']);
     const notes = d.notes.filter(n => picked.has(n.id));
     if (on.notes && notes.length) sec('My notes', notes.map(n => insightsDateLabel(n.day) + ' · ' + n.label + ': ' + n.text));
     return L.join('\n').trim() + '\n';

@@ -1,0 +1,141 @@
+<script>
+/* Appointments: upcoming and past visits, saved doctors, and one visit's steps: details, questions, what's changed since the last one, and how it went.
+   V.as = {id, step}; with no id it's the list. The summary and calendar are Look back's (scripts/ui-appt) on the visit's own period, through V.ap.fix.
+   Today shows the next visit and asks how a recent one went (apLine); there are no notifications, so this only shows while the app is open. */
+const AS_STEPS=['Details','Questions','What’s changed','After the visit'];
+const asDoc=a=>apptDoctor(a.doctorId);
+const asTime=a=>a.time?new Date(a.day+'T'+a.time+':00').toLocaleTimeString(dateLocale(), clockOptions()):'';
+const asDate=a=>dlab(a.day,{weekday:'short',month:'short',day:'numeric'})+(asTime(a)?' · '+asTime(a):'');
+const asName=a=>asDoc(a)?.name||a.type||a.reason||'Appointment';
+const asIn=a=>{const n=dBetween(localToday(),a.day);return n<=0?'today':n===1?'tomorrow':`in ${n} days`;};
+function apptLabel(a){return `${asName(a)} · ${asDate(a)} · ${asIn(a)}`;}
+/* on Today's day: a row in "When you're ready", to open a prepared visit or to prepare for it */
+function asTask(){const a=apptUpcoming().find(v=>v.day===localToday());if(!a)return '';const w=asTime(a)?`at ${asTime(a)} · `:'';
+  return `<div class="task" id="t-appt"><div class="itile sky">${I('cal')}</div><div><div class="tt">${esc(asName(a))}<span class="due">Today</span></div><div class="td">${w}${a.ready?'Your summary is ready':'You can prepare for it here'}</div></div><button class="btn sm primary" data-act="asopen:${a.id}:${asFirst(a)}">${a.ready?'Open':'Prepare'}</button></div>`;}
+/* on Today: how a visit from the last two weeks went, and the next one coming up */
+function apLine(){const td=localToday(),ask=apptPast().find(a=>!a.done&&a.day>=addD(td,-14)),next=apptUpcoming().find(a=>a.day>td);
+  const row=(a,step,b,sm,go)=>`<div class="culine"><button class="cugo" data-act="asopen:${a.id}:${step}"><span class="itile sky">${I('cal')}</span><span class="cut"><b>${esc(b)}</b><small>${esc(sm)}</small></span><span class="cuadd">${go} ${I('chev')}</span></button></div>`;
+  return (ask?row(ask,3,'How did your appointment go?',`${asName(ask)} · ${asDate(ask)}`,'Add'):'')+(next?row(next,next.ready?2:0,asName(next),`${asDate(next)} · ${asIn(next)}`,next.ready?'Summary':'Prepare'):'');}
+/* where a visit opens: how it went once it's past, the summary once you're prepared, otherwise the start */
+const asFirst=a=>a.done||a.day<localToday()?3:a.ready?2:0;
+const asRow=(a,sub)=>`<button class="asrow" data-act="asopen:${a.id}:${asFirst(a)}"><span class="itile sky">${I('cal')}</span><span><b>${esc(asName(a))}</b><small>${esc(asDate(a))}${sub?' · '+esc(sub):''}</small></span>${I('chev','chev')}</button>`;
+function asList(){const up=apptUpcoming(),past=apptPast(),ds=apptDoctors();
+  return `<div class="hello"><div><div class="eyebrow">Appointments</div><h1>Your appointments</h1><div class="lead">Get ready, bring your notes, and keep what came of it. Nothing is sent anywhere.</div></div><button class="btn primary" data-act="apnew">${I('plus')}Plan an appointment</button></div>
+    <div class="grid main2"><div class="col"><section class="card"><div class="ctitle"><h2>Coming up</h2></div>${up.length?`<div class="aslist">${up.map(a=>asRow(a,asIn(a))).join('')}</div>`:'<p class="empty">Nothing planned. Add a date and Today will show it until then.</p>'}</section>
+      ${past.length?`<section class="card"><div class="ctitle"><h2>Past</h2></div><div class="aslist">${past.map(a=>asRow(a,a.missed?'Didn’t go':a.done?'':'Add how it went')).join('')}</div></section>`:''}</div>
+      <div class="col"><section class="card"><div class="ctitle"><h2>Your doctors</h2></div>${ds.length?`<div class="aslist">${ds.map(d=>`<button class="asrow" data-act="docedit:${d.id}"><span class="itile lilac">${I('smile')}</span><span><b>${esc(d.name)}</b><small>${esc([d.specialty,d.clinic].filter(Boolean).join(' · '))}</small></span>${I('chev','chev')}</button>`).join('')}</div>`:'<p class="empty">Save a doctor once and pick them for every visit.</p>'}<button class="btn" data-act="docnew" style="margin-top:12px">${I('plus')}Add a doctor</button></section></div></div>`;}
+function asDetails(a){const d=asDoc(a);
+  return `<section class="card"><div class="ctitle"><h2>Details</h2><button class="btn sm" data-act="asedit" style="margin-left:auto">Edit</button></div><div class="asdoc"><p><b>${esc(asDate(a))}</b></p>${a.type?`<p>${esc(a.type)}</p>`:''}${a.reason?`<p>${esc(a.reason)}</p>`:''}${apptTopics(a).map(m=>`<p>${esc(m.title)}${m.note?': '+esc(m.note):''}</p>`).join('')}${d?`<p style="margin-top:10px"><b>${esc(d.name)}</b></p>${d.specialty?`<p class="muted">${esc(d.specialty)}</p>`:''}${d.clinic?`<p>${esc(d.clinic)}</p>`:''}${d.address?`<p>${esc(d.address)}</p>`:''}${d.phone?`<p><a href="tel:${esc(d.phone.replace(/[^\d+]/g,''))}">${esc(d.phone)}</a></p>`:''}`:'<p class="muted">No doctor chosen.</p>'}</div>
+    <div class="exrow"><button class="btn ghost" data-act="asdel">Delete</button>${a.ready?'<button class="btn ghost" data-act="asready:0">Still preparing</button>':''}<button class="btn" data-act="ascal">Add to calendar</button></div></section>`;}
+function asAfter(a,qs){
+  if(a.missed)return `<section class="card"><div class="ctitle"><h2>You didn’t go to this one</h2></div><p class="muted" style="margin:0">That’s okay. Any questions still open moved on to your next appointment.</p><div class="exrow"><button class="btn" data-act="asunmiss">I did go</button></div></section>`;
+  return `<section class="card"><div class="ctitle"><h2>After the visit</h2></div><div class="apf">
+    ${qs.length?`<div><span class="lbl">Your questions</span><div id="apqwrap">${apQBody(qs)}</div><p class="help" style="margin:6px 0 14px">Any left open move on to your next appointment.</p></div>`:''}
+    <div><span class="lbl" id="asfl">How did you feel about it?</span><div class="asmood" role="group" aria-labelledby="asfl">${MOODS.map(([e,l],i)=>`<button class="dm ${V.as.felt===i+1?'on':''}" data-act="asfelt:${i+1}" aria-pressed="${V.as.felt===i+1}" aria-label="${l}" title="${l}">${e}</button>`).join('')}</div></div>
+    <div><label class="lbl" for="asout">What came of it?</label><textarea id="asout" maxlength="5000" placeholder="What the doctor said, any changes…" style="min-height:96px">${esc(V.as.outcome)}</textarea></div>
+    <div><label class="lbl" for="asnext">Next steps</label><textarea id="asnext" maxlength="5000" placeholder="Tests, follow-ups, things to try…" style="min-height:76px">${esc(V.as.nextSteps)}</textarea></div>
+    <div class="exrow" style="margin:0">${a.done?'':'<button class="btn ghost" data-act="asmiss">Didn’t go</button>'}<button class="btn primary" data-act="asdone">${a.done?'Save changes':'Save and finish'}</button></div></div></section>`;}
+/* once prepared, a visit is one page: the summary, a way to finish, and Edit back into the steps */
+const asPlace=a=>{const d=asDoc(a);return [d?.clinic,d?.address,d?.phone].filter(Boolean).join(' · ');};
+function asPage(a,r,d){
+  return `<div class="hello"><div><div class="eyebrow">${esc(a.type||'Appointment')}</div><h1>${esc(asName(a))}</h1></div><button class="btn ghost apback" data-act="asback">${I('back')}Appointments</button></div>
+    <section class="card asrdy noprint"><span class="itile mint">${I('check')}</span><div><b>You’re prepared</b><small>${esc(asDate(a))}${a.day>=localToday()?' · '+asIn(a):''}</small>${a.reason?`<small>${esc(a.reason)}</small>`:''}${asPlace(a)?`<small>${esc(asPlace(a))}</small>`:''}</div><div class="asrdyb"><button class="btn primary" data-act="asstep:3">Done with the appointment?</button><button class="btn" data-act="asedits">Edit</button><button class="btn" data-act="ascal">Add to calendar</button><button class="btn ghost" data-act="asmiss">Didn’t go</button></div></section>
+    ${apBody(r,d,`${asName(a)}, ${asDate(a)}`)}`;}
+function asVisit(a){const st=V.as.step,r=apptPeriod(a),ap=apState();ap.fix=Object.assign(r,{appt:a});const d=apData(r),qs=apptQuestionsFor(a),soon=!a.done&&a.day>=localToday();
+  if(a.ready&&!a.done&&!V.as.edit&&st===2)return asPage(a,r,d);
+  const nav=st<3?`<div class="asfoot noprint">${soon&&!a.ready?'<button class="btn primary" data-act="asready:1">I’m prepared</button>':a.ready&&!a.done?'<button class="btn" data-act="asview">Back to appointment page</button>':'<span></span>'}<button class="btn ${soon&&!a.ready?'':'primary'}" data-act="asstep:${st+1}">Next: ${AS_STEPS[st+1]} ${I('chev')}</button></div>`:'';
+  return `<div class="hello"><div><div class="eyebrow">${esc(a.type||'Appointment')}</div><h1>${esc(asName(a))}</h1><div class="lead">${esc(asDate(a))}${soon?' · '+asIn(a):''}</div></div><button class="btn ghost apback" data-act="asback">${I('back')}Appointments</button></div>
+    <div class="assteps noprint" role="group" aria-label="Steps">${AS_STEPS.map((l,i)=>`<button class="jfc ${st===i?'on':''}" data-act="asstep:${i}" aria-pressed="${st===i}">${i+1}. ${l}</button>`).join('')}</div>
+    ${st===2?nav:''}
+    ${st===0?asDetails(a):st===1?`<section class="card"><div class="ctitle"><h2>Questions for my doctor</h2></div><div id="apqwrap">${apQBody(qs)}</div></section>`
+      :st===2?`<section class="card apctl"><div class="apf"><div><label class="lbl" for="assince">Look back from</label><select class="field" id="assince">${apptSinceChoices(a).map(o=>`<option value="${esc(o.value)}" ${(a.since||'')===o.value?'selected':''}>${esc(o.label)}</option>`).join('')}</select></div>${apIncluded(r)}</div></section>${apBody(r,d,`${asName(a)}, ${asDate(a)}`)}`:asAfter(a,qs)}
+    ${nav}`;}
+function appts(){V.as=V.as||{};const a=V.as.id&&apptFind(V.as.id);if(!a){apState().fix=null;return asList();}return asVisit(a);}
+VIEWS.appts=appts;
+function asGo(id,step=0){const a=id&&apptFind(id);closeSheet();V.as=a?{id,step,felt:a.felt||0,outcome:a.outcome||'',nextSteps:a.nextSteps||''}:{};V.view='appts';$$('.nv',app).forEach(n=>n.classList.toggle('on',n.dataset.act==='nav:appts'));renderView();$('#main').scrollTop=0;}
+const asKeep=()=>{const o=$('#asout'),n=$('#asnext');if(o)V.as.outcome=o.value;if(n)V.as.nextSteps=n.value;};
+const asRedraw=()=>{if(V.view==='appts')apDraw();else if(V.view==='today')renderView();};
+/* planning a visit is a walkthrough in the check-in's full screen, one question at a time; V.asf holds the answers, so adding a doctor on the way loses nothing */
+const asfSteps=()=>[['type','Type'],['when','When'],['doctor','Doctor'],['why','What it’s for'],...(medicationTrackingEnabled()&&medsList().length?[['meds','Medications']]:[]),['review','Review']];
+const asfKey=f=>asfSteps()[f.step]?.[0];
+const asfAt=k=>asfSteps().findIndex(s=>s[0]===k);
+const asfNow=()=>{const f=V.asf,day=$('#asday'),time=$('#astime'),why=$('#asreason');if(day)f.day=day.value;if(time)f.time=time.value;if(why)f.reason=why.value.trim();$$('#flow [data-asnote]').forEach(n=>{const m=f.meds.find(x=>x.id===n.dataset.asnote);if(m)m.note=n.value.trim();});return f;};
+const asfWhen=f=>f.day?asDate(f):'Not set yet';
+function asfStep(f){const opt='<span class="muted" style="font-weight:500">· optional</span>',ds=apptDoctors();
+  switch(asfKey(f)){
+    case 'type':return `<div class="flq"><h2>What type of visit is it?</h2><p>Pick one, or skip.</p></div><div class="chips">${APPT_TYPES.map(t=>`<button class="chip ${f.type===t?'on':''}" data-act="astype" data-v="${t}" aria-pressed="${f.type===t}">${ck()}${t}</button>`).join('')}</div>`;
+    case 'when':return `<div class="flq"><h2>When is it?</h2><p>Today will show it until then. There are no notifications.</p></div><div class="ffl"><div><label class="lbl" for="asday">Date</label><input type="date" class="field" id="asday" value="${f.day}"></div><div><label class="lbl" for="astime">Time ${opt}</label><input type="time" class="field" id="astime" value="${f.time}"></div></div>`;
+    case 'doctor':return `<div class="flq"><h2>Who is it with?</h2><p>${ds.length?'Pick a saved doctor, or add a new one.':'Save a doctor once and pick them next time.'}</p></div><div class="rads">${ds.map(d=>`<button class="rad ${f.doctorId===d.id?'on':''}" data-act="asdocpick:${esc(d.id)}" aria-pressed="${f.doctorId===d.id}"><span class="o"></span><span><b>${esc(d.name)}</b><small>${esc([d.specialty,d.clinic].filter(Boolean).join(' · '))}</small></span></button>`).join('')}</div><button class="btn" data-act="docnew:1">${I('plus')}Add a doctor</button>`;
+    case 'why':return `<div class="flq"><h2>What’s it for?</h2><p>A few words, if you like.</p></div><div><label class="vh" for="asreason">What it’s for</label><input class="field" id="asreason" maxlength="300" placeholder="e.g. Medication check-in" value="${esc(f.reason)}"></div>`;
+    case 'meds':return `<div class="flq"><h2>Any medications to talk about?</h2><p>Pick any that are part of this visit, and add a note if you like.</p></div><div class="rads">${medsList().map(m=>{const t=f.meds.find(x=>x.id===m.id),n=esc(medTitle(m));return `<button class="rad ${t?'on':''}" data-act="asmed:${esc(m.id)}" aria-pressed="${!!t}"><span class="o"></span><span><b>${n}</b></span></button>${t?`<div><label class="lbl" for="asn-${esc(m.id)}">Note on ${n} ${opt}</label><input class="field" id="asn-${esc(m.id)}" data-asnote="${esc(m.id)}" maxlength="500" placeholder="e.g. Is the dose still right?" value="${esc(t.note)}"></div>`:''}`;}).join('')}</div>`;
+    case 'review':{const d=apptDoctor(f.doctorId),ms=apptTopics(f),rows=[['type','file','lilac','Type',f.type||'Not chosen'],['when','cal','sky','When',asfWhen(f)],['doctor','smile','mint','Doctor',d?d.name:'Not chosen'],['why','pen','butter','What it’s for',f.reason||'Not noted'],...(asfAt('meds')<0?[]:[['meds','pill','peach','Medications',ms.map(m=>m.title+(m.note?': '+m.note:'')).join(', ')||'None chosen']])];
+      return `<div class="flq"><h2>Your appointment</h2><p>Have a look. Tap Edit to change anything.</p></div><section class="card rvlist">${rows.map(([n,i,c,k,v])=>`<div class="rv"><span class="itile ${c}">${I(i)}</span><div><div class="k">${k}</div><div class="muted">${esc(v)}</div></div><button class="link" data-act="asfgo:${asfAt(n)}">Edit</button></div>`).join('')}</section>`;}
+    default:return `<div class="donec">${CHECK}</div><h2>Appointment saved</h2><p>${esc(asDate(f))}. Add your questions now, or come back from Today.</p><button class="btn primary lg" data-act="asfprep" style="min-width:220px;margin-top:8px">Prepare for it</button><button class="btn lg" data-act="fclose" style="min-width:220px">Done</button>`;
+  }}
+const asfAnswered=f=>({type:!!f.type,when:true,doctor:!!f.doctorId,why:!!f.reason,meds:!!f.meds.length,review:true})[asfKey(f)];
+const asfLabel=f=>f.step===asfAt('review')?'Save appointment':asfAnswered(f)?'Continue':'Skip this step';
+function asFlow(){const f=V.asf,el=$('#flow'),st=asfSteps(),done=f.step===st.length;el.setAttribute('aria-label','Plan an appointment');
+  el.innerHTML=`<div class="glow"><i></i><i></i><i></i></div>
+    <div class="fltop"><button class="iconbtn" data-act="fclose" aria-label="Close without saving">${I('x')}</button><div class="flmid"><div class="eyebrow">${f.id?'Edit appointment':'Plan an appointment'}</div>${done?'':`<div class="fldots" role="img" aria-label="Step ${f.step+1} of ${st.length}: ${st[f.step][1]}">${st.map((_,i)=>`<i class="${i<f.step?'done':i===f.step?'cur':''}"></i>`).join('')}</div>`}</div><span style="width:44px"></span></div>
+    <div class="flbody"><div class="flcol ${done?'fldone':''} in-${f.dir||'r'}">${asfStep(f)}</div></div>
+    ${done?'':`<div class="flfoot"><div class="inner">${f.step?'<button class="btn lg" data-act="asfback">Back</button>':''}<button class="btn primary lg" id="fnext" data-act="asfnext">${asfLabel(f)}</button></div></div>`}`;
+  if(done)setTimeout(()=>sparks($('#flow .donec'),20),250);}
+const asfGo=(n,dir)=>{const f=asfNow();f.dir=dir;f.step=n;asFlow();};
+function asfOpen(a,step=0){closeSheet();closeQ();V.flow=null;V.asf={day:a?.day||'',time:a?.time||'',type:a?.type||'',doctorId:a?.doctorId||'',reason:a?.reason||'',meds:(a?.meds||[]).map(m=>({...m})),id:a?.id||'',step};if(!$('#flow.open'))V.flowFrom=document.activeElement;asFlow();const el=$('#flow');el.classList.add('open');el.tabIndex=-1;el.focus({preventScroll:true});}
+function docSheet(d,back){
+  openSheet(`<div class="grab"></div><h3>${d?'Edit doctor':'Add a doctor'}</h3>${[['dname','Name','name',120],['dspec','Specialty','specialty',200],['dclin','Clinic or practice','clinic',200],['daddr','Address','address',200],['dphone','Phone','phone',200]].map(([id,l,k,m],i)=>`<div class="fsec" ${i?'':'style="border:0"'}><label class="lbl" for="${id}">${l}${i?' <span class="muted" style="font-weight:500">· optional</span>':''}</label><input class="field" id="${id}" maxlength="${m}" ${k==='phone'?'type="tel"':''} value="${esc(d?.[k]||'')}"></div>`).join('')}
+    <div class="fsec"><div class="inl"><div><b>Show in Need support</b><p class="help">Adds this doctor’s name and number to your helplines.</p></div><button class="tgl" role="switch" id="dsup" aria-checked="${!!d?.support}" aria-label="Show in Need support" data-act="dsup"></button></div></div>
+    <div class="sfoot2">${d?`<button class="btn ghost" data-act="docrm:${esc(d.id)}">Remove</button>`:'<button class="btn ghost" data-act="sclose">Cancel</button>'}<button class="btn primary" data-act="docsave${d?':'+esc(d.id):''}">Save</button></div>`);
+  /* opened from the planner: leaving goes back to it, with what was typed */
+  V.sheetBack=back?()=>{closeSheet();$('[data-act="docnew:1"]')?.focus({preventScroll:true});}:null;}
+/* the calendar file holds only what's picked here; a calendar keeps its own copy outside Reclaim, so the private details start off */
+const asCalOpts=a=>[['type','Type of visit',a.type],['doctor','Doctor and place',asDoc(a)?.name],['reason','What it’s for',a.reason],['meds','Medications to discuss',apptTopics(a).length],['questions','Your questions',apptQuestionsFor(a).some(q=>!q.answeredIn)]].filter(o=>o[2]);
+async function asCalSend(text,name){const file=new File([text],name,{type:'text/calendar'});
+  /* an installed app has no downloads on some phones, so it hands the file to the share sheet */
+  if(matchMedia('(display-mode: standalone)').matches&&navigator.canShare?.({files:[file]})){try{await navigator.share({files:[file]});}catch(error){/* closing the share sheet is fine */}return;}
+  const url=URL.createObjectURL(file),link=document.createElement('a');link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+Object.assign(ACT,{
+  asmiss:()=>{const id=V.as.id,back=apptSnapshot(),f={missed:true};finishAppt(id,f);asGo();toast('Noted',()=>{back();asRedraw();saveInBackground(()=>{finishAppt(id,f);asRedraw();});});saveInBackground(()=>{back();asRedraw();});},
+  asunmiss:()=>{const id=V.as.id,back=apptSnapshot();saveAppt({missed:false,done:false},id);V.as.step=3;apDraw();saveInBackground(()=>{back();asRedraw();});},
+  asedits:()=>{V.as.edit=true;V.as.step=0;apDraw();$('#main').scrollTop=0;},
+  asview:()=>{V.as.edit=false;V.as.step=2;apDraw();$('#main').scrollTop=0;},
+  asready:(b,e,x)=>{const a=apptFind(V.as.id);if(!a)return;asKeep();const back=apptSnapshot(),on=x==='1';saveAppt({ready:on},a.id);if(on){V.as.step=2;V.as.edit=false;}apDraw();$('#main').scrollTop=0;toast(on?'Saved. You’re prepared':'Back to preparing');saveInBackground(()=>{back();asRedraw();});},
+  ascal:()=>{const a=apptFind(V.as.id);if(!a)return;V.ascal={type:true,doctor:true};
+    openSheet(`<div class="grab"></div><h3>Add to calendar</h3><p class="muted" style="margin:0">Pick what goes in the event. Your calendar keeps its own copy, outside Reclaim.</p><div class="chips" style="margin-top:12px" role="group" aria-label="Include">${asCalOpts(a).map(([k,l])=>`<button class="chip ${V.ascal[k]?'on':''}" data-act="ascalp:${k}" aria-pressed="${!!V.ascal[k]}"><span class="ck">${I('check')}</span>${l}</button>`).join('')}</div><div class="exrow" style="margin-top:16px"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="ascalgo">Get calendar file</button></div>`);},
+  ascalp:(b,e,x)=>{V.ascal[x]=!V.ascal[x];b.classList.toggle('on',V.ascal[x]);b.setAttribute('aria-pressed',V.ascal[x]);},
+  ascalgo:()=>{const a=apptFind(V.as.id);if(!a)return;const name=`Appointment ${a.day}.ics`;closeSheet();asCalSend(apptIcs(a,V.ascal),name);},
+  apps:()=>asGo(),
+  asback:()=>asGo(),
+  asopen:(b,e,x,y)=>asGo(x,+y||0),
+  asstep:(b,e,x)=>{asKeep();V.as.step=+x;apDraw();$('#main').scrollTop=0;},
+  astype:b=>{const f=V.asf,v=b.dataset.v;f.type=f.type===v?'':v;asFlow();},
+  asdocpick:(b,e,x)=>{const f=V.asf;f.doctorId=f.doctorId===x?'':x;asFlow();},
+  asmed:(b,e,x)=>{const f=asfNow();f.meds=f.meds.some(m=>m.id===x)?f.meds.filter(m=>m.id!==x):[...f.meds,{id:x}];asFlow();$(`#flow [data-act="asmed:${x}"]`)?.focus({preventScroll:true});},
+  apnew:()=>asfOpen(),
+  asedit:()=>{const a=apptFind(V.as.id);if(a)asfOpen(a,asfAt('review'));},
+  asfback:()=>{const f=V.asf;asfGo(f.ret?asfAt('review'):f.step-1,'l');f.ret=false;},
+  asfgo:(b,e,x)=>{V.asf.ret=true;asfGo(+x,'l');},
+  asfnext:()=>{const f=asfNow(),last=asfAt('review');
+    if(asfKey(f)==='when'&&(!f.day||dateKey(f.day)!==f.day)){toast('Choose the date');$('#asday').focus();return;}
+    if(f.step<last){const ret=f.ret;f.ret=false;asfGo(ret?last:f.step+1,'r');return;}
+    if(!f.day){f.ret=true;asfGo(asfAt('when'),'l');toast('Choose the date');return;}
+    const back=apptSnapshot(),a=saveAppt({day:f.day,time:f.time,type:f.type,doctorId:f.doctorId,reason:f.reason,meds:f.meds.map(m=>m.note?m:{id:m.id})},f.id||undefined);saveInBackground(()=>{back();asRedraw();});
+    if(f.id){flowClose();asGo(a.id,V.as?.step||0);toast('Appointment saved');return;}f.saved=a.id;f.step=asfSteps().length;asFlow();asRedraw();},
+  asfprep:()=>{const id=V.asf.saved;flowClose();asGo(id,1);},
+  asdel:()=>{const a=apptFind(V.as.id);if(!a)return;openSheet(`<div class="grab"></div><h3>Delete this appointment?</h3><p class="muted" style="margin:0">${esc(asName(a))}, ${esc(asDate(a))}, and what you wrote for it.</p><div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep it</button><button class="btn primary" data-act="asdelgo">Delete</button></div>`);},
+  asdelgo:()=>{const id=V.as.id,back=apptSnapshot(),c=S.profile.companion;c.appointments=apptList().filter(a=>a.id!==id);apptQuestions(true).forEach(q=>{if(q.apptId===id)delete q.apptId;});asGo();
+    toast('Appointment deleted',()=>{back();asRedraw();saveInBackground(()=>{c.appointments=apptList().filter(a=>a.id!==id);asRedraw();});});saveInBackground(()=>{back();asRedraw();});},
+  asfelt:(b,e,x)=>{asKeep();V.as.felt=V.as.felt===+x?0:+x;apDraw();},
+  asdone:()=>{asKeep();const back=apptSnapshot(),id=V.as.id,f={felt:V.as.felt||0,outcome:V.as.outcome.trim(),nextSteps:V.as.nextSteps.trim()};finishAppt(id,f);asGo();toast('Saved',()=>{back();asRedraw();saveInBackground(()=>{finishAppt(id,f);asRedraw();});});saveInBackground(()=>{back();asRedraw();});},
+  dsup:b=>b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true'),
+  docnew:(b,e,x)=>{if(x)asfNow();docSheet(null,!!x);$('#dname')?.focus({preventScroll:true});},
+  docedit:(b,e,x)=>docSheet(apptDoctor(x),false),
+  docsave:(b,e,x)=>{const name=$('#dname').value.trim();if(!name){toast('Add a name first');$('#dname').focus();return;}const phone=$('#dphone').value.trim(),support=$('#dsup').getAttribute('aria-checked')==='true';if(support&&!phone){toast('Add a phone number to show this doctor in Need support');$('#dphone').focus();return;}const back=apptSnapshot(),d=saveApptDoctor({name,specialty:$('#dspec').value.trim(),clinic:$('#dclin').value.trim(),address:$('#daddr').value.trim(),phone,support},x);
+    saveInBackground(()=>{back();asRedraw();});toast('Doctor saved');if(V.sheetBack){V.sheetBack=null;closeSheet();V.asf.doctorId=d.id;asFlow();}else{closeSheet();asRedraw();}},
+  docrm:(b,e,x)=>{const back=apptSnapshot(),c=S.profile.companion;c.doctors=apptDoctors().filter(d=>d.id!==x);closeSheet();asRedraw();toast('Doctor removed',()=>{back();asRedraw();saveInBackground(()=>{c.doctors=apptDoctors().filter(d=>d.id!==x);asRedraw();});});saveInBackground(()=>{back();asRedraw();});}
+});
+/* typing an answer turns Skip into Continue */
+app.addEventListener('input',e=>{if(e.target.id!=='asreason'||!V.asf)return;const f=V.asf,b=$('#fnext');f.reason=e.target.value.trim();if(b)b.textContent=asfLabel(f);});
+/* the look-back start saves straight away, with rollback */
+app.addEventListener('change',e=>{if(e.target.id!=='assince')return;const back=apptSnapshot();saveAppt({since:e.target.value},V.as.id);apDraw();saveInBackground(()=>{back();asRedraw();});});
+</script>
