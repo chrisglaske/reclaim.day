@@ -3,7 +3,8 @@
   // V.flow is the mockup's S.flow; v holds the answers with mood 0–4 (MOODS index) or null.
   // Saving keeps the app's rules: createdAt is the first save; only the mood reaches the day, and only
   // from the latest time of day with a mood (moodFrom names it); sleep and craving stay on the check-in.
-const FSTEPS=sl=>['Mood',sl==='morning'?'Sleep & focus':'Cravings & context','A few words','Review'];
+const FSTEPS=sl=>['Mood',sl==='morning'?'Sleep & focus':'Cravings & context','Your body','A few words','Review'];
+const FREV=4,FDONE=5;
 const CRW=n=>n==null?'Not rated':n===0?'None':n<=3?'Mild':n<=6?'Moderate':n<=8?'Strong':'Very strong';
 const fh=h=>h==null?'–':String(+h.toFixed(2));
 const CTX=JOURNAL_TAGS,SQ=SLEEP_WORDS,PROMPTS=CHECKIN_PROMPTS;
@@ -19,6 +20,7 @@ const slotL=sl=>SLOTS.find(s=>s[0]===sl)[3];
       focus: typeof saved.intention === 'string' ? saved.intention : '',
       craving: Number.isInteger(saved.craving) ? saved.craving : null,
       tags: Array.isArray(saved.tags) ? saved.tags.filter(tag => JOURNAL_TAGS.includes(tag)) : [],
+      health: Array.isArray(saved.health) ? saved.health.filter(tag => HEALTH_TAGS.includes(tag)) : [],
       text: typeof saved.text === 'string' ? saved.text : ''
     };
   }
@@ -26,13 +28,13 @@ const slotL=sl=>SLOTS.find(s=>s[0]===sl)[3];
 function flowOpen(sl,day,review){
   const c=ckDay(day)[sl],td=localToday();
   const past=day<td||(day===td&&SLOTS.findIndex(s=>s[0]===sl)<SLOTS.findIndex(s=>s[0]===curSlot())); // an earlier time of day asks in the past tense, without today's mood
-  V.flow={sl,day,step:review&&c?3:0,dir:'r',edit:!!c,past,pre:!c&&!past&&day===td&&amood()!=null,v:c?JSON.parse(JSON.stringify(c)):{mood:day===td&&!past?amood():null,sleep:null,q:null,focus:'',craving:null,tags:[],text:''}};
-  V.flow.v.tags??=[];V.flow.v.text??='';
+  V.flow={sl,day,step:review&&c?FREV:0,dir:'r',edit:!!c,past,pre:!c&&!past&&day===td&&amood()!=null,v:c?JSON.parse(JSON.stringify(c)):{mood:day===td&&!past?amood():null,sleep:null,q:null,focus:'',craving:null,tags:[],health:[],text:''}};
+  V.flow.v.tags??=[];V.flow.v.health??=[];V.flow.v.text??='';
   if(!$('#flow.open'))V.flowFrom=document.activeElement;
   closeSheet();if(typeof closeQ==='function')closeQ();renderFlow();const f=$('#flow');f.classList.add('open');f.tabIndex=-1;f.focus({preventScroll:true});
 }
-function fAnswered(){const f=V.flow,v=f.v;return [v.mood!=null,f.sl==='morning'?(v.sleep!=null||!!v.q||!!v.focus):(v.craving!=null||v.tags.length>0),!!v.text.trim(),true][f.step];}
-const fNextLabel=()=>V.flow.step===3?(V.flow.edit?'Save changes':'Save check-in'):fAnswered()?'Continue':'Skip this step';
+function fAnswered(){const f=V.flow,v=f.v;return [v.mood!=null,f.sl==='morning'?(v.sleep!=null||!!v.q||!!v.focus):(v.craving!=null||v.tags.length>0),v.health.length>0,!!v.text.trim(),true][f.step];}
+const fNextLabel=()=>V.flow.step===FREV?(V.flow.edit?'Save changes':'Save check-in'):fAnswered()?'Continue':'Skip this step';
 const fLabel=()=>{const n=$('#fnext');if(n)n.textContent=fNextLabel();};
 function flowStep(){
   const f=V.flow,v=f.v,mor=f.sl==='morning',opt='<span class="muted" style="font-weight:500">· optional</span>';
@@ -49,30 +51,33 @@ function flowStep(){
         <input type="range" class="bigrng" id="fcr" min="0" max="10" value="${v.craving??0}" aria-label="Craving strength, 0 to 10"><div class="scale"><span>0 · None</span><span>10 · Very strong</span></div>
         <button class="link" data-act="fcrskip">Leave unrated</button></div>
       <div><span class="lbl">What’s been around you? <span class="muted" style="font-weight:500">· pick any</span></span><div class="chips">${CTX.map(t=>`<button class="chip ${v.tags.includes(t)?'on':''}" data-act="ftag" data-v="${t}">${ck()}${t}</button>`).join('')}</div></div>`;
-    case 2:return `<div class="flq"><h2>A few words, if you like</h2><p>Or none at all. A prompt can help you start.</p></div>
+    case 2:return `<div class="flq"><h2>${f.past?`How did your body feel in the ${slotL(f.sl).toLowerCase()}?`:'How’s your body feeling?'}</h2><p>Pick any, or skip.</p></div>
+      <div class="chips">${HEALTH_TAGS.map(t=>`<button class="chip ${v.health.includes(t)?'on':''}" data-act="fhealth" data-v="${t}" aria-pressed="${v.health.includes(t)}">${ck()}${t}</button>`).join('')}</div>`;
+    case 3:return `<div class="flq"><h2>A few words, if you like</h2><p>Or none at all. A prompt can help you start.</p></div>
       <div class="chips">${PROMPTS.map((p,i)=>`<button class="chip" data-act="fprompt:${i}">${p}</button>`).join('')}</div>
       <div><textarea id="ftext" maxlength="5000" placeholder="Whatever is on your mind…" aria-label="Your note">${esc(v.text)}</textarea><div class="tcount" id="ftc">${v.text.length} / 5000</div></div>`;
-    case 3:{const rows=[[0,'smile','mint','Mood',v.mood!=null?MOODS[v.mood][0]+' '+MOODS[v.mood][1]:'Not noted']];
+    case 4:{const rows=[[0,'smile','mint','Mood',v.mood!=null?MOODS[v.mood][0]+' '+MOODS[v.mood][1]:'Not noted']];
       if(mor)rows.push([1,'moon','lilac','Sleep & focus',[v.sleep!=null?fh(v.sleep)+' hours':'',v.q?SQ[v.q-1]:'',v.focus?'Focus: '+esc(v.focus):''].filter(Boolean).join(' · ')||'Not noted']);
       else rows.push([1,'wave','peach','Cravings & context',[v.craving!=null?`Craving ${v.craving}/10`:'Craving not rated',...v.tags].join(' · ')]);
-      const t=v.text.trim();rows.push([2,'pen','butter','Your words',t?esc(t.slice(0,160))+(t.length>160?'…':''):'No note this time']);
+      rows.push([2,'leaf','sky','Your body',v.health.join(' · ')||'Nothing noted']);
+      const t=v.text.trim();rows.push([3,'pen','butter','Your words',t?esc(t.slice(0,160))+(t.length>160?'…':''):'No note this time']);
       return `<div class="flq"><h2>Your check-in</h2><p>Have a look. Tap Edit to change anything.</p></div>
       <section class="card rvlist">${rows.map(([s,i,c,k,val])=>`<div class="rv"><span class="itile ${c}">${I(i)}</span><div><div class="k">${k}</div><div class="muted">${val}</div></div><button class="link" data-act="fgo:${s}">Edit</button></div>`).join('')}</section>`;}
-    case 4:{const n=Object.keys(ckDay(f.day)).length,nm=S.profile.name.trim();
+    case 5:{const n=Object.keys(ckDay(f.day)).length,nm=S.profile.name.trim();
       return `<div class="donec">${CHECK}</div><h2>${f.edit?'Changes saved':'Check-in saved'}</h2><p>Thanks for pausing${nm?', '+esc(nm):''}. ${f.day===localToday()?`That’s ${n} of 3 check-ins today.`:'That day is up to date.'}</p><button class="btn primary lg" data-act="fclose" style="min-width:220px;margin-top:8px">Done</button>`;}
   }
 }
 function renderFlow(){
-  const f=V.flow,st=FSTEPS(f.sl),done=f.step===4;
+  const f=V.flow,st=FSTEPS(f.sl),done=f.step===FDONE;
   $('#flow').innerHTML=`<div class="glow"><i></i><i></i><i></i></div>
     <div class="fltop"><button class="iconbtn" data-act="fclose" aria-label="Close check-in">${I('x')}</button>
-      <div class="flmid"><div class="eyebrow">${slotL(f.sl)} check-in · ${f.day===localToday()?'Today':dlab(f.day,{weekday:'short',month:'short',day:'numeric'})}</div>${done?'':`<div class="fldots" role="img" aria-label="Step ${f.step+1} of 4: ${st[f.step]}">${st.map((_,i)=>`<i class="${i<f.step?'done':i===f.step?'cur':''}"></i>`).join('')}</div>`}</div><span style="width:44px"></span></div>
+      <div class="flmid"><div class="eyebrow">${slotL(f.sl)} check-in · ${f.day===localToday()?'Today':dlab(f.day,{weekday:'short',month:'short',day:'numeric'})}</div>${done?'':`<div class="fldots" role="img" aria-label="Step ${f.step+1} of ${st.length}: ${st[f.step]}">${st.map((_,i)=>`<i class="${i<f.step?'done':i===f.step?'cur':''}"></i>`).join('')}</div>`}</div><span style="width:44px"></span></div>
     <div class="flbody"><div class="flcol ${done?'fldone':''} in-${f.dir}">${flowStep()}</div></div>
     ${done?'':`<div class="flfoot"><div class="inner">${f.step?`<button class="btn lg" data-act="fback">Back</button>`:''}<button class="btn primary lg" id="fnext" data-act="fnext">${fNextLabel()}</button></div></div>`}`;
   if(done)setTimeout(()=>sparks($('#flow .donec'),20),250);
 }
-function fGo(n){const f=V.flow;f.dir=n>=f.step?'r':'l';f.step=n;if(n===3)f.ret=false;renderFlow();}
-function fNext(){const f=V.flow;if(f.step===3)return fSave();fGo(f.ret?3:f.step+1);}
+function fGo(n){const f=V.flow;f.dir=n>=f.step?'r':'l';f.step=n;if(n===FREV)f.ret=false;renderFlow();}
+function fNext(){const f=V.flow;if(f.step===FREV)return fSave();fGo(f.ret?FREV:f.step+1);}
 
   function validateCheckin(slot, v) {
     const errors = [];
@@ -100,12 +105,13 @@ function fNext(){const f=V.flow;if(f.step===3)return fSave();fGo(f.ret?3:f.step+
     const checkin = { mood: v.mood != null ? v.mood + 1 : 0, text: v.text.trim().slice(0, 5000), createdAt: previous && (previous.createdAt || previous.updatedAt) || at, updatedAt: at };
     if (slot === 'morning') Object.assign(checkin, { sleepHours: validateSleepHours(v.sleep).value, sleepQuality: v.q || 0, intention: (v.focus || '').trim().slice(0, 200) });
     else Object.assign(checkin, { craving: v.craving, tags: v.tags.slice() });
+    if (v.health.length) checkin.health = v.health.slice();
     entry.checkins[slot] = checkin;
     const later = CHECKIN_SLOTS.slice(CHECKIN_SLOTS.indexOf(slot) + 1).some(other => entry.checkins[other] && Number(entry.checkins[other].mood) > 0);
     if (checkin.mood && !later) { entry.mood = checkin.mood; entry.moodFrom = slot; }
     entry.updatedAt = at;
     S.journal[key] = entry;
-    fGo(4);
+    fGo(FDONE);
     saveInBackground(() => {
       if (before) S.journal[key] = before; else delete S.journal[key];
       if (V.view === 'today' && $('#tgrid')) { refreshHero(); swap('dmood', dMood()); }
@@ -114,7 +120,7 @@ function fNext(){const f=V.flow;if(f.step===3)return fSave();fGo(f.ret?3:f.step+
 
 function flowClose(){
   const f=V.flow;$('#flow')?.classList.remove('open');if(!f)return;V.flow=null;
-  if(f.step===4){if(V.view==='journal'&&typeof renderJ==='function')renderJ();if(V.view==='today'){refreshHero();V.amfresh=!!amsrc();swap('dmood',dMood());V.amfresh=false;}toast(`${slotL(f.sl)} check-in ${f.edit?'updated':'saved'}`);}
+  if(f.step===FDONE){if(V.view==='journal'&&typeof renderJ==='function')renderJ();if(V.view==='today'){refreshHero();V.amfresh=!!amsrc();swap('dmood',dMood());V.amfresh=false;}toast(`${slotL(f.sl)} check-in ${f.edit?'updated':'saved'}`);}
   /* focus goes back to where the check-in was opened from */
   const from=V.flowFrom;V.flowFrom=null;if(from?.isConnected)from.focus({preventScroll:true});else $('#main')?.focus({preventScroll:true});
 }
@@ -129,6 +135,7 @@ Object.assign(ACT,{
   fslset:(b,e,x)=>ACT.fsl(b,e,x,null,'fslset'),
   fq:(b,e,x)=>{const v=V.flow.v;v.q=v.q===+x?null:+x;$$('#fsq .chip').forEach(c=>c.classList.toggle('on',c===b&&v.q!=null));fLabel();},
   ftag:b=>{const t=V.flow.v.tags,i=t.indexOf(b.dataset.v);i<0?t.push(b.dataset.v):t.splice(i,1);b.classList.toggle('on',i<0);fLabel();},
+  fhealth:b=>{const t=V.flow.v.health,i=t.indexOf(b.dataset.v);i<0?t.push(b.dataset.v):t.splice(i,1);b.classList.toggle('on',i<0);b.setAttribute('aria-pressed',i<0);fLabel();},
   fcrskip:()=>{V.flow.v.craving=null;$('#fcr').value=0;$('#fcrv').textContent='–';$('#fcrw').textContent=CRW(null);fLabel();},
   fprompt:(b,e,x)=>{const ta=$('#ftext');ta.value=(ta.value.trim()?ta.value.trim()+'\n':'')+PROMPTS[x]+' ';V.flow.v.text=ta.value;$('#ftc').textContent=ta.value.length+' / 5000';ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);fLabel();},
   fnext:()=>fNext(),

@@ -131,6 +131,9 @@
     return out;
   }
 
+  // A past day's single check-in (checkins.daily): one mood, health complaints and a note, for a day with no others. Null when none.
+  function dayCheck(k) { const c = ((S.journal[k] || {}).checkins || {}).daily; return logicObject(c) ? c : null; }
+
   // storyItems(): everything saved today (S.tasks, S.prnlist, S.mlist, S.wlist), oldest first.
   function storyItems() {
     return todayStoryItems(localToday()).map(x => ({ at: x.time, ic: x.icon || x.emoji, tint: x.tint, t: x.title, d: x.detail }));
@@ -255,7 +258,8 @@
     const out = [];
     Object.keys(S.journal).filter(dateKey).forEach(k => {
       const d = S.journal[k], cks = (logicObject(d) && logicObject(d.checkins)) ? d.checkins : {};
-      SLOTS.forEach(([sl, , , l]) => { const c = cks[sl]; if (logicObject(c) && typeof c.text === 'string' && c.text.trim()) out.push({ k, sl: l, t: c.text, s: [c.text, ...(Array.isArray(c.tags) ? c.tags : [])].join(' ') }); });
+      SLOTS.forEach(([sl, , , l]) => { const c = cks[sl]; if (logicObject(c) && typeof c.text === 'string' && c.text.trim()) out.push({ k, sl: l, t: c.text, s: [c.text, ...(Array.isArray(c.tags) ? c.tags : []), ...(Array.isArray(c.health) ? c.health : [])].join(' ') }); });
+      const dc = cks.daily; if (logicObject(dc) && typeof dc.text === 'string' && dc.text.trim()) out.push({ k, sl: 'Day check-in', t: dc.text, s: [dc.text, ...(Array.isArray(dc.health) ? dc.health : [])].join(' ') });
       const lg = earlierDay(k); if (lg && lg.text) out.push({ k, sl: '', t: lg.text, s: [lg.text, lg.focus, ...lg.tags].join(' ') });
     });
     Object.entries(S.profile.companion.reflections || {}).forEach(([k, t]) => { if (dateKey(k) && typeof t === 'string' && t.trim()) out.push({ k, sl: 'Weekly reflection', t, s: t }); });

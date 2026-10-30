@@ -218,6 +218,8 @@
     const ct = apptTrend(days.map(d => apptAvg(cravings(d))).filter(x => x != null));
     if (allCrav.length) glance.push('Cravings: average ' + apptOne(apptAvg(allCrav)) + '/10' + (ct ? ', ' + apptTrendWords(ct, '') : ''));
     if (nights.length) glance.push('Sleep: average ' + apptOne(apptAvg(nights.map(apptSleep))) + ' hours over ' + apptPlural(nights.length, 'night'));
+    const healthDays = HEALTH_TAGS.map(tag => [tag, days.filter(d => apptCheckins(d).some(c => Array.isArray(c.health) && c.health.includes(tag))).length]).filter(([, n]) => n);
+    if (healthDays.length) glance.push('Health complaints noted: ' + healthDays.map(([tag, n]) => tag + ' on ' + apptPlural(n, 'day')).join(', '));
     const waveTotal = days.reduce((a, d) => a + waves(d), 0);
     if (waveTotal) glance.push('Waves ridden out: ' + waveTotal);
 
@@ -259,7 +261,7 @@
       }
       Object.entries(record.checkins || {}).forEach(([slot, c]) => {
         if (logicObject(c) && typeof c.text === 'string' && c.text.trim()) {
-          notes.push({ id: day + ':' + slot, day, label: slot.charAt(0).toUpperCase() + slot.slice(1) + ' check-in', text: c.text.trim() });
+          notes.push({ id: day + ':' + slot, day, label: slot === 'daily' ? 'Day check-in' : slot.charAt(0).toUpperCase() + slot.slice(1) + ' check-in', text: c.text.trim() });
         }
       });
     });
@@ -267,7 +269,7 @@
       if (dateKey(week) !== week || dayOffset(week, 6) < range.start || week > range.end || typeof text !== 'string' || !text.trim()) return;
       notes.push({ id: week + ':week', day: week, label: 'Weekly reflection', text: text.trim() });
     });
-    const order = { day: 0, morning: 1, afternoon: 2, evening: 3, week: 4 };
+    const order = { day: 0, daily: 0, morning: 1, afternoon: 2, evening: 3, week: 4 };
     return notes.sort((a, b) => b.day.localeCompare(a.day) || order[b.id.split(':')[1]] - order[a.id.split(':')[1]]);
   }
 

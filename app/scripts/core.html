@@ -6,6 +6,7 @@
   const nextTick = fn => new Promise(resolve => requestAnimationFrame(() => resolve(fn ? fn() : undefined)));
   const LOGIC_DAY_MS = 24 * 60 * 60 * 1000;
   const JOURNAL_TAGS = ['Stress', 'Exercise', 'Time outside', 'Social time', 'Rest', 'Illness', 'Work', 'Travel'];
+  const HEALTH_TAGS = ['Headache', 'Stomach issues', 'Nausea', 'Tired', 'Dizzy', 'Aches or pain', 'Cold or flu', 'Other'];
   const CHECKIN_SLOTS = ['morning', 'afternoon', 'evening'];
   // The mockup's mood words and faces; saved moods stay 1–5 (0 is not noted), so MOOD_WORDS[mood - 1].
   const MOOD_WORDS = ['Struggling', 'Heavy', 'Getting by', 'Doing okay', 'Going well'];
