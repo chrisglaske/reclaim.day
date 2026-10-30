@@ -37,7 +37,8 @@ smoking, vaping, drinking and medication.
 | 📈 **Spot your tricky hours** | See when urges show up, then plan for them. |
 | 💰 **See what you've kept** | Money not spent, and progress toward something you want. |
 | 📓 **Write it down, or don't** | A private journal for the days that need more than a tap. |
-| 🩺 **Ready for your appointment** | A summary of a chosen period, the way a clinician asks, to copy or print. |
+| 🩺 **Ready for your appointment** | Plan a visit with your doctor, questions and medications, then take a summary of what's changed, the way a clinician asks. Note the answers you get, and add it to your calendar with only the details you choose. |
+| 🌍 **Your date and time format** | Follows your device, or pick US or International. |
 | 🎨 **Pick your colors** | Five looks, including a dark one for late nights. |
 
 You choose the goal for each habit: **quit**, **cut back**, or **just track**, which never uses over/under language. No grades, no guilt.
