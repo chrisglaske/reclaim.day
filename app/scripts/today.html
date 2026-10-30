@@ -6,7 +6,7 @@
   function todayTimeLabel(minutes, reference = todayUI.now) {
     const time = new Date(reference);
     time.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-    return time.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return time.toLocaleTimeString(dateLocale(), clockOptions());
   }
 
   // Today's doses and check-ins, split into due, done and upcoming. A dose needs a reminder time to be
@@ -82,7 +82,7 @@
   // Everything saved today, oldest first, for the Day story.
   function todayStoryItems(day = localToday()) {
     const journal = S.journal[day] || {};
-    const time = at => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const time = at => new Date(at).toLocaleTimeString(dateLocale(), clockOptions());
     return [
       ...Object.entries(journal.checkins || {})
         .filter(([, checkin]) => checkin && checkin.updatedAt)

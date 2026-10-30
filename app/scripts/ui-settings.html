@@ -23,7 +23,7 @@ const SSUM={
   look:()=>`${THEMES.find(t=>t[0]===theme())?.[1]} · counters ${hide()?'hidden':'shown'}`,
   data:()=>'Stored in your Google Drive · backup, restore, erase',
   about:()=>'A note from Chris · links · support Reclaim'};
-const tm=t=>{const [h,m]=t.split(':').map(Number);return new Date(2000,0,1,h,m).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});};
+const tm=t=>{const [h,m]=t.split(':').map(Number);return new Date(2000,0,1,h,m).toLocaleTimeString(dateLocale(), clockOptions());};
 /* "Daily · 9:00 AM": how often, and each dose's time where one is set */
 const medTimes=m=>m.slots.map((s,i)=>((S.profile.companion.reminders||{})[m.id+':'+i]||{}).time).filter(Boolean).map(tm);
 const medSub=m=>m.freq==='prn'?`As needed${m.dailyLimit?' · personal limit '+m.dailyLimit:''}`:`${m.freq===1?'Daily':m.freq+' times a day'}${medTimes(m).length?' · '+medTimes(m).join(', '):''}`;
@@ -103,10 +103,10 @@ const SECS={
   why:()=>sec('why','Remember why','Shown in “Need support?”, for the harder moments.',`<div class="frow"><label class="lbl" for="swhy">Your reasons</label><textarea id="swhy" data-save style="min-height:130px">${esc(why().join('\n'))}</textarea><div class="inl"><p class="help">One personal reason per line, up to 15.</p><span class="help" id="whyc">${why().length} of 15</span></div></div>`),
   support:()=>sec('support','Support','',`<div class="frow"><label class="lbl" for="scountry">Country for support <span class="muted" style="font-weight:500">· optional</span></label><select class="field" id="scountry" data-save>${countryOpts(country())}</select>${WHYCOUNTRY}</div>`),
   look:()=>sec('look','Look & feel','Changes save immediately.',`${swatches()}
-    <div class="frow" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px"><div class="inl"><div><b>Hide counters</b><p class="help">Show gentle words instead of numbers, everywhere.</p></div><button class="tgl" role="switch" aria-checked="${hide()}" aria-label="Hide counters" data-act="hide"></button></div></div>`),
+    <div class="frow" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px"><div class="inl"><div><b>Hide counters</b><p class="help">Show gentle words instead of numbers, everywhere.</p></div><button class="tgl" role="switch" aria-checked="${hide()}" aria-label="Hide counters" data-act="hide"></button></div></div>
+    <div class="frow" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">${dateChoices()}</div>`),
   data:()=>sec('data','Your data','',`<p class="muted" style="font-size:14px;margin:0 0 14px">Reclaim has no advertising or usage analytics. What you save is stored in your own Google Drive, not a shared Reclaim database.</p>
     <div class="chips"><button class="btn" data-act="backup">${I('db')}Create backup…</button><button class="btn" data-act="restore">${I('up')}Restore from file</button><input type="file" id="rfile" accept=".json,application/json" hidden></div>${window.reclaimSignIn?`<div class="inl" style="margin-top:12px"><p class="help" style="margin:0">Signing out ends Reclaim’s access to your Drive. Your data stays there.</p><button class="btn" data-act="signout">Sign out</button></div>`:''}
-    <button class="lrow" data-act="apopen" style="border:0;background:none;text-align:left;font:inherit;color:inherit;width:100%;margin-top:12px"><span class="itile lilac">${I('file')}</span><span><b>Appointment summary</b><div class="muted" style="font-size:13px">What changed since your last appointment, to show or print</div></span>${I('chev','chev')}</button>
     <div class="danger"><b>Erase your Reclaim data</b><p class="help" style="margin:4px 0 12px">Choose whether to keep a backup first, then confirm. Nothing happens until the last step.</p><button class="btn warn" data-act="erase:0">Erase my data…</button></div>`),
   /* links open in a new tab so the app (and its sign-in) stays put */
   about:()=>sec('about','About','',`<p style="margin:0 0 10px">Hi, I’m Chris 👋</p>
@@ -182,6 +182,11 @@ function habitDone(k,was,msg){swap('hs-'+k,setHabit(k));placeSeg();flashSaved($(
   saveInBackground(()=>{S.vices[VK[k]]=was;if(V.limph)V.limph[k]=null;resec('habits');});}
 /* "€4.50", "4,50" or "1,234.50" → a number */
 const money=s=>{s=String(s).replace(/[^\d.,]/g,'');s=s.includes('.')?s.replace(/,/g,''):s.replace(',','.');return s===''?0:Number(s);};
+/* how dates and times read, here and in Guided setup; the date and time fields you pick from are the device's own */
+const DATE_NAMES=[['device','Same as this device'],['us','US'],['intl','International']];
+const dateSample=k=>{const d=new Date(2026,9,30,16);return d.toLocaleDateString(dateLocale(k),{month:'short',day:'numeric'})+', '+d.toLocaleTimeString(dateLocale(k),clockOptions(false,k));};
+const dateChoices=()=>`<span class="lbl" id="dfl">Date and time format</span><div class="chips" role="group" aria-labelledby="dfl">${DATE_NAMES.map(([k,l])=>`<button class="chip dfc ${dateFormat()===k?'on':''}" data-act="odate:${k}" aria-pressed="${dateFormat()===k}"><span class="ck">${I('check')}</span>${l} · ${dateSample(k)}</button>`).join('')}</div><p class="help" style="margin-top:8px">The fields you pick a date or time from follow your device.</p>`;
+function setDateFormat(k){const c=S.profile.companion;if(k==='device')delete c.dateFormat;else c.dateFormat=k;}
 /* the theme on the page and on .app, as the mockup sets it */
 function showTheme(){window.reclaimStartup.applyTheme(theme(),true);applyAppTheme();}
 
@@ -295,6 +300,8 @@ Object.assign(ACT,{
     if(err){toast(err);f.focus();return;}
     l.push(v);swap('ib-'+x,ideaBlock(x));flashSaved($('#s-ideas h2'));$('#ia-'+x).focus();
     saveInBackground(()=>{const i=l.lastIndexOf(v);if(i>=0)l.splice(i,1);resec('ideas');});},
+  odate:(b,e,x)=>{const was=dateFormat();setDateFormat(x);$$('.dfc',app).forEach(s=>{s.classList.toggle('on',s===b);s.setAttribute('aria-pressed',s===b)});
+    if(b.closest('#s-look'))saveInBackground(()=>{setDateFormat(was);resec('look');});},
   otheme:(b,e,x)=>{const was=theme();S.profile.companion.theme=x;{const ss=$('#s-look .ssum',app);if(ss)ss.innerHTML=SSUM.look();}showTheme();$$('.sw',app).forEach(s=>{s.classList.toggle('on',s===b);s.setAttribute('aria-pressed',s===b)});
     saveInBackground(()=>{S.profile.companion.theme=was;showTheme();resec('look');});},
 });

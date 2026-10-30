@@ -83,6 +83,26 @@
   .dopts>button.lrow{border:0;background:none;text-align:left;font:inherit;color:inherit;width:calc(100% + 16px);min-height:56px}
   .dopts>button.lrow+button.lrow{border-top:1px solid var(--line)}
   .chips.dsr{margin-top:14px}
+  #jdc{margin-top:12px}
+  .jdcmore{display:inline-flex;align-items:center;gap:4px;margin-top:10px}.jdcmore .ic{width:15px;height:15px}
+  #culine:empty{display:none}
+  .culine{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:16px;background:var(--soft);margin:14px 0}
+  #medc .culine{margin:0 0 10px}
+  .cugo{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
+  .cugo b{flex:1;min-width:0;font-size:14.5px}
+  .cugo .itile{width:36px;height:36px;border-radius:11px}
+  .cuadd{display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:700;white-space:nowrap}.cuadd .ic{width:15px;height:15px}
+  #culist{margin-top:6px}
+  .cuday{padding-top:12px}
+  .cudh{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+  .cudh h4{margin:0;font-size:14px;font-weight:700}
+  .curow{padding:10px 12px;border-radius:16px;background:var(--soft)}.curow+.curow{margin-top:8px}
+  .curow.done{background:color-mix(in srgb,var(--c-dose) 12%,var(--card))}
+  .curow .tt{font-weight:700}.curow .td{font-size:13.5px;color:var(--muted)}
+  .cuhd{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .cuact{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+  .cuact .field{flex:1 1 112px;width:auto;min-width:0}
+  .cuok{margin:14px 0 0;font-weight:700}
   .dose.skip{background:var(--soft)}.dose.skip .td{color:var(--muted)}
   /* M8h: a skipped dose in Today's Done today and timeline */
   .task.skip .td{color:var(--muted)}
@@ -114,6 +134,42 @@
   .apnote{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}.apnote:first-child{border-top:0}
   .apnote>div{min-width:0}.apnote small{color:var(--muted);font-size:12.5px}.apnote p{margin:2px 0 0;font-size:14px;overflow-wrap:anywhere}
   .apnote:not(.on) p{color:var(--muted)}
+  .culine+.culine{margin-top:-6px}
+  .culine small{display:block;font-size:13px;color:var(--muted);font-weight:500}.cugo .cut{flex:1;min-width:0}
+  .qgrid .qt:nth-child(5){grid-column:1/-1}
+  .aslist{display:flex;flex-direction:column;gap:8px}
+  .asrow{width:100%;display:flex;align-items:center;gap:12px;padding:12px;border:0;border-radius:16px;background:var(--soft);color:inherit;font:inherit;text-align:left;cursor:pointer}.asrow>span:nth-child(2){flex:1;min-width:0}.asrow small{display:block;color:var(--muted);font-size:13px}.asrow .ic.chev{flex:none}
+  .assteps{display:flex;flex-wrap:wrap;gap:6px}
+  .asq .check{flex:none;width:40px;height:40px}
+  .asmood{display:flex;justify-content:space-between;gap:4px;max-width:320px}.asmood .dm{width:46px;height:46px;font-size:26px}
+  .asdoc p{margin:2px 0 0;overflow-wrap:anywhere}.asdoc a{color:inherit;font-weight:600}
+  .flow .rads{width:100%}.flow .rad small{display:block;color:var(--muted);font-size:13px}.sheetw.open{z-index:60}
+  .fldone .btn+.btn{margin-top:-4px}
+  .asrdy{display:flex;flex-wrap:wrap;align-items:center;gap:12px}.asrdy>div:not(.asrdyb){flex:1 1 220px}.asrdy b{display:block}.asrdy small{color:var(--muted);font-size:13px}.asrdyb{display:flex;flex-wrap:wrap;gap:8px}
+  .asqa{flex:1;min-width:0}.asqa textarea{margin-top:6px}.apqa{gap:0}.apqa li{display:block;padding:10px 0;border-top:1px solid var(--line)}.apqa li:first-child{border-top:0;padding-top:0}.apqr{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.apqr p{margin:0;min-width:0;overflow-wrap:anywhere}.apqr .link{flex:none}.apqr p{display:flex;align-items:flex-start;gap:8px}.apqck{flex:none;width:24px;height:24px;cursor:default}.apqck svg{width:12px;height:12px}.apqa textarea,.apqa input{margin-top:8px;width:100%}.apqmore{display:flex;gap:16px;margin-top:10px}.apqnew{margin-top:10px}.apqadd .btn.ghost{flex:none}.apqa .apqans{margin-top:4px;white-space:pre-wrap}.apqbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.apqbody.min{display:none}#ap-q.min .minbtn .ic{transform:rotate(90deg)}.apqbtns{align-items:center}.apheadb .exrow{margin:14px 0 0;justify-content:flex-start}.aptabs{border-bottom:2px solid var(--line2)}.apvtab{flex:1;padding:12px 8px;border:0;border-bottom:3px solid transparent;margin-bottom:-2px;background:none;color:var(--muted);font:inherit;font-weight:700;cursor:pointer}.apvtab.on{color:var(--ink);border-bottom-color:var(--primary)}.asrdy small{display:block;overflow-wrap:anywhere}
+  @container app (max-width:819px){#view{padding-bottom:84px}}
+  .asfoot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center}
+  .apmini{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:10px 14px}.apminib{display:flex;gap:6px}.apmini .lbl{margin:0;font-size:12px}.apmini b{display:block;font-size:14.5px}.apmini small{font-size:12.5px}
+  .apfold{display:flex;justify-content:flex-end;margin-bottom:-8px}
+  .apmore{margin:0}.apmore .apf{padding-bottom:10px}
+  .aptabs{display:flex;gap:6px}
+  .apgrid{display:grid;gap:16px;grid-template-columns:minmax(0,1fr);align-items:start}
+  .apgrid>.apdoc{min-width:0}
+  @container app (max-width:899px){.apgrid[data-tab=days] .apdoc,.apgrid[data-tab=sum] .apdays{display:none}}
+  @container app (min-width:900px){.aptabs{display:none}.apgrid{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}.apdays{position:sticky;top:0;max-height:calc(100dvh - 48px);overflow-y:auto}}
+  .apdays .cd{position:relative}.cd.hl:not(.on){background:color-mix(in srgb,var(--warn) 13%,transparent)}
+  .chm{position:absolute;top:5px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+  .apdhint{margin:12px 0 0;font-size:14px}
+  .apd{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
+  .apdh{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px}.apdh h3{margin:0;font-size:17px}.apdh .link{display:inline-flex;align-items:center;gap:4px}.apdh .link .ic{width:15px;height:15px}
+  .apstrip{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:6px}
+  .apst{padding:8px 10px;border-radius:12px;background:var(--soft);min-width:0}.apst small{display:block;color:var(--muted);font-size:12px}.apst b{font-size:14px;overflow-wrap:anywhere}
+  .aphnow{padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--warn) 11%,var(--card))}.aphnow .lbl{margin:0 0 6px}
+  .apd h4{margin:0;font-size:14px}.apdck{font-size:14px}.apdck p{margin:2px 0 0}.apdck q{display:block;margin-top:6px;overflow-wrap:anywhere}
+  .apdev{margin:0}
+  .aphl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:10px 0;border-top:1px solid var(--line)}.aphl:first-child{border-top:0;padding-top:0}.aphl .muted{font-size:13.5px}
+  .aphd{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .apdate{position:relative;border:1px solid var(--line2);background:var(--card);color:inherit;font:inherit;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;cursor:pointer}
   .apfoot{color:var(--muted);font-size:12.5px;margin:0}
   .aperr{color:var(--muted);margin:0}
   /* Dark looks: white on the light --good green was under 3:1 (Quick log's Done badge), so it takes the page color. */
@@ -133,14 +189,16 @@
   .app.zine .btn:not(.ghost):active{transform:translate(3px,3px);box-shadow:0 0 0 var(--zine-shadow)}
   .app.zine :is(.chip,.iconbtn){border:var(--zw) solid var(--zine-line)}
   .app.zine .chip.on{background:var(--ink);color:var(--card)}
-  .app.zine .plus{border:var(--zw) solid var(--zine-line);box-shadow:3px 3px 0 var(--zine-shadow),0 0 0 6px var(--bg)}
+  .app.zine .plus{border:var(--zw) solid var(--zine-line);box-shadow:3px 3px 0 var(--zine-shadow)}
   .app.zine .seg .sp{border:var(--zw) solid var(--zine-line);box-shadow:2px 2px 0 var(--zine-shadow)}
   .app.zine .tabbar{border-top:var(--zw) solid var(--zine-line)}
   @media (prefers-reduced-motion:reduce){.app.zine .btn:not(.ghost):is(:hover,:active){transform:none}}
   @media print{
+    .apqbody.min{display:block!important}
     html,body{background:#fff!important}
     .app{height:auto!important;overflow:visible!important;background:#fff!important;--ink:#111;--muted:#555;--line:#ccc}
     .shell{position:static!important;display:block!important}
+    .apgrid{display:block!important}.apdoc{display:flex!important}.apdate{border:0;padding:0 8px 0 0;background:none}
     .side,.mtop,.tabbar,.skip-link,.toast,.savenote,.tip,.qpop,.sos,.flow,.sheetw,.apctl,.apback,.noprint,.hello{display:none!important}
     main{overflow:visible!important;padding:0!important}
     .wrap{max-width:none!important}

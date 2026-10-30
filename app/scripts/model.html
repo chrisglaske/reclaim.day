@@ -10,7 +10,7 @@
   function initial() { return (S.profile.name.trim()[0] || '·').toUpperCase(); }
   // The mockup's habit keys (smoke, vape, drink) → the saved vice names.
   const VK = { smoke: 'smoking', vape: 'vaping', drink: 'drinking' };
-  const tstr = at => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const tstr = at => new Date(at).toLocaleTimeString(dateLocale(), clockOptions());
 
   // S.ob.track[k]: a habit's plan in the mockup's shape. A quit day ahead is mode 'quit' with its day as start;
   // the reduce limit in force before it (an ease-in step or a plain limit) is its one taper step.
@@ -131,6 +131,9 @@
     return out;
   }
 
+  // A past day's single check-in (checkins.daily): one mood, health complaints and a note, for a day with no others. Null when none.
+  function dayCheck(k) { const c = ((S.journal[k] || {}).checkins || {}).daily; return logicObject(c) ? c : null; }
+
   // storyItems(): everything saved today (S.tasks, S.prnlist, S.mlist, S.wlist), oldest first.
   function storyItems() {
     return todayStoryItems(localToday()).map(x => ({ at: x.time, ic: x.icon || x.emoji, tint: x.tint, t: x.title, d: x.detail }));
@@ -201,12 +204,14 @@
   // then the moment id, or for a dose note '<medId>:<index>' (its place among the day's notes for that medicine), then a wave's id.
   function dayEvents(k) {
     const ty = { smoking: 's', vaping: 'v', drinking: 'd' };
-    return journalDayEvents(k).map(e => {
+    // An appointment comes last in the row, after the wave id, and opens from the timeline.
+    const visits = apptList().filter(a => a.day === k).map(a => [asTime(a) || 'All day', 'a', asName(a) + (a.missed ? ' · Didn’t go' : ''), [], null, null, null, a]);
+    return [...visits, ...journalDayEvents(k).map(e => {
       if (e.type === 'wave') return [e.time, 'w', 'Rode out a wave', [], null, null, e.id.slice(5)];
       if (e.type === 'dose') return [e.time, 'm', e.text, [], null, e.medId + ':' + e.index];
       const m = S.slips.find(x => 'moment-' + x.id === e.id), h = HK.find(x => VK[x] === m.vice), amt = Number(m.amount) || 0;
       return [e.time, ty[m.vice], `${m.productType || HB[h].n} · ${amt}${h === 'vape' ? ' ' + uw('vape', amt) : ''}`, Array.isArray(m.triggers) ? m.triggers : [], m.id];
-    });
+    })];
   }
   // A day's doses in the Journal (live app: the day's Medications block): every medicine active and started by day k,
   // scheduled ones with each dose slot, as-needed ones with that day's count and personal limit.
@@ -255,7 +260,8 @@
     const out = [];
     Object.keys(S.journal).filter(dateKey).forEach(k => {
       const d = S.journal[k], cks = (logicObject(d) && logicObject(d.checkins)) ? d.checkins : {};
-      SLOTS.forEach(([sl, , , l]) => { const c = cks[sl]; if (logicObject(c) && typeof c.text === 'string' && c.text.trim()) out.push({ k, sl: l, t: c.text, s: [c.text, ...(Array.isArray(c.tags) ? c.tags : [])].join(' ') }); });
+      SLOTS.forEach(([sl, , , l]) => { const c = cks[sl]; if (logicObject(c) && typeof c.text === 'string' && c.text.trim()) out.push({ k, sl: l, t: c.text, s: [c.text, ...(Array.isArray(c.tags) ? c.tags : []), ...healthWords(c)].join(' ') }); });
+      const dc = cks.daily; if (logicObject(dc) && typeof dc.text === 'string' && dc.text.trim()) out.push({ k, sl: 'Day check-in', t: dc.text, s: [dc.text, ...healthWords(dc)].join(' ') });
       const lg = earlierDay(k); if (lg && lg.text) out.push({ k, sl: '', t: lg.text, s: [lg.text, lg.focus, ...lg.tags].join(' ') });
     });
     Object.entries(S.profile.companion.reflections || {}).forEach(([k, t]) => { if (dateKey(k) && typeof t === 'string' && t.trim()) out.push({ k, sl: 'Weekly reflection', t, s: t }); });
@@ -301,7 +307,7 @@
     // Moments still to tag, newest first, offered until three moments carry a trigger.
     const untagged = sum(trig.map(x => x[1])) >= 3 ? [] : mo.filter(m => !(Array.isArray(m.triggers) && m.triggers.length))
       .sort((a, b) => new Date(b.at) - new Date(a.at)).slice(0, 3)
-      .map(m => ({ id: m.id, v: HB[HK.find(k => VK[k] === m.vice)] ? HB[HK.find(k => VK[k] === m.vice)].n : m.vice, w: pd(dateKey(m.at)).toLocaleDateString('en-US', { weekday: 'short' }) + ' · ' + tstr(m.at) }));
+      .map(m => ({ id: m.id, v: HB[HK.find(k => VK[k] === m.vice)] ? HB[HK.find(k => VK[k] === m.vice)].n : m.vice, w: pd(dateKey(m.at)).toLocaleDateString(dateLocale(), { weekday: 'short' }) + ' · ' + tstr(m.at) }));
     const hm = insightsHeat(), past = hm.cells.filter(c => !c.future);
     const moods = { n: 0 }, k3 = { morning: 'm', afternoon: 'a', evening: 'e' };
     CHECKIN_SLOTS.forEach(sl => {
@@ -358,7 +364,7 @@
   }
   function slipTimeError(k, at) {
     const t0 = viceTrackStart(VK[k]);
-    return t0 && t0 <= new Date() && at < t0 ? 'That\'s before you started tracking (' + t0.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ').' : '';
+    return t0 && t0 <= new Date() && at < t0 ? 'That\'s before you started tracking (' + t0.toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric', year: 'numeric' }) + ').' : '';
   }
   function archivedMeds() { return S.meds.filter(med => !med.active && !med.deletedAt); }
   // Deleted from the lists but kept so they can be restored (Settings › Medication schedule).

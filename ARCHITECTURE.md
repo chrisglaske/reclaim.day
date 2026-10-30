@@ -43,6 +43,7 @@ Only these small `localStorage` entries, none with health data:
 | `reclaim-theme` | Your color look, so the loading screen uses it before your data arrives |
 | `reclaim-signed-in` | `1` after you've signed in, so the screen says "Welcome back" (no account details; cleared on Sign out) |
 | `reclaim-today-min` | Which Today sections you've collapsed |
+| `reclaim-catchup-hidden` | The day you hid the line about recent doses |
 
 Without sign-in (the local preview and the website's demo), the app keeps its data in `localStorage` under `reclaim-state-dev` instead of Drive.
 
@@ -87,14 +88,14 @@ Dates and times are ISO 8601 strings in UTC. Day keys are `YYYY-MM-DD` in your l
 |---|---|
 | `version` | The format version, `5` |
 | `onboarded`, `setupVersion` | Whether you've finished Guided setup, and for which release of it |
-| `profile` | Your name, currency (`USD`, `CAD`, `EUR`, `GBP`, `AUD`, `NZD`), reasons, savings goal and optional country for support resources |
-| `profile.companion` | Your toolkit, daily intentions, weekly reflections, questions for your doctor, dose times, look and display choices |
+| `profile` | Your name, currency (`USD`, `CAD`, `EUR`, `GBP`, `AUD`, `NZD`), reasons, savings goal optional country for support resources, and how dates and times read (`companion.dateFormat`: `us` or `intl`, left out to follow the device) |
+| `profile.companion` | Your toolkit, daily intentions, weekly reflections, questions for your doctor, saved doctors and appointments, dose times, look and display choices |
 | `vices` | One entry each for `smoking`, `vaping` and `drinking`: on or off, your usual amount and spend, the count unit, and `phases` |
 | `vices.*.phases` | Your goals over time, oldest first. `mode` is `quit`, `reduce` (with a `target` per day, per week, or on chosen weekdays) or `track` (no limit). A phase can start in the future, like a planned quit day |
 | `meds` | Your medications: name, dose and unit, how often (`1` to `4` a day, or `prn` for as needed), dose times, start date, and whether it's active or archived |
 | `slips` | Each cigarette, vape, drink or slip you logged: when, how much, what it cost, what was going on and your note |
 | `cravings` | Each urge you rode out: which habit and when |
 | `doses` | Doses by day, then by medication: which dose time (`slot`, `-1` for as needed) and when you took it, or that you skipped it and why |
-| `journal` | Entries by day: mood (1 to 5), craving (0 to 10), sleep, intention, tags, your text, and the morning, afternoon and evening check-ins |
+| `journal` | Entries by day: mood (1 to 5), craving (0 to 10), sleep, intention, tags, your text, and the morning, afternoon and evening check-ins (each with any health complaints you picked), plus a single day check-in for a past day |
 
 When the app loads a file, it fills in missing fields with defaults and drops values it can't use, so a hand-edited file may change on the next save. Keep a backup before editing the file yourself.

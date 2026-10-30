@@ -255,8 +255,8 @@
         amount: amount,
         limit: limit,
         ok: status.mode === 'reduce' ? status.within : status.mode === 'track' ? true : amount === 0,
-        weekday: date ? date.toLocaleDateString(undefined, { weekday: 'short' }) : '',
-        dateLabel: date ? date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : '',
+        weekday: date ? date.toLocaleDateString(dateLocale(), { weekday: 'short' }) : '',
+        dateLabel: date ? date.toLocaleDateString(dateLocale(), { weekday: 'long', month: 'long', day: 'numeric' }) : '',
         noted: amount > 0,
         today: day === today
       };

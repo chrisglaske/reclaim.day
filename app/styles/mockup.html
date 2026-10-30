@@ -84,14 +84,14 @@ h1,h2,h3,.display{font-family:'Bricolage Grotesque','Inter',sans-serif;font-weig
 .side{display:none}
 main{overflow:auto;padding:10px 16px 26px;scroll-behavior:smooth}
 .wrap{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
-.tabbar{display:grid;grid-template-columns:repeat(5,1fr);align-items:end;border-top:1px solid var(--line);background:var(--bg);padding:6px 8px calc(10px + env(safe-area-inset-bottom,0px));position:relative}
+.tabbar{display:grid;grid-template-columns:repeat(5,1fr);z-index:30;align-items:end;border-top:1px solid var(--line);background:var(--bg);padding:6px 8px calc(10px + env(safe-area-inset-bottom,0px));position:relative}
 .nv{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border:0;background:none;border-radius:14px;font-weight:600;font-size:11.5px;color:var(--muted);cursor:pointer;transition:color .2s,transform .3s cubic-bezier(.34,1.56,.64,1)}
 .nv .ic{width:22px;height:22px;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
 .nv.on{color:var(--ink)}
 .nv.on .ic{transform:translateY(-1px) scale(1.08);color:var(--primary)}
 .nv:active{transform:scale(.92)}
 .navpill{position:absolute;z-index:0;border-radius:14px;background:var(--soft);transition:left .45s cubic-bezier(.34,1.3,.64,1),top .45s cubic-bezier(.34,1.3,.64,1),width .45s,height .45s}
-.app .plus{justify-self:center;width:60px;height:60px;margin-top:-26px;border-radius:20px;border:0;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 6px var(--bg);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.app .plus{position:absolute;right:14px;bottom:calc(100% + 14px);width:60px;height:60px;border-radius:20px;border:0;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.22);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
 .plus .ic{width:28px;height:28px;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
 .plus:active{transform:scale(.9)}
 .plus.open .ic{transform:rotate(45deg)}

@@ -37,7 +37,7 @@
         ? Number(dose.reminderTime.slice(0, 2)) * 60 + Number(dose.reminderTime.slice(3))
         : null;
       const timeLabel = dose.reminderTime
-        ? new Date('2000-01-01T' + dose.reminderTime + ':00').toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+        ? new Date('2000-01-01T' + dose.reminderTime + ':00').toLocaleTimeString(dateLocale(), clockOptions())
         : '';
       return Object.assign({}, dose, {
         next: !dose.noted && next === dose,
@@ -128,10 +128,10 @@
     const end = new Date(localToday() + 'T12:00:00');
     const start = new Date(end);
     start.setDate(start.getDate() - 29);
-    const monthDay = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+    const monthDay = new Intl.DateTimeFormat(dateLocale(), { month: 'short', day: 'numeric' });
     const first = monthDay.format(start) +
       (start.getFullYear() === end.getFullYear() ? '' : ', ' + start.getFullYear());
-    const last = new Intl.DateTimeFormat(undefined, {
+    const last = new Intl.DateTimeFormat(dateLocale(), {
       month: 'short', day: 'numeric', year: 'numeric'
     }).format(end);
     return first + ' – ' + last;
@@ -155,7 +155,7 @@
       const category = status.hasDoseNoted
         ? 'taken'
         : status.expected > 0 ? 'scheduled' : 'unscheduled';
-      const fullDate = new Intl.DateTimeFormat(undefined, {
+      const fullDate = new Intl.DateTimeFormat(dateLocale(), {
         weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
       }).format(date);
       const detail = category === 'taken'
@@ -168,7 +168,7 @@
         empty: false,
         number: date.getDate(),
         monthLabel: offset === 0 || date.getDate() === 1
-          ? new Intl.DateTimeFormat(undefined, { month: 'short' }).format(date)
+          ? new Intl.DateTimeFormat(dateLocale(), { month: 'short' }).format(date)
           : '',
         category: category,
         indicator: category === 'taken' ? '✓' : category === 'scheduled' ? '·' : '',
@@ -366,20 +366,36 @@
 
   const SKIP_REASONS = ['Forgot', 'Side effects', 'Ran out', 'Told to stop or pause', 'Other'];
 
-  // "Not taking it today": saves today's scheduled dose as skipped, with an optional reason, without saving.
-  // Returns the added event, or null.
-  function skipDoseEvent(medId, slot, reason = '') {
-    const med = resolveMedication(medId), at = new Date(), day = dateKey(at);
+  // "Not taking it today" (or "Not taken" for an earlier day): saves the scheduled dose as skipped, with an optional reason,
+  // without saving. Returns the added event, or null.
+  function skipDoseEvent(medId, slot, reason = '', at = new Date()) {
+    const med = resolveMedication(medId), day = dateKey(at);
     if (!medicationTrackingEnabled() || !med || !med.active || med.freq === 'prn' ||
         !Number.isInteger(slot) || slot < 0 || slot >= med.slots.length ||
         (med.startDate && day < dateKey(med.startDate)) ||
         medicationEvents(med, day).some(event => Number(event.slot) === slot)) return null;
     if (!S.doses[day]) S.doses[day] = {};
     if (!Array.isArray(S.doses[day][medId])) S.doses[day][medId] = [];
-    const event = { slot: slot, at: at.toISOString(), skipped: true };
+    const event = { slot: slot, at: logicDate(at).toISOString(), skipped: true };
     if (SKIP_REASONS.includes(reason)) event.reason = reason;
     S.doses[day][medId].push(event);
     return event;
+  }
+
+  // The scheduled doses with no note on the days before today, oldest first, going back `days` days. A medication with no
+  // start date is left out, since there's no telling when it began (medAdherence does the same).
+  function missedDoses(days) {
+    const today = localToday(), reminders = S.profile.companion.reminders || {}, missed = [];
+    activeMedications().filter(med => med.freq !== 'prn' && med.startDate).forEach(med => {
+      for (let back = days; back >= 1; back -= 1) {
+        const day = dayOffset(today, -back);
+        medDayStatus(med, day).doses.filter(dose => !dose.noted && !dose.skipped).forEach(dose => {
+          const reminder = reminders[med.id + ':' + dose.slot];
+          missed.push({ day: day, medId: med.id, slot: dose.slot, label: dose.label, time: (reminder && reminder.time) || '' });
+        });
+      }
+    });
+    return missed.sort((left, right) => left.day.localeCompare(right.day));
   }
 
   // Takes a dose note back out of S.doses (an Undo, or a failed save).

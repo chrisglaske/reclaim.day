@@ -27,12 +27,12 @@ const I=(n,cls='')=>!P[n]?`<svg class="ic emo ${cls}" viewBox="0 0 24 24" aria-h
 const MOODS=[['😣','Struggling'],['🙁','Heavy'],['😐','Getting by'],['🙂','Doing okay'],['😄','Going well']];
 const V={screen:'today',device:innerWidth<860?'phone':'desktop',view:'today',tmin:{},hmin:{},sall:false,snew:false,amedit:false,flow:null,sset:'profile',jq:'',jswap:false};
 const app=$('#app');
-const now=()=>new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const now=()=>new Date().toLocaleTimeString(dateLocale(), clockOptions());
 const blur=v=>hide()?'••':v;
 const dk=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const pd=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);};
 const addD=(k,n)=>{const d=pd(k);d.setDate(d.getDate()+n);return dk(d);};
-const dlab=(k,o={weekday:'long',month:'long',day:'numeric'})=>pd(k).toLocaleDateString('en-US',o);
+const dlab=(k,o={weekday:'long',month:'long',day:'numeric'})=>pd(k).toLocaleDateString(dateLocale(), o);
 const mins=t=>{const m=String(t).match(/(\d+):(\d+)\s*(AM|PM)?/i);if(!m)return 0;let h=+m[1];if(m[3]){h%=12;if(/pm/i.test(m[3]))h+=12;}return h*60+ +m[2];};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const hi=(t,q)=>{const e=esc(t);if(!q)return e;return e.replace(new RegExp('('+esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');};
@@ -46,8 +46,8 @@ function placeSeg(){$$('.seg',app).forEach(s=>{const on=$('button.on',s),p=$('.s
 function swap(id,html){const el=$('#'+id);if(!el)return;const y=$('#main').scrollTop;el.outerHTML=html;$('#main').scrollTop=y;}
 
 /* ---------- shell ---------- */
-const NAV=[['today','sun','Today'],['tracking','leaf','Tracking'],['journal','book','Journal'],['insights','chart','Insights'],['settings','sliders','Settings']];
-const nvBtn=([k,i,l])=>`<button class="nv ${V.view===k?'on':''}" data-act="nav:${k}">${I(i)}${l}</button>`;
+const NAV=[['today','sun','Today'],['tracking','leaf','Tracking'],['journal','book','Journal'],['insights','chart','Insights'],['appts','cal','Appointments','Visits'],['settings','sliders','Settings']];
+const nvBtn=([k,i,l,sh],short)=>`<button class="nv ${V.view===k?'on':''}" data-act="nav:${k}" ${short&&sh?`aria-label="${l}"`:''}>${I(i)}${short&&sh||l}</button>`;
 function shell(){
   return `<a class="skip-link" href="#main">Skip to main content</a><div class="shell">
     <aside class="side"><div class="logo"><span class="mark">${I('leaf')}</span>reclaim</div>
@@ -60,7 +60,7 @@ function shell(){
       <button class="iconbtn lifebtn" data-act="sos" aria-label="Need support">${I('life')}</button>
       <button class="avatar" data-act="nav:settings" aria-label="Settings">${esc(initial())}</button></header>
     <main id="main" tabindex="-1"><div class="wrap enter" id="view"></div></main>
-    <nav class="tabbar"><span class="navpill"></span>${nvBtn(NAV[0])}${nvBtn(NAV[1])}<button class="plus" data-act="quick" aria-label="Quick log">${I('plus')}</button>${nvBtn(NAV[2])}${nvBtn(NAV[3])}</nav>
+    <nav class="tabbar"><span class="navpill"></span>${nvBtn(NAV[0])}${nvBtn(NAV[1])}${nvBtn(NAV[2])}${nvBtn(NAV[3])}${nvBtn(NAV[4],1)}<button class="plus" data-act="quick" aria-label="Quick log">${I('plus')}</button></nav>
   </div>
   <div class="sheetw" id="sheet"><div class="scrim" data-act="sclose"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Dialog"><div class="shead"><span class="grab"></span><button class="sx" data-act="sclose" aria-label="Close without saving" title="Close">${I('x')}</button></div><div id="sheetc"></div></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"><span id="tmsg"></span><button id="tundo" data-act="undo">Undo</button></div>
@@ -108,15 +108,17 @@ function renderAll(){
 addEventListener('resize',()=>{const d=innerWidth<860?'phone':'desktop';if(d!==V.device){V.device=d;applyAppTheme();requestAnimationFrame(placePills);}});
 
 function openSheet(html){const c=$('#sheetc'),was=$('#sheet').classList.contains('open');if(!was)V.sheetFrom=document.activeElement;c.innerHTML=html;const hd=c.querySelector('h2,h3'),sl=$('#sheet .sheet');if(hd){hd.id='sheett';sl.setAttribute('aria-labelledby','sheett');}else sl.removeAttribute('aria-labelledby');if(was){c.classList.remove('swapc');void c.offsetWidth;c.classList.add('swapc');}$('#sheetc').scrollTop=0;$('#sheet').classList.add('open');if(!was){const sh=$('#sheet .sheet');sh.tabIndex=-1;sh.focus({preventScroll:true});}}
-function closeSheet(){const was=$('#sheet.open');$('#sheet')?.classList.remove('open');$('.plus',app)?.classList.remove('open');
+/* the X, Cancel, Escape and the backdrop: a sheet opened from another one (V.sheetBack) goes back to it */
+function dismissSheet(){const back=V.sheetBack;V.sheetBack=null;if(back)back();else closeSheet();}
+function closeSheet(){V.sheetBack=null;const was=$('#sheet.open');$('#sheet')?.classList.remove('open');$('.plus',app)?.classList.remove('open');
   /* focus goes back to where the sheet was opened from */
   if(!was)return;if(window.reclaimLatestWaiting)setTimeout(()=>loadLatest(true),250);const from=V.sheetFrom;V.sheetFrom=null;if(from?.isConnected&&from!==document.body&&from.getClientRects().length)from.focus({preventScroll:true});else($('#flow.open')||$('#sos.open')||$('#main'))?.focus({preventScroll:true});}
 
 /* ---------- actions ---------- */
 /* One handler per data-act verb; each screen's file adds its own with Object.assign(ACT, {...}). */
 const ACT={
-  nav:(b,e,x)=>{closeSheet();if(V.view===x)return;V.view=x;$$('.nv',app).forEach(n=>n.classList.toggle('on',n.dataset.act==='nav:'+x));renderView();},
-  sclose:()=>closeSheet(),
+  nav:(b,e,x)=>{if(x==='appts'){asGo();return;}closeSheet();if(V.view===x)return;V.view=x;$$('.nv',app).forEach(n=>n.classList.toggle('on',n.dataset.act==='nav:'+x));renderView();},
+  sclose:()=>dismissSheet(),
   undo:()=>{undoFn?.();undoFn=null;$('#toast').classList.remove('show');},
   toast:(b,e,x)=>toast(x),
   tag:b=>b.classList.toggle('on'),
@@ -139,7 +141,7 @@ const hideTip=()=>$('#tip')?.classList.remove('show');
 app.addEventListener('pointerover',e=>{const el=e.target.closest('[data-tip]');el?showTip(el):hideTip();});
 app.addEventListener('focusin',e=>{const el=e.target.closest('[data-tip]');el?showTip(el):hideTip();});
 app.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){if($('#sheet.open'))closeSheet();else if($('#sos.open'))closeSos();closeQ();return;}
+  if(e.key==='Escape'){if($('#sheet.open')){dismissSheet();e.stopImmediatePropagation();}else if($('#sos.open'))closeSos();closeQ();return;}
   /* focus stays inside an open sheet */
   const sh=$('#sheet.open .sheet');if(sh&&e.key==='Tab'){const f=$$('button,input,select,textarea,[href]',sh).filter(x=>!x.disabled&&x.offsetParent),a=f[0],z=f[f.length-1];
     if(e.shiftKey&&(document.activeElement===a||document.activeElement===sh)){e.preventDefault();z?.focus();}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a?.focus();}}});
