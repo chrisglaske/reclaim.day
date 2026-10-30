@@ -181,16 +181,16 @@ if (foot) {
   addEventListener('resize', sizeFoot, { passive: true }); sizeFoot(); document.fonts?.ready.then(sizeFoot);
 }
 
-// The arrow on the right jumps to the next section, and turns into "back to top" at the end.
+// The arrows step through the sections, and Top jumps back from anywhere. On the last screen only Top is left.
 const next = document.getElementById('next');
 if (next) {
   const parts = [...document.querySelectorAll('.intro, main > section')]; // the footer shares the last screen with the closing band
   const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 4 || !parts.some(p => p.getBoundingClientRect().top > 40);
+  const top = document.getElementById('top');
   const sync = () => {
     const up = atEnd();
-    next.classList.toggle('up', up);
+    if (up && document.activeElement?.closest('#next, #prev')) top.focus();
     document.querySelector('.nav').classList.toggle('last', up);
-    next.setAttribute('aria-label', up ? 'Back to the top' : 'Next section');
   };
   const goNext = () => {
     const behavior = calm ? 'auto' : 'smooth';
@@ -205,6 +205,10 @@ if (next) {
   };
   const prev = document.getElementById('prev');
   next.addEventListener('click', goNext);
+  top.addEventListener('click', () => {
+    scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
+    document.querySelector('.logo').focus({ preventScroll: true }); // Top is about to hide
+  });
   prev.addEventListener('click', goPrev);
   // Down and Up do the same as the arrows. Fields and the look picker keep their own arrow keys, and a held key
   // does not repeat, so one press moves one section.
@@ -239,7 +243,7 @@ if (next) {
     page(dir);
   }, { passive: false });
   const nav = document.querySelector('.nav');
-  const showPrev = () => { const top = scrollY < 60; prev.hidden = top; nav.classList.toggle('off', top); };
+  const showPrev = () => { const atTop = scrollY < 60; prev.hidden = top.hidden = atTop; nav.classList.toggle('off', atTop); };
   addEventListener('scroll', showPrev, { passive: true });
   showPrev();
   addEventListener('scroll', sync, { passive: true });

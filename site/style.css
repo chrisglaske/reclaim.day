@@ -85,8 +85,12 @@ a{color:inherit}
 .swatches button{width:82px;height:82px;border-radius:50%;border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);cursor:pointer;font:800 14px var(--font);background:var(--c);color:var(--t);transition:transform .12s,box-shadow .12s}
 .swatches button:hover{transform:rotate(-8deg) scale(1.06)}
 .swatches button[aria-pressed=true]{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--navy);outline:3px solid var(--navy);outline-offset:4px}
-.duo{display:flex;gap:4vw;justify-content:center;margin-top:7vh;flex-wrap:wrap}
+.duo{display:flex;gap:4vw;justify-content:center;align-items:center;margin-top:5vh}
 .duo .pop{margin:0}
+/* two phones sharing a band, the second a little lower */
+.pair{display:flex;justify-content:center;align-items:center;gap:7%;min-width:0}
+.pair .phone{flex:none;margin:0 0 5svh}
+.pair .phone+.phone{margin:5svh 0 0}
 
 /* drive + closing */
 .drive{background:var(--navy);color:var(--but);padding:12vh 0}
@@ -120,20 +124,36 @@ footer a{text-underline-offset:3px}
   .band .split .phone img{height:var(--ph);width:auto;margin:0 auto}
   .band{overflow:clip}
   /* a tinted dashed disc behind each phone, with two round stickers beside it (the colors follow the band's text color, so it works on cobalt, butter and mint) */
-  .stage{width:min(940px,calc((100svh - 390px) * 1.6));margin-top:6vh}
+  /* a band with two phones gives them the wider column, so each stays the size of a single phone */
+  .split:has(.pair){grid-template-columns:.85fr 1.15fr;gap:3vw}
+  .split.flip:has(.pair){grid-template-columns:1.15fr .85fr}
+  .split:has(.pair) h2{font-size:clamp(40px,4.7vw,68px)}
+  .pair{gap:4%;--ph:min(68svh,680px)}
+  .band .pair .phone{width:min(48%,calc(var(--ph) * .462));margin-bottom:4svh}
+  .band .pair .phone+.phone{margin:4svh 0 0}
+  .band .pair .phone img{height:auto;width:100%}
   .duo{margin-top:4vh}
-  .duo .phone{width:auto}
-  .duo .phone img{height:min(42svh,520px);width:auto}
+  #looks h2,#looks .center>p{max-width:none}
+  .duo .stage{flex:0 1 auto;margin:0;width:min(760px,calc((100svh - 510px) * 1.6))}
+  .duo .phone{width:auto;flex:none}
+  .duo .phone img{height:min(calc(100svh - 476px),510px);width:auto}
   .drive,.note,.end{padding-block:8vh}
   main>.end{min-height:calc(100svh - var(--foot,260px))}
 }
-/* short desktop windows: less padding round the letter, so Why I built Reclaim still fits one screen */
-@media(min-width:861px) and (max-height:760px){.note{padding-block:4vh}}
+/* short desktop windows: less padding around the letter and smaller swatches, so Why I built Reclaim and the looks still fit one screen */
+@media(min-width:861px) and (max-height:760px){
+  .note,#looks{padding-block:4vh}
+  .swatches{margin-top:20px}
+  .swatches button{width:64px;height:64px;font-size:12px}
+  .duo{margin-top:40px}
+  .duo .stage{width:calc((100svh - 400px) * 1.6)}
+  .duo .phone img{height:calc(100svh - 366px)}
+}
 
 @keyframes ripple{from{transform:scale(.55);opacity:.8}to{transform:scale(1.35);opacity:0}}
 @keyframes spin{to{rotate:360deg}}
 @keyframes twinkle{50%{transform:scale(1.25) rotate(14deg)}}
-@media(prefers-reduced-motion:reduce){.stk,.cap,.spark,.burst2{animation:none}.ripples i{animation:none;opacity:.25;transform:scale(.9)}}
+@media(prefers-reduced-motion:reduce){.stk,.cap,.spark,.burst2,.bub,.plus,.chest,.miniclock,.tag3{animation:none}.ripples i{animation:none;opacity:.25;transform:scale(.9)}}
 
 /* band scenes: one drawing per band round the phone (desktop sizes here, phone sizes in the max-width:860px block) */
 .daypath{left:50%;top:50%;width:calc(var(--ph) * .92);translate:-50% -50%;overflow:visible}
@@ -151,16 +171,30 @@ footer a{text-underline-offset:3px}
 .tap i+i{animation-delay:-1.4s}
 @keyframes tapring{from{transform:scale(.35);opacity:.9}to{transform:scale(1.5);opacity:0}}
 .spark:nth-of-type(2){animation-delay:-1s}.spark:nth-of-type(3){animation-delay:-2s}
-.bars{left:50%;bottom:0;width:175%;height:58%;translate:-50% 0;display:flex;align-items:flex-end;gap:2.4%}
-.bars i{flex:1;height:var(--h);background:var(--cob);border:3px solid var(--navy);border-bottom:0;border-radius:10px 10px 0 0;position:relative}
-.bars i.hot{background:var(--navy)}
-.bars i.hot::after{content:"3pm";position:absolute;left:50%;bottom:calc(100% + 10px);translate:-50% 0;rotate:-5deg;background:var(--cob);color:var(--but);font-weight:800;font-size:18px;border-radius:99px;padding:4px 14px;box-shadow:3px 3px 0 var(--navy)}
+.pair{position:relative;isolation:isolate}
+.pair figure:first-of-type{z-index:2}
+.pair .daypath{width:calc(var(--ph) * .72);clip-path:inset(-20% 50% -20% -20%)}
+.pair .burst2{width:calc(var(--ph) * .95)}
+@media(max-width:1200px){.miniclock,.tag3{left:0}}
+/* tricky hours: a trend line that peaks at 3pm and ends at the coins */
+.trend{left:50%;top:50%;width:calc(var(--ph) * 1.22);translate:-50% -50%;overflow:visible}
+.miniclock{position:absolute;z-index:3;left:calc(50% - var(--ph) * .6 - 42px);top:calc(50% + var(--ph) * .1);width:84px;rotate:-8deg;filter:drop-shadow(4px 4px 0 var(--navy));animation:hop 3.6s ease-in-out -1.8s infinite}
+.tag3{position:absolute;z-index:3;left:calc(50% - var(--ph) * .72);top:calc(50% - var(--ph) * .5);background:var(--pink);color:var(--navy);border:3px solid var(--navy);border-radius:99px;box-shadow:4px 4px 0 var(--navy);padding:6px 16px;font:800 20px/1.1 var(--font);rotate:-6deg;animation:hop 3.6s ease-in-out infinite}
 .coins{inset:0}
 .stack{position:absolute;width:92px;display:flex;flex-direction:column-reverse}
 .stack i{display:block;height:28px;margin-top:-9px;border-radius:50%;background:var(--but);border:3px solid var(--navy);box-shadow:0 6px 0 var(--navy)}
 .stack i:nth-child(odd){translate:3px 0}.stack i:nth-child(even){translate:-4px 0}
 .sheet2{left:50%;top:50%;width:calc(var(--ph) * .78);height:calc(var(--ph) * .92);translate:-50% -50%;rotate:-7deg;background:#fff repeating-linear-gradient(transparent 0 33px,color-mix(in srgb,var(--cob) 35%,transparent) 33px 35px);border:3px solid var(--navy);border-radius:10px;box-shadow:8px 8px 0 var(--navy)}
 .note2{position:absolute;left:-58%;top:22%;z-index:2;width:136px;padding:16px 14px 20px;rotate:-6deg;background:var(--but);color:var(--navy);font-weight:800;font-size:20px;line-height:1.15;border:3px solid var(--navy);box-shadow:5px 5px 0 var(--navy);text-align:left}
+.steth{left:50%;top:50%;width:calc(var(--ph) * 1.1);translate:-50% -50%;overflow:visible}
+.chest{transform-box:fill-box;transform-origin:50% 30%;animation:beat 2.4s ease-in-out infinite}
+@keyframes beat{0%,40%,100%{transform:scale(1)}12%{transform:scale(1.09)}24%{transform:scale(1)}32%{transform:scale(1.05)}}
+.cal{position:absolute;left:-52%;top:60%;z-index:2;width:108px;border:3px solid var(--navy);border-radius:12px;background:#fff;box-shadow:5px 5px 0 var(--navy);overflow:hidden;rotate:-7deg;text-align:center;color:var(--navy)}
+.cal b{display:block;padding:5px 0;background:var(--cob);color:var(--but);border-bottom:3px solid var(--navy);font:800 16px/1.1 var(--font)}
+.cal i{display:block;padding:6px 0 8px;font:800 46px/1 var(--font);letter-spacing:-.03em}
+.bub{position:absolute;z-index:2;display:grid;place-items:center;width:62px;height:56px;border-radius:20px;background:var(--cob);color:var(--but);border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);font:800 32px/1 var(--font);rotate:var(--t,0deg);animation:hop 3.6s ease-in-out infinite;-webkit-user-select:none;user-select:none}
+.bub::after{content:"";position:absolute;left:14px;bottom:-14px;width:18px;height:14px;background:inherit;border:3px solid var(--navy);border-top:0;border-right:0;border-radius:0 0 0 12px;transform:skewX(26deg)}
+.plus{position:absolute;z-index:2;width:58px;height:58px;border-radius:16px;background:linear-gradient(var(--cob),var(--cob)) center/56% 22% no-repeat,linear-gradient(var(--cob),var(--cob)) center/22% 56% no-repeat,#fff;border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);rotate:8deg;animation:hop 3.6s ease-in-out -1.8s infinite}
 .demo{position:relative;isolation:isolate}
 .blister{left:50%;top:56%;width:560px;height:500px;translate:-50% -50%;rotate:5deg;border-radius:30px;border:3px solid var(--navy);box-shadow:8px 8px 0 var(--navy);background-color:var(--but);background-image:radial-gradient(circle,var(--mint) 0 9px,var(--navy) 9px 12px,transparent 12px);background-size:46px 46px}
 .cap{position:absolute;z-index:2;width:84px;height:32px;border-radius:99px;border:3px solid var(--navy);background:linear-gradient(90deg,#fff 50%,var(--cob) 50%);box-shadow:4px 4px 0 var(--navy);rotate:var(--t);animation:hop 4s ease-in-out infinite}
@@ -189,6 +223,7 @@ footer a{text-underline-offset:3px}
 .b4{--s:98px;right:0;top:18%;animation-delay:-1s}.b5{--s:68px;right:92px;top:52%;animation-delay:-3s}.b6{--s:56px;right:12px;top:80%;animation-delay:-5s}
 @keyframes float{to{transform:translateY(-16px) rotate(8deg)}}
 #looks .wrap{position:relative}
+@media(min-width:861px){.b6{display:none}}
 @media(min-width:861px) and (max-width:1099px){.blob{display:none}}
 /* drive: your own sky */
 .cloud{width:150px;color:var(--but);opacity:.5;animation:drift 14s ease-in-out infinite alternate}
@@ -323,7 +358,9 @@ body.doc-page footer a{margin-left:14px}
   main>.end{min-height:calc(100svh - var(--foot,260px))}
   .band .phone{width:auto}
   .ghost{box-shadow:4px 4px 0 var(--navy)}.g1{translate:-10px -9px}.g2{translate:9px 9px}
-  .stage{margin-top:3svh}
+  .duo{margin-top:3svh}
+  .duo>.phone{display:none}
+  .duo .stage{max-width:560px}
   .cursor{width:36px;right:-14px;bottom:-26px}
   .blob{--s:44px!important;box-shadow:3px 3px 0 var(--navy)}
   .b1{left:-10px;top:56%}.b2{left:4px;top:72%}.b3{left:-8px;top:88%}.b4{right:-10px;top:60%}.b5{right:4px;top:76%}.b6{right:-8px;top:91%}
@@ -340,13 +377,30 @@ body.doc-page footer a{margin-left:14px}
   .spark{width:26px;height:26px}.tap{width:38px;height:38px}.tap::before{inset:12px}
   .stack{width:62px;scale:.7;transform-origin:bottom center}
   .note2{width:92px;padding:9px 8px 12px;font-size:13px;left:-48%;box-shadow:3px 3px 0 var(--navy)}
-  .bars i.hot::after{font-size:13px;padding:2px 9px;translate:-78% 0}
   .cap:nth-of-type(4){display:none}
   .blister{width:118%;height:min(440px,52svh);box-shadow:5px 5px 0 var(--navy);background-size:36px 36px}
   .cap{width:60px;height:24px}
   .band .phone img{height:42svh;width:auto;margin:0 auto}
   /* touch: a swipe settles on one band (native snapping is far more reliable on iPhones than script-handled touches) */
   @media(pointer:coarse){html{scroll-snap-type:y mandatory}.intro,main>section{scroll-snap-align:start;scroll-snap-stop:always}}
+  /* two phones side by side still fit the width and leave room for the words */
+  .pair{gap:5%;--ph:40svh}
+  .band .pair .phone{--ph:40svh;width:min(46%,calc(var(--ph) * .462))}
+  .band .pair .phone img{height:auto;width:100%}
+  .bub{width:44px;height:40px;border-radius:14px;font-size:22px;box-shadow:3px 3px 0 var(--navy)}
+  .bub::after{left:9px;bottom:-11px;width:13px;height:11px}
+  .plus{width:40px;height:40px;border-radius:12px;box-shadow:3px 3px 0 var(--navy)}
+  .cal{left:-40%;top:62%;width:72px;box-shadow:3px 3px 0 var(--navy);border-radius:9px}.cal b{font-size:12px;padding:3px 0}.cal i{font-size:30px;padding:4px 0 5px}
+  .trend{width:calc(var(--ph) * 1.1)}
+  /* the stickers sit in the corners the staggered phones leave free */
+  .miniclock{left:1%;top:auto;bottom:-7%;width:50px;filter:drop-shadow(3px 3px 0 var(--navy))}
+  .tag3{left:auto;right:3%;top:-1%;font-size:15px;padding:4px 11px;box-shadow:3px 3px 0 var(--navy)}
+  .pair .stack{scale:.55;right:-19%!important}
+  /* the sun sits in the notch above the lower phone */
+  .pair .daypath{left:178%;top:7%;width:calc(var(--ph) * .78)}
+  .swatches{gap:10px;margin-top:22px}
+  .swatches button{width:58px;height:58px;font-size:11px}
+  .swatches button[aria-pressed=true]{outline-offset:2px}
   .todo{margin:0 auto}
   .mood button{font-size:26px;padding:8px 10px}
 }
@@ -391,17 +445,15 @@ body.doc-page footer a{margin-left:14px}
 .next:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--navy)}
 .next:focus-visible{outline:3px solid var(--navy);outline-offset:3px}
 .next svg{width:26px;height:26px;transition:transform .3s}
-.next .ic-top,.next .lbl{display:none}
-.next.up{width:auto;border-radius:99px;padding:0 18px 0 14px;gap:6px;grid-auto-flow:column;font:800 17px var(--font)}
-.next.up .ic-down{display:none}
-.next.up .ic-top,.next.up .lbl{display:block}
-.nav.last .prev{display:none}
+.next.up{width:auto;height:46px;justify-self:end;border-radius:99px;padding:0 16px 0 12px;gap:6px;grid-auto-flow:column;font:800 16px var(--font)}
+.next.up svg{width:20px;height:20px}
+.nav.last #prev,.nav.last #next{display:none}
 /* on desktop the cue waits in the bottom-right corner and the arrows take its place there once it fades; the footer leaves room under them */
 @media(min-width:701px){.cue{position:fixed;left:auto;right:18px;translate:none}.nav{top:auto;bottom:22px;translate:none}}@media(min-width:701px) and (max-width:1320px){footer{padding-bottom:110px}}
-/* phones swipe band to band, so the arrows would only cover content: only Top shows there, at the end */
-@media(max-width:700px){.nav{top:auto;bottom:18px;translate:none;gap:10px}.next{width:48px;height:48px}.cue{left:18px;translate:none}.nav:not(.last){opacity:0;visibility:hidden;pointer-events:none}}
+/* phones swipe band to band, so the arrows would only cover content: only Top shows there */
+@media(max-width:700px){.nav{top:auto;bottom:18px;translate:none;gap:10px}.next{width:48px;height:48px}.cue{left:18px;translate:none}.nav #prev,.nav #next{display:none}.next.up{height:42px}}
 .prev svg{transform:rotate(180deg)}
-.prev[hidden]{display:none}
+.prev[hidden],.up[hidden]{display:none}
 @media(prefers-reduced-motion:reduce){.next,.next svg{transition:none}}
 
 /* "this one is interactive" label above the doses card */
