@@ -5,8 +5,8 @@
 # Reclaim
 
 **Change at your own pace.**<br>
-A free, calm companion for quitting, cutting back or just keeping track of<br>
-smoking, vaping, drinking and medication.
+A free, calm companion for your habits, your medication, how you feel<br>
+and your doctor's visits.
 
 <a href="https://reclaim.day"><img src="https://img.shields.io/badge/Visit_Reclaim-reclaim.day-2A51B8?style=for-the-badge" alt="Visit Reclaim at reclaim.day"></a>
 

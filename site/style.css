@@ -365,8 +365,8 @@ body.doc-page footer a{margin-left:14px}
 .sheet{display:none}
 @media(max-width:860px){
   .emo span{display:none}
-  .sheet{display:flex;gap:14px;margin:22px 0 4px}
-  .sheet span{width:60px;height:60px;border-radius:50%;background:var(--but);border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);display:grid;place-items:center;font-size:30px;line-height:1;cursor:pointer;animation:hop 3.6s ease-in-out infinite;-webkit-user-select:none;user-select:none}
+  .sheet{display:flex;gap:clamp(6px,2.4vw,14px);margin:22px 0 4px}
+  .sheet span{flex:0 1 60px;aspect-ratio:1;min-width:0;border-radius:50%;background:var(--but);border:3px solid var(--navy);box-shadow:4px 4px 0 var(--navy);display:grid;place-items:center;font-size:30px;line-height:1;cursor:pointer;animation:hop 3.6s ease-in-out infinite;-webkit-user-select:none;user-select:none}
   .sheet span:nth-child(1){rotate:-7deg}
   .sheet span:nth-child(2){rotate:5deg;animation-delay:-.9s}
   .sheet span:nth-child(3){rotate:-4deg;animation-delay:-1.8s}
