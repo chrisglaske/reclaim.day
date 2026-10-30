@@ -21,7 +21,7 @@ permissions:
 jobs:
   live:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -29,5 +29,13 @@ jobs:
           node-version: 26
       - name: Build the app
         run: node tools/build-app.mjs
+      # A deploy follows the push by hand, so a push gets 20 minutes to go live; other runs check once.
       - name: Compare with app.reclaim.day
-        run: node tools/verify-live.mjs
+        run: |
+          tries=1
+          if [ "$GITHUB_EVENT_NAME" = push ]; then tries=40; fi
+          for try in $(seq 1 "$tries"); do
+            node tools/verify-live.mjs && exit 0
+            if [ "$try" -lt "$tries" ]; then sleep 30; fi
+          done
+          exit 1
