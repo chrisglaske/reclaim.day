@@ -7,6 +7,11 @@
   const LOGIC_DAY_MS = 24 * 60 * 60 * 1000;
   const JOURNAL_TAGS = ['Stress', 'Exercise', 'Time outside', 'Social time', 'Rest', 'Illness', 'Work', 'Travel'];
   const HEALTH_TAGS = ['Headache', 'Stomach issues', 'Nausea', 'Tired', 'Dizzy', 'Aches or pain', 'Cold or flu', 'Other'];
+  // A check-in's health complaints in words: "Other" reads as what the person wrote for it, when they did.
+  const healthWords = c => {
+    const other = typeof c.healthOther === 'string' ? c.healthOther.trim() : '';
+    return (Array.isArray(c.health) ? c.health.filter(tag => HEALTH_TAGS.includes(tag)) : []).map(tag => tag === 'Other' && other ? other : tag);
+  };
   const CHECKIN_SLOTS = ['morning', 'afternoon', 'evening'];
   // The mockup's mood words and faces; saved moods stay 1–5 (0 is not noted), so MOOD_WORDS[mood - 1].
   const MOOD_WORDS = ['Struggling', 'Heavy', 'Getting by', 'Doing okay', 'Going well'];

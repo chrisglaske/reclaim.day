@@ -84,6 +84,18 @@
     const c = (S.journal[day] || {}).checkins;
     return logicObject(c) ? Object.values(c).filter(logicObject) : [];
   }
+  // A day's health complaints: what its check-ins picked, plus the older "Illness" context tag.
+  function apptDayHealth(day) {
+    const j = S.journal[day] || {}, picked = apptCheckins(day).flatMap(healthWords);
+    const ill = [j, ...apptCheckins(day)].some(c => Array.isArray(c.tags) && c.tags.includes('Illness'));
+    return [...new Set(picked), ...(ill ? ['Illness'] : [])];
+  }
+  // Each complaint in the range with the days it was noted, most often first.
+  function apptHealth(range) {
+    const days = apptDays(range), found = new Map();
+    days.forEach(day => apptDayHealth(day).forEach(tag => found.set(tag, [...(found.get(tag) || []), day])));
+    return [...found].map(([tag, list]) => ({ tag, days: list })).sort((a, b) => b.days.length - a.days.length);
+  }
   const apptUsed = m => m && ['use', 'slip'].includes(m.kind || 'slip');
 
   // Deleted medications never appear. By default: active ones that have started, plus archived ones with doses in the range.
@@ -218,8 +230,8 @@
     const ct = apptTrend(days.map(d => apptAvg(cravings(d))).filter(x => x != null));
     if (allCrav.length) glance.push('Cravings: average ' + apptOne(apptAvg(allCrav)) + '/10' + (ct ? ', ' + apptTrendWords(ct, '') : ''));
     if (nights.length) glance.push('Sleep: average ' + apptOne(apptAvg(nights.map(apptSleep))) + ' hours over ' + apptPlural(nights.length, 'night'));
-    const healthDays = HEALTH_TAGS.map(tag => [tag, days.filter(d => apptCheckins(d).some(c => Array.isArray(c.health) && c.health.includes(tag))).length]).filter(([, n]) => n);
-    if (healthDays.length) glance.push('Health complaints noted: ' + healthDays.map(([tag, n]) => tag + ' on ' + apptPlural(n, 'day')).join(', '));
+    const health = apptHealth(range);
+    if (health.length) glance.push('Health complaints noted: ' + health.map(h => h.tag + ' on ' + apptPlural(h.days.length, 'day')).join(', '));
     const waveTotal = days.reduce((a, d) => a + waves(d), 0);
     if (waveTotal) glance.push('Waves ridden out: ' + waveTotal);
 
@@ -276,7 +288,7 @@
   function apptData(range, selectedMeds) {
     const meds = apptMeds(range, selectedMeds), habits = apptHabits(range), well = apptWellbeing(range);
     const glance = [...meds.filter(m => !m.archived || !m.line.startsWith('No')).map(m => m.glance), ...habits.map(h => h.glance), ...well.glance];
-    return { range, meds, habits, well, glance, questions: apptQuestions(), notes: apptNotes(range) };
+    return { range, meds, habits, well, health: apptHealth(range), glance, questions: apptQuestions(), notes: apptNotes(range) };
   }
 
   // Plain text of the page for Copy text: the sections that are on, and the chosen notes.
@@ -286,6 +298,7 @@
     const sec = (title, lines) => { L.push(title.toUpperCase(), ...lines, ''); };
     if (on.glance) sec('At a glance', d.glance.length ? d.glance.map(g => '- ' + g) : ['Nothing noted in this period.']);
     if (on.meds) sec('Medication', d.meds.length ? d.meds.flatMap(m => [m.title + (m.archived ? ' (stopped)' : '') + ' · ' + m.plan, '  ' + m.line]) : ['No medications tracked.']);
+    if (on.health) sec('Health complaints', d.health.length ? d.health.map(h => h.tag + ': ' + apptPlural(h.days.length, 'day') + ' (' + h.days.map(insightsDateLabel).join(', ') + ')') : ['None noted in this period.']);
     if (on.habits) sec('Habits', d.habits.length ? d.habits.flatMap(h => [h.name + ' · ' + h.plan,
       ...h.rows.map(r => '  ' + r.label + ': ' + (h.quit ? apptPlural(r.n, 'moment') + ', ' + r.free + ' days without' : r.amt + ' ' + h.unit + ' (' + r.perDay + '/day)' + (h.reduce ? ', within limit ' + r.within + ' days' : '')))]) : ['No habits tracked.']);
     if (on.well) sec('Mood, cravings and sleep', d.well.any ? [...d.well.rows.map(r => '  ' + r.label + ': mood ' + r.mood + ', cravings ' + r.craving + (r.craving === '–' ? '' : '/10') + ', sleep ' + r.sleep + ', waves ' + r.waves),
