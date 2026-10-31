@@ -70,6 +70,7 @@
       .finally(() => { checkingForChanges = false; });
   }
   document.addEventListener('visibilitychange', () => {
+    window.scrollTo(0, 0);
     if (document.visibilityState === 'visible') checkForChanges();
   });
   window.addEventListener('focus', () => {
