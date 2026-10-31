@@ -122,13 +122,18 @@
     window.addEventListener('error', event => {
       if (!window.reclaimStartup.ready && event.error) window.reclaimStartup.fail(event.error);
     });
-    window.reclaimStartup.timer = window.setTimeout(() => {
+    // Sign-in stops this and starts it again once it's done, so waiting on the sign-in screen doesn't count.
+    window.reclaimStartup.watch = () => { window.reclaimStartup.timer = window.setTimeout(() => {
       if (!window.reclaimStartup.ready && !window.reclaimStartup.failed) {
         document.getElementById('startup-title').textContent = 'Still getting Reclaim ready';
         document.getElementById('startup-message').textContent =
-          'Loading is taking longer than usual, often because of a slow connection. Please keep this page open.';
+          'Loading is taking longer than usual, often because of a slow connection. You can keep waiting or try again.';
+        const retry = document.getElementById('startup-retry');
+        retry.onclick = () => window.location.reload();
+        retry.hidden = false;
       }
-    }, 20000);
+    }, 20000); };
+    window.reclaimStartup.watch();
   </script>
   <?!= include('styles/mockup'); ?>
   <?!= include('styles/app'); ?>

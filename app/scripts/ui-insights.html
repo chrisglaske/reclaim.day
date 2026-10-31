@@ -17,7 +17,7 @@ function storyCard(d){
   return `<section class="hero story"><div class="hhead"><div><div class="eyebrow">${d.n===7?'Your week':'Last 30 days'} · ${rng(d)}</div><h2>${shown}</h2></div></div>
     <div class="stats">
       <button class="stat" data-act="itab:patterns"><b class="num">${blur(w)}</b><span>Waves ridden out ${I('chev')}</span></button>
-      <button class="stat" data-act="itab:patterns"><b class="num">${d.reduce.length?blur(d.limitDays):'–'}<small style="font-size:16px;opacity:.7">/${d.n}</small></b><span>Days within limit ${I('chev')}</span></button>
+      ${d.reduce.length?`<button class="stat" data-act="itab:patterns"><b class="num">${blur(d.limitDays)}<small style="font-size:16px;opacity:.7">/${d.n}</small></b><span>Days within limit ${I('chev')}</span></button>`:`<button class="stat" data-act="itab:wellbeing"><b class="num">${blur(sum(Array.from({length:d.n},(_,i)=>Object.keys(ckDay(addD(localToday(),-i))).length)))}</b><span>Check-ins ${I('chev')}</span></button>`}
       <button class="stat" data-act="itab:progress"><b class="num">${blur(curSym()+d.kept)}</b><span>Kept in pocket ${I('chev')}</span></button>
       <button class="stat" data-act="itab:wellbeing"><b>${d.best||blur(u)}</b><span>${d.best?'Your steadiest day':'Moments noted'} ${I('chev')}</span></button>
     </div></section>`;

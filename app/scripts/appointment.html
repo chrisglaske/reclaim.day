@@ -89,7 +89,7 @@
   // The date of the last appointment ('' when none): the latest that has happened, or the date saved before appointments had their own list.
   function apptLast() {
     const k = S.profile.companion.lastAppointment, today = localToday();
-    const days = apptPast().map(a => a.day).filter(day => day <= today);
+    const days = apptPast().filter(a => !a.missed).map(a => a.day).filter(day => day <= today);
     if (typeof k === 'string' && dateKey(k) === k && k <= today) days.push(k);
     return days.sort().pop() || '';
   }
@@ -110,7 +110,9 @@
   function apptPeriod(appt) {
     const today = localToday(), end = appt.day < today ? appt.day : today, before = apptBefore(appt), k = S.profile.companion.lastAppointment;
     const saved = typeof k === 'string' && dateKey(k) === k && k < appt.day ? k : '', days = n => Object.assign(apptRange({ start: dayOffset(end, 1 - n), end }), { label: n === 30 ? 'The last 30 days' : 'The last 3 months' });
-    const since = (day, who) => Object.assign(apptRange({ start: day <= end ? day : end, end }), { label: 'Since your ' + (who ? 'visit with ' + who : 'appointment') + ' on ' + insightsDateLabel(day) });
+    // A look back runs a year at most, however long ago the last visit was (insightsDateRange refuses more).
+    const yearBack = dayOffset(end, -365);
+    const since = (day, who) => Object.assign(apptRange({ start: day > end ? end : day < yearBack ? yearBack : day, end }), { label: 'Since your ' + (who ? 'visit with ' + who : 'appointment') + ' on ' + insightsDateLabel(day) });
     if (appt.since === '30') return days(30);
     if (appt.since === '90') return days(90);
     if (appt.since === 'saved' && saved) return since(saved);
@@ -247,7 +249,7 @@
         }
         const times = (Array.isArray(med.slots) ? med.slots : []).map((label, i) => {
           const r = reminders[med.id + ':' + i];
-          return label + (r && /^\d\d:\d\d$/.test(r.time) ? ' ' + r.time : '');
+          return label + (r && /^\d\d:\d\d$/.test(r.time) ? ' ' + apptTime('2000-01-01T' + r.time) : '');
         });
         let sched = 0, complete = 0, skips = 0, late = 0;
         const reasons = new Map();

@@ -161,6 +161,7 @@
       installHint();
       document.getElementById('startup-title').textContent = 'Getting Reclaim ready';
       document.getElementById('startup-message').textContent = 'Loading your saved moments and preferences…';
+      window.reclaimStartup.watch();
     }
 
     return {

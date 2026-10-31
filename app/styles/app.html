@@ -42,8 +42,13 @@
   .rad .sugg{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--primary);font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
   .rad .sugg[hidden]{display:none}
   /* Live app: remove any moment from the Journal day, and the day's medications. */
-  .jev li:has(.jrm){grid-template-columns:58px 28px minmax(0,1fr) auto}.jev .jact{display:flex;gap:2px}
-  .jev .jrm{width:32px;height:32px;border-radius:10px;border-color:transparent;background:none;color:var(--muted)}.jev .jrm:hover{background:var(--soft)}.jev .jrm .ic{width:15px;height:15px}
+  .jev li:has(.jrm){grid-template-columns:58px 28px minmax(0,1fr) auto}.jev .jact{display:flex;gap:12px}
+  .jev .jrm{position:relative;width:32px;height:32px;border-radius:10px;border-color:transparent;background:none;color:var(--muted)}.jev .jrm:hover{background:var(--soft)}.jev .jrm .ic{width:15px;height:15px}
+  .jev .jrm::after{content:"";position:absolute;top:-7.5px;left:-7.5px;width:44px;height:44px;place-self:start}
+  /* the mood buttons keep their size, with a tap area that fills the row; a narrow screen moves the question onto its own line */
+  .dmpick .dm{position:relative}.dmpick .dm::after{content:"";position:absolute;inset:-5px -1px}
+  @media(pointer:coarse){.dmpick{gap:8px}.dmpick .dm::after{inset:-5px -4px}}
+  @container app (max-width:379px){.hstrip>.dmpick{flex-wrap:wrap;height:auto;padding:4px 10px;border-radius:22px;justify-content:space-around}.dmpick .q{flex:1 0 100%;margin:4px 0 0;text-align:center}}
   @container app (max-width:519px){.jev li:has(.jrm){grid-template-columns:52px 26px minmax(0,1fr) auto}}
   .acc.jdoses{margin-top:10px}
   /* the day's own sleep (Insights' sleep chips) on the Journal day */
@@ -85,10 +90,11 @@
   .chips.dsr{margin-top:14px}
   #jdc{margin-top:12px}
   .jdcmore{display:inline-flex;align-items:center;gap:4px;margin-top:10px}.jdcmore .ic{width:15px;height:15px}
+  .iconbtn[disabled]{opacity:.4;pointer-events:none}
   #culine:empty{display:none}
   .culine{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:16px;background:var(--soft);margin:14px 0}
   #medc .culine{margin:0 0 10px}
-  .cugo{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
+  .cugo{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;gap:12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
   .cugo b{flex:1;min-width:0;font-size:14.5px}
   .cugo .itile{width:36px;height:36px;border-radius:11px}
   .cuadd{display:inline-flex;align-items:center;gap:2px;font-size:14px;font-weight:700;white-space:nowrap}.cuadd .ic{width:15px;height:15px}

@@ -41,7 +41,22 @@
       <h1>What’s new</h1>
       <p class="updated">New things and fixes, newest first. Reclaim is looked after and still growing.</p>
 
+      <div class="logfilter" role="group" aria-label="Show" hidden>
+        <button type="button" data-show="all" aria-pressed="true">All</button>
+        <button type="button" data-show="new" aria-pressed="false">New</button>
+        <button type="button" data-show="fixed" aria-pressed="false">Fixes</button>
+      </div>
+      <p class="vh" id="logcount" role="status"></p>
+
       <div class="changelog">
+        <article class="entry">
+          <p class="meta"><span class="tag fixed">Fixed</span> <time datetime="2026-10-31">October 31, 2026</time></p>
+          <h2>Smoother appointments, easier tapping and a steadier home page</h2>
+          <p>Appointments: picking a medication while planning a visit no longer fills its note with the word “undefined”, and any note saved that way is cleared. Opening an appointment now works when your last visit was over a year ago, a visit you didn’t go to no longer counts as your last one, and dose times follow your 12 or 24-hour setting.</p>
+          <p>In the app: picking a day in Look back, or getting changes from another device, no longer redraws the whole page, and you keep your place. The mood and Journal buttons are easier to tap, and the mood row now fits narrow phones. Just track shows your check-ins in Insights instead of an empty limit, Escape always closes a check-in, and if loading takes a long time, you can try again.</p>
+          <p>On this website: the home page now settles on one section at a time, on every screen size.</p>
+        </article>
+
         <article class="entry">
           <p class="meta"><span class="tag new">New</span> <time datetime="2026-10-30">October 30, 2026</time></p>
           <h2>Plan, prepare for and keep track of appointments</h2>
@@ -143,5 +158,6 @@
       <span>© Reclaim</span> <a href="/">Home</a> <a href="/guides/">Guides</a> <a href="/faq/">FAQ</a> <a href="/privacy/">Privacy</a> <a href="/terms/">Terms</a> <a href="/imprint/">Imprint</a> <a href="https://github.com/chrisglaske/reclaim.day">Source code</a> <a href="https://ko-fi.com/S5P629GQ84">Support on Ko-fi</a>
     </footer>
   </div>
+  <script type="module" src="/whats-new/whats-new.js"></script>
 </body>
 </html>

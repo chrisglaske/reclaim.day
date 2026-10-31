@@ -43,7 +43,7 @@ const sum=a=>a.reduce((x,y)=>x+y,0);
 const sdate=k=>dlab(k,{month:'short',day:'numeric'});
 const seg=(name,opts,val)=>`<div class="seg" data-seg="${name}"><span class="sp"></span>${opts.map(([v,l])=>`<button class="${v===val?'on':''}" data-act="seg:${name}:${v}">${l}</button>`).join('')}</div>`;
 function placeSeg(){$$('.seg',app).forEach(s=>{const on=$('button.on',s),p=$('.sp',s);if(on&&s.offsetParent){p.style.left=on.offsetLeft+'px';p.style.width=on.offsetWidth+'px';}});}
-function swap(id,html){const el=$('#'+id);if(!el)return;const y=$('#main').scrollTop;el.outerHTML=html;$('#main').scrollTop=y;}
+function swap(id,html){const el=$('#'+id);if(!el)return;$('#view').classList.remove('enter');const y=$('#main').scrollTop;el.outerHTML=html;$('#main').scrollTop=y;}
 
 /* ---------- shell ---------- */
 const NAV=[['today','sun','Today'],['tracking','leaf','Tracking'],['journal','book','Journal'],['insights','chart','Insights'],['appts','cal','Appointments','Visits'],['settings','sliders','Settings']];

@@ -185,9 +185,23 @@ if (foot) {
 const next = document.getElementById('next');
 if (next) {
   const parts = [...document.querySelectorAll('.intro, main > section')]; // the footer shares the last screen with the closing band
-  const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 4 || !parts.some(p => p.getBoundingClientRect().top > 40);
+  // The section on screen. On touch screens each runs past the view, so its top is above the screen when it's at rest.
+  const current = () => parts.findLastIndex(p => p.getBoundingClientRect().top <= innerHeight / 2);
+  const atEnd = () => innerHeight + scrollY >= document.documentElement.scrollHeight - 4 || current() === parts.length - 1;
+  // Go to a section's resting place: its top, or on touch screens its mark.
+  const goTo = (p, behavior) => {
+    const m = p.querySelector(':scope > .mark');
+    (m?.offsetWidth ? m : p).scrollIntoView({ behavior });
+  };
   const top = document.getElementById('top');
+  // Safari paints what's behind its toolbar in the page's base color, so that follows the section at the foot of the screen.
+  const tint = () => {
+    const c = getComputedStyle([...parts, foot].findLast(p => p.getBoundingClientRect().top < innerHeight) ?? parts[0]).backgroundColor;
+    if (document.body.style.backgroundColor !== c) document.body.style.backgroundColor = c;
+    document.querySelector('meta[name=theme-color]')?.setAttribute('content', c);
+  };
   const sync = () => {
+    tint();
     const up = atEnd();
     if (up && document.activeElement?.closest('#next, #prev')) top.focus();
     document.querySelector('.nav').classList.toggle('last', up);
@@ -195,12 +209,12 @@ if (next) {
   const goNext = () => {
     const behavior = calm ? 'auto' : 'smooth';
     if (atEnd()) scrollTo({ top: 0, behavior });
-    else (parts.find(p => p.getBoundingClientRect().top > 40) ?? { scrollIntoView: o => scrollTo({ top: document.documentElement.scrollHeight, ...o }) }).scrollIntoView({ behavior });
+    else goTo(parts[current() + 1], behavior);
   };
   const goPrev = () => {
     const behavior = calm ? 'auto' : 'smooth';
-    const before = parts.filter(p => p.getBoundingClientRect().top < -40).pop();
-    if (before) before.scrollIntoView({ behavior });
+    const before = parts[current() - 1];
+    if (before && before !== parts[0]) goTo(before, behavior);
     else scrollTo({ top: 0, behavior });
   };
   const prev = document.getElementById('prev');

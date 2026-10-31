@@ -249,7 +249,7 @@
               .map(a => ({ id: a.id, day: a.day, ...(typeof a.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(a.time) ? { time: a.time } : {}),
                 ...stateStringFields(a, ['type', 'doctorId', 'reason', 'since'], 300), ...stateStringFields(a, ['outcome', 'nextSteps'], 5000),
                 ...(Array.isArray(a.meds) && a.meds.length ? { meds: a.meds.filter(m => stateObject(m) && typeof m.id === 'string').slice(0, 100)
-                  .map(m => ({ id: m.id, ...stateStringFields(m, ['note'], 500) })) } : {}),
+                  .map(m => ({ id: m.id, ...stateStringFields(m.note === 'undefined' ? {} : m, ['note'], 500) })) } : {}), // an earlier planner could save the word for an empty note
                 ...(Number.isInteger(a.felt) && a.felt >= 1 && a.felt <= 5 ? { felt: a.felt } : {}), ...(a.ready === true ? { ready: true } : {}), ...(a.missed === true ? { missed: true } : {}), ...(a.done === true ? { done: true } : {}) }))
           } : {})
         }

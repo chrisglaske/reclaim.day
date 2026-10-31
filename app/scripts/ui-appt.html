@@ -87,16 +87,18 @@ function appt(){const a=apState(),r=apRange(),d=r.err?null:apData(r);
     ${d?apBody(r,d):`<p class="aperr" role="alert">${esc(r.err)}</p>`}`;}
 VIEWS.appt=appt;
 /* redraw in place, keeping the scroll and the focused control */
-function apDraw(){const m=$('#main'),y=m.scrollTop,f=document.activeElement,k=f?.dataset?.act||f?.id,more=$('.apmore');if(more)apState().more=more.open;$('#view').innerHTML=VIEWS[V.view]();m.scrollTop=y;
+function apDraw(){const m=$('#main'),v=$('#view'),y=m.scrollTop,dy=$('#apdays')?.scrollTop,f=document.activeElement,k=f?.dataset?.act||f?.id,more=$('.apmore');if(more)apState().more=more.open;v.classList.remove('enter');v.innerHTML=VIEWS[V.view]();m.scrollTop=y;const pn=$('#apdays');if(pn&&dy)pn.scrollTop=dy;
   if(k)(document.getElementById(k)||$(`#view [data-act="${k}"]`))?.focus({preventScroll:true});}
+/* the calendar and day panel on their own: the summary beside it stays as it is */
+function apDaysDraw(){const p=$('#apdays');if(!p)return apDraw();const y=p.scrollTop,k=document.activeElement?.dataset?.act;swap('apdays',apDays(apRange()));$('#apdays').scrollTop=y;if(k)$(`#apdays [data-act="${k}"]`)?.focus({preventScroll:true});}
 function apSave(back){saveInBackground(()=>{back();if(V.view==='appt')apDraw();});}
 Object.assign(ACT,{
   apopen:()=>{closeSheet();apState().fix=null;V.view='appt';$$('.nv',app).forEach(n=>n.classList.toggle('on',n.dataset.act==='nav:insights'));renderView();$('#view h1')?.setAttribute('tabindex','-1');$('#view h1')?.focus({preventScroll:true});},
   apper:(b,e,x)=>{const a=apState();a.per=x;a.mon=undefined;a.ctl=x==='custom';apDraw();$(x==='custom'?'#apfrom':'.apmini .btn')?.focus({preventScroll:true});},
-  apmon:(b,e,x)=>{const a=apState();a.mon+=+x;apDraw();},
+  apmon:(b,e,x)=>{const a=apState();a.mon+=+x;apDaysDraw();},
   apctl:(b,e,x)=>{const a=apState();a.ctl=x==='1';apDraw();$(x==='1'?'.apctl .chip':'.apmini .btn')?.focus({preventScroll:true});},
-  apday:(b,e,x)=>{const a=apState();a.day=a.day===x?'':x;apDraw();if(a.day)$('#apd')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});},
-  aptab:(b,e,x)=>{apState().tab=x;apDraw();},
+  apday:(b,e,x)=>{const a=apState();a.day=a.day===x?'':x;apDaysDraw();if(a.day)$('#apd')?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});},
+  aptab:(b,e,x)=>{apState().tab=x;$('.apgrid').dataset.tab=x;$$('.apvtab').forEach(t=>{const on=t.dataset.act==='aptab:'+x;t.classList.toggle('on',on);t.setAttribute('aria-selected',on);});},
   /* a date under Health complaints opens that day beside the summary, or on the Day by day tab */
   apgo:(b,e,x)=>{const a=apState();a.day=x;a.mon=monthNo(x);a.tab='days';apDraw();$('#apd')?.scrollIntoView({block:'nearest'});$(`#apdays [data-act="apday:${x}"]`)?.focus({preventScroll:true});},
   apj:(b,e,x)=>{V.jday=x;V.jmon=monthNo(x);ACT.nav(b,e,'journal');},

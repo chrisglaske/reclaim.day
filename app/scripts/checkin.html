@@ -156,7 +156,7 @@ app.addEventListener('input',e=>{const t=e.target,v=V.flow?.v;if(!v)return;if(t.
   if(t.id==='fcr'){v.craving=+t.value;$('#fcrv').textContent=t.value;$('#fcrw').textContent=CRW(v.craving);fLabel();}
   if(t.id==='ffocus'){v.focus=t.value;fLabel();}
   if(t.id==='ftext'){v.text=t.value;$('#ftc').textContent=t.value.length+' / 5000';fLabel();}});
-app.addEventListener('keydown',e=>{const fo=$('#flow.open');if(!fo||$('#sheet.open'))return;
+document.addEventListener('keydown',e=>{const fo=$('#flow.open');if(!fo||$('#sheet.open'))return;
   if(e.key==='Escape'){flowClose();return;}
   if(e.key==='Enter'&&e.target.id==='ffocus'){e.preventDefault();fNext();return;}
   /* focus stays inside the check-in while it is open */

@@ -31,7 +31,10 @@
       window.reclaimStartup.applyTheme(S.profile.companion.theme, true);
       if (setupDue()) { V.ob = obFresh(); V.screen = 'onboard'; V.ob.was = obWas(); }
       else if (V.screen === 'onboard') { V.screen = 'today'; V.md = null; }
+      // The new data lands where the person already is: same scroll, no page entrance.
+      const main = document.getElementById('main'), top = main?.scrollTop || 0, sameScreen = V.screen !== 'onboard' && !!main;
       renderAll();
+      if (sameScreen) { document.getElementById('view').classList.remove('enter'); document.getElementById('main').scrollTop = top; }
       toast(message || (quiet ? 'Updated with changes from another device or tab' : 'Loaded the latest from Google Drive'));
     } catch (error) {
       console.warn('Reclaim could not load the latest data:', error);

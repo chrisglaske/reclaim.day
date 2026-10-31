@@ -235,9 +235,9 @@ Object.assign(ACT,{
     saveInBackground(()=>{c.trackMedications=was;resec('meds');});},
   medit:(b,e,x)=>{const h=medSheet(x);if(!h){toast('This medication is no longer available.');return;}openSheet(h);},
   mcat:(b,e,x)=>{const c=medicationCatalogMatch(x);c?mcatFill(c):V.md.name=x;medRedraw();},
-  mfreq:(b,e,x)=>{const d=V.md,n=FREQ.find(f=>f[0]===x)[2];d.freq=x;d.slots=d.slots.slice(0,n);d.times=Array.from({length:n},(_,i)=>d.times[i]||['09:00','14:00','18:00','21:00'][i]);medRedraw();},
+  mfreq:(b,e,x)=>{const d=V.md;if(!d)return;const n=FREQ.find(f=>f[0]===x)[2];d.freq=x;d.slots=d.slots.slice(0,n);d.times=Array.from({length:n},(_,i)=>d.times[i]||['09:00','14:00','18:00','21:00'][i]);medRedraw();},
   mback:(b)=>{V.md.backfill=!V.md.backfill;b.classList.toggle('on',V.md.backfill);b.setAttribute('aria-pressed',V.md.backfill);},
-  msv:()=>{const d=V.md,n=FREQ.find(f=>f[0]===d.freq)[2],snap=medicationSnapshot(),err=saveMedication(Object.assign({},d,{freq:n||'prn'}));
+  msv:()=>{const d=V.md;if(!d)return;const n=FREQ.find(f=>f[0]===d.freq)[2],snap=medicationSnapshot(),err=saveMedication(Object.assign({},d,{freq:n||'prn'}));
     if(err){restoreMedicationSnapshot(snap);toast(err);$(MERRF[err])?.focus();return;}
     closeSheet();V.md=null;medsDone(snap,d.id?'Medication saved':d.backfill&&n?'Medication added. Earlier doses marked taken':'Medication added',null,1);},
   /* archive keeps the history, with Undo */
