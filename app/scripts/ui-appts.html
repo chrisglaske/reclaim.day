@@ -90,6 +90,8 @@ function docSheet(d,back){
   V.sheetBack=back?()=>{closeSheet();$('[data-act="docnew:1"]')?.focus({preventScroll:true});}:null;}
 /* the calendar file holds only what's picked here; a calendar keeps its own copy outside Reclaim, so the private details start off */
 const asCalOpts=a=>[['type','Type of visit',a.type],['doctor','Doctor and place',asDoc(a)?.name],['reason','What it’s for',a.reason],['meds','Medications to discuss',apptTopics(a).length],['questions','Your questions',apptQuestionsFor(a).some(q=>!q.answeredIn)]].filter(o=>o[2]);
+/* the installed app on an iPhone or iPad: its share sheet has no Calendar, but a file saved to Files opens there */
+const asShareOnly=()=>matchMedia('(display-mode: standalone)').matches&&(/iP(hone|ad|od)/.test(navigator.userAgent)||/Mac/.test(navigator.platform)&&navigator.maxTouchPoints>1);
 async function asCalSend(text,name){const file=new File([text],name,{type:'text/calendar'});
   /* an installed app has no downloads on some phones, so it hands the file to the share sheet */
   if(matchMedia('(display-mode: standalone)').matches&&navigator.canShare?.({files:[file]})){try{await navigator.share({files:[file]});}catch(error){/* closing the share sheet is fine */}return;}
@@ -101,7 +103,7 @@ Object.assign(ACT,{
   asview:()=>{V.as.edit=false;V.as.step=2;apDraw();$('#main').scrollTop=0;},
   asready:(b,e,x)=>{const a=apptFind(V.as.id);if(!a)return;asKeep();const back=apptSnapshot(),on=x==='1';saveAppt({ready:on},a.id);if(on){V.as.step=2;V.as.edit=false;}apDraw();$('#main').scrollTop=0;toast(on?'Saved. You’re prepared':'Back to preparing');saveInBackground(()=>{back();asRedraw();});},
   ascal:()=>{const a=apptFind(V.as.id);if(!a)return;V.ascal={type:true,doctor:true};
-    openSheet(`<div class="grab"></div><h3>Add to calendar</h3><p class="muted" style="margin:0">Pick what goes in the event. Your calendar keeps its own copy, outside Reclaim.</p><div class="chips" style="margin-top:12px" role="group" aria-label="Include">${asCalOpts(a).map(([k,l])=>`<button class="chip ${V.ascal[k]?'on':''}" data-act="ascalp:${k}" aria-pressed="${!!V.ascal[k]}"><span class="ck">${I('check')}</span>${l}</button>`).join('')}</div><div class="exrow" style="margin-top:16px"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="ascalgo">Get calendar file</button></div>`);},
+    openSheet(`<div class="grab"></div><h3>Add to calendar</h3><p class="muted" style="margin:0">Pick what goes in the event. Your calendar keeps its own copy, outside Reclaim.</p>${asShareOnly()?'<p class="muted" style="margin:10px 0 0">Next, choose Save to Files, then open the file to add it to Calendar.</p>':''}<div class="chips" style="margin-top:12px" role="group" aria-label="Include">${asCalOpts(a).map(([k,l])=>`<button class="chip ${V.ascal[k]?'on':''}" data-act="ascalp:${k}" aria-pressed="${!!V.ascal[k]}"><span class="ck">${I('check')}</span>${l}</button>`).join('')}</div><div class="exrow" style="margin-top:16px"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="ascalgo">Get calendar file</button></div>`);},
   ascalp:(b,e,x)=>{V.ascal[x]=!V.ascal[x];b.classList.toggle('on',V.ascal[x]);b.setAttribute('aria-pressed',V.ascal[x]);},
   ascalgo:()=>{const a=apptFind(V.as.id);if(!a)return;const name=`Appointment ${a.day}.ics`;closeSheet();asCalSend(apptIcs(a,V.ascal),name);},
   apps:()=>asGo(),

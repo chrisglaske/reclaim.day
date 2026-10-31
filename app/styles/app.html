@@ -4,6 +4,8 @@
   /* only #main scrolls: the page behind the app stays put, even when iOS nudges it on the way back from another app */
   html,body{height:100%;overflow:hidden;overscroll-behavior:none}
   .app{position:fixed;inset:0;width:auto;height:auto}
+  /* the installed app sits closer to the screen's edges, still clear of the status bar and home bar */
+  @media(display-mode:standalone){.mtop{padding-top:6px}.tabbar{padding-bottom:max(8px,calc(env(safe-area-inset-bottom,0px) - 8px))}}
   .skip-link{position:absolute;left:12px;top:-60px;z-index:400;padding:12px 16px;border-radius:12px;background:var(--primary);color:var(--on-primary);font-weight:700;text-decoration:none}
   .skip-link:focus{top:12px}
   /* 44px hit areas: an invisible box centred on small controls; nothing visible changes. */
