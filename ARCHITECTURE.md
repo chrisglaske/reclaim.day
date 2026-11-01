@@ -14,7 +14,7 @@ Your browser ──── app.reclaim.day        static files only (HTML, JS, CS
 
 - **app.reclaim.day** is a Cloudflare Worker that only serves the built files ([`app-host/`](app-host)). It runs no code of its own per request and has no database. Like any web host, Cloudflare may keep standard request logs (such as IP address and page requested), but your tracking data never passes through it. The [live check](https://github.com/chrisglaske/reclaim.day/actions/workflows/live.yml) confirms those files are exactly what this repository builds.
 - **Sign-in** ([`signin.html`](app/scripts/signin.html)) uses Google Identity Services. It asks for only the `drive.file` scope, which lets Reclaim see the files it created and nothing else in your Drive. The access token lasts an hour and is kept in memory only, never saved. A browser-only app gets no refresh token, so every visit starts with "Continue with Google". Near the end of the hour, your next click renews the token.
-- **Storage** ([`storage-drive.html`](app/scripts/storage-drive.html)) holds every call the app makes to Drive. The Content Security Policy that [`build-app.mjs`](tools/build-app.mjs) writes lists only these destinations for connections: the app itself, `www.googleapis.com` and Google's sign-in script (report-only for now, while it's tested).
+- **Storage** ([`storage-drive.html`](app/scripts/storage-drive.html)) holds every call the app makes to Drive. The Content Security Policy that [`build-app.mjs`](tools/build-app.mjs) writes lists only these destinations for connections: the app itself, `www.googleapis.com` and Google's sign-in script.
 
 ## What's in your Drive
 

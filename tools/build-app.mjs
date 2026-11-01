@@ -4,7 +4,7 @@
 // is public by design: Google only accepts it from app.reclaim.day (and http://localhost:8765).
 // Each inline <script> becomes its own file in js/ (named by content hash, same order, still classic blocking
 // scripts), so the CSP needs no 'unsafe-inline' or long hash list: _headers allows only this origin plus Google
-// sign-in and the Drive API. It is report-only for now (violations show in the console) until it has run clean.
+// sign-in and the Drive API.
 // Fonts get content-hashed names too, so js/ and fonts/ can be cached for a year. The app is noindex: it is a
 // sign-in screen, and the site at reclaim.day is what search should find.
 import { createHash } from 'node:crypto';
@@ -73,7 +73,7 @@ const csp = [
 ].join('; ');
 
 const headers = `/*
-  Content-Security-Policy-Report-Only: ${csp}
+  Content-Security-Policy: ${csp}
   X-Robots-Tag: noindex
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
