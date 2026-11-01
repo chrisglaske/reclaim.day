@@ -7,7 +7,7 @@
 const FKEYS=sl=>sl==='daily'?['mood','body','words','review']:['mood','detail','body','words','review'];
 const FLABEL={mood:'Mood',body:'Your body',words:'A few words',review:'Review'};
 const FSTEPS=sl=>FKEYS(sl).map(k=>k==='detail'?(sl==='morning'?'Sleep & focus':'Cravings & context'):FLABEL[k]);
-const fRev=sl=>FKEYS(sl).length-1,fDone=sl=>FKEYS(sl).length;
+const fRev=sl=>FKEYS(sl).length-1;
 const CRW=n=>n==null?'Not rated':n===0?'None':n<=3?'Mild':n<=6?'Moderate':n<=8?'Strong':'Very strong';
 const fh=h=>h==null?'–':String(+h.toFixed(2));
 const CTX=JOURNAL_TAGS,SQ=SLEEP_WORDS,PROMPTS=CHECKIN_PROMPTS;
@@ -29,21 +29,27 @@ const slotL=sl=>sl==='daily'?'Day':SLOTS.find(s=>s[0]===sl)[3];
     };
   }
 
+const fdKey=(sl,day)=>day+':'+sl;
+V.fdraft={};
 function flowOpen(sl,day,review){
   const dc=sl==='daily'&&dayCheck(day),c=dc?checkinAnswers(dc):ckDay(day)[sl],td=localToday();
   const past=day<td||(day===td&&SLOTS.findIndex(s=>s[0]===sl)<SLOTS.findIndex(s=>s[0]===curSlot())); // an earlier time of day asks in the past tense, without today's mood
   V.flow={sl,day,step:review&&c?fRev(sl):0,dir:'r',edit:!!c,past,pre:!c&&!past&&day===td&&amood()!=null,v:c?JSON.parse(JSON.stringify(c)):{mood:day===td&&!past?amood():null,sleep:null,q:null,focus:'',craving:null,tags:[],health:[],healthOther:'',text:''}};
   V.flow.v.tags??=[];V.flow.v.health??=[];V.flow.v.healthOther??='';V.flow.v.text??='';
+  /* a new check-in closed partway comes back as it was, for this visit only; nothing is stored until it's saved */
+  V.flow.v0=JSON.stringify(V.flow.v);const dr=!c&&V.fdraft[fdKey(sl,day)];if(dr){V.flow.v=dr.v;V.flow.step=dr.step;}
   if(!$('#flow.open'))V.flowFrom=document.activeElement;
   closeSheet();if(typeof closeQ==='function')closeQ();renderFlow();const f=$('#flow');f.classList.add('open');f.tabIndex=-1;f.focus({preventScroll:true});
 }
 function fAnswered(){const f=V.flow,v=f.v;return {mood:v.mood!=null,detail:f.sl==='morning'?(v.sleep!=null||!!v.q||!!v.focus):(v.craving!=null||v.tags.length>0),body:v.health.length>0,words:!!v.text.trim(),review:true}[FKEYS(f.sl)[f.step]];}
 const fNextLabel=()=>V.flow.step===fRev(V.flow.sl)?(V.flow.edit?'Save changes':'Save check-in'):fAnswered()?'Continue':'Skip this step';
-const fLabel=()=>{const n=$('#fnext');if(n)n.textContent=fNextLabel();};
+/* Save and finish: after any answer, save what's there and skip the steps left */
+const fSaveNow=()=>{const f=V.flow,v=f.v;return !f.ret&&f.step<fRev(f.sl)&&(v.mood!=null||v.sleep!=null||!!v.q||!!v.focus||v.craving!=null||v.tags.length>0||v.health.length>0||!!v.text.trim());};
+const fLabel=()=>{const n=$('#fnext');if(n)n.textContent=fNextLabel();const s=$('#fsave');if(s)s.hidden=!fSaveNow();};
 function flowStep(){
   const f=V.flow,v=f.v,mor=f.sl==='morning',opt='<span class="muted" style="font-weight:500">· optional</span>';
   const at=k=>FKEYS(f.sl).indexOf(k);
-  switch(FKEYS(f.sl)[f.step]||'done'){
+  switch(FKEYS(f.sl)[f.step]){
     case 'mood':return `<div class="flq">${f.pre&&v.mood===amood()?`<h2>Earlier you said “${MOODS[v.mood][1].toLowerCase()}”. Still feel that way?</h2><p>Continue to keep it, or tap the one that fits now.</p>`:f.past?`<h2>${f.sl==='daily'?'How was this day?':`How did you feel in the ${slotL(f.sl).toLowerCase()}?`}</h2>`:`<h2>How are you feeling right now?</h2><p>There’s no wrong answer. Tap the one that fits best.</p>`}</div>
       <div class="bigmoods ${v.mood!=null?'picked':''}" role="radiogroup" aria-label="Mood">${MOODS.map(([e,l],i)=>`<button class="bm ${v.mood===i?'on':''}" role="radio" aria-checked="${v.mood===i}" data-act="fmood:${i}"><span>${e}</span><b class="bml">${l}</b></button>`).join('')}</div>`;
     case 'detail':return mor?`<div class="flq"><h2>How did you sleep?</h2><p>A rough guess is plenty.</p></div>
@@ -69,18 +75,15 @@ function flowStep(){
       const t=v.text.trim();rows.push([at('words'),'pen','butter','Your words',t?esc(t.slice(0,160))+(t.length>160?'…':''):'No note this time']);
       return `<div class="flq"><h2>Your check-in</h2><p>Have a look. Tap Edit to change anything.</p></div>
       <section class="card rvlist">${rows.map(([s,i,c,k,val])=>`<div class="rv"><span class="itile ${c}">${I(i)}</span><div><div class="k">${k}</div><div class="muted">${val}</div></div><button class="link" data-act="fgo:${s}">Edit</button></div>`).join('')}</section>`;}
-    case 'done':{const n=Object.keys(ckDay(f.day)).length,nm=S.profile.name.trim();
-      return `<div class="donec">${CHECK}</div><h2>${f.edit?'Changes saved':'Check-in saved'}</h2><p>Thanks for pausing${nm?', '+esc(nm):''}. ${f.day===localToday()?`That’s ${n} of 3 check-ins today.`:'That day is up to date.'}</p><button class="btn primary lg" data-act="fclose" style="min-width:220px;margin-top:8px">Done</button>`;}
   }
 }
 function renderFlow(){
-  const f=V.flow,st=FSTEPS(f.sl),done=f.step===fDone(f.sl);
+  const f=V.flow,st=FSTEPS(f.sl);
   $('#flow').setAttribute('aria-label','Check-in');$('#flow').innerHTML=`<div class="glow"><i></i><i></i><i></i></div>
     <div class="fltop"><button class="iconbtn" data-act="fclose" aria-label="Close check-in">${I('x')}</button>
-      <div class="flmid"><div class="eyebrow">${slotL(f.sl)} check-in · ${f.day===localToday()?'Today':dlab(f.day,{weekday:'short',month:'short',day:'numeric'})}</div>${done?'':`<div class="fldots" role="img" aria-label="Step ${f.step+1} of ${st.length}: ${st[f.step]}">${st.map((_,i)=>`<i class="${i<f.step?'done':i===f.step?'cur':''}"></i>`).join('')}</div>`}</div><span style="width:44px"></span></div>
-    <div class="flbody"><div class="flcol ${done?'fldone':''} in-${f.dir}">${flowStep()}</div></div>
-    ${done?'':`<div class="flfoot"><div class="inner">${f.step?`<button class="btn lg" data-act="fback">Back</button>`:''}<button class="btn primary lg" id="fnext" data-act="fnext">${fNextLabel()}</button></div></div>`}`;
-  if(done)setTimeout(()=>sparks($('#flow .donec'),20),250);
+      <div class="flmid"><div class="eyebrow">${slotL(f.sl)} check-in · ${f.day===localToday()?'Today':dlab(f.day,{weekday:'short',month:'short',day:'numeric'})}</div><div class="fldots" role="img" aria-label="Step ${f.step+1} of ${st.length}: ${st[f.step]}">${st.map((_,i)=>`<i class="${i<f.step?'done':i===f.step?'cur':''}"></i>`).join('')}</div><div class="flstep" aria-hidden="true">Step ${f.step+1} of ${st.length}</div></div><span style="width:44px"></span></div>
+    <div class="flbody"><div class="flcol in-${f.dir}">${flowStep()}</div></div>
+    <div class="flfoot"><div class="fearly" id="fsave" ${fSaveNow()?'':'hidden'}>Enough for now? <button class="link" data-act="fsave">Save and finish</button></div><div class="inner">${f.step?`<button class="btn lg" data-act="fback">Back</button>`:''}<button class="btn primary lg" id="fnext" data-act="fnext">${fNextLabel()}</button></div></div>`;
 }
 function fGo(n){const f=V.flow;f.dir=n>=f.step?'r':'l';f.step=n;if(n===fRev(f.sl))f.ret=false;renderFlow();}
 function fNext(){const f=V.flow;if(f.step===fRev(f.sl))return fSave();fGo(f.ret?fRev(f.sl):f.step+1);}
@@ -120,7 +123,8 @@ function fNext(){const f=V.flow;if(f.step===fRev(f.sl))return fSave();fGo(f.ret?
     else if (slot === 'daily' && !later && entry.moodFrom === 'daily') { entry.mood = 0; delete entry.moodFrom; }
     entry.updatedAt = at;
     S.journal[key] = entry;
-    fGo(fDone(slot));
+    f.saved = true;
+    flowClose();
     saveInBackground(() => {
       if (before) S.journal[key] = before; else delete S.journal[key];
       if (V.view === 'today' && $('#tgrid')) { refreshHero(); swap('dmood', dMood()); }
@@ -129,7 +133,8 @@ function fNext(){const f=V.flow;if(f.step===fRev(f.sl))return fSave();fGo(f.ret?
 
 function flowClose(){
   const f=V.flow;$('#flow')?.classList.remove('open');if(!f){const was=V.flowFrom;V.flowFrom=null;if(was?.isConnected)was.focus({preventScroll:true});else $('#main')?.focus({preventScroll:true});return;}V.flow=null;
-  if(f.step===fDone(f.sl)){if(V.view==='journal'&&typeof renderJ==='function')renderJ();if(V.view==='today'){refreshHero();V.amfresh=!!amsrc();swap('dmood',dMood());V.amfresh=false;}toast(`${slotL(f.sl)} check-in ${f.edit?'updated':'saved'}`);}
+  const key=fdKey(f.sl,f.day);if(f.saved||JSON.stringify(f.v)===f.v0)delete V.fdraft[key];else if(!f.edit)V.fdraft[key]={v:f.v,step:f.step};
+  if(f.saved){if(V.view==='journal'&&typeof renderJ==='function')renderJ();if(V.view==='today'){refreshHero();V.amfresh=!!amsrc();swap('dmood',dMood());V.amfresh=false;sparks($('#now .count'),14);}toast(f.edit?`${slotL(f.sl)} check-in updated`:'Check-in saved. Thanks for pausing.');}
   /* focus goes back to where the check-in was opened from */
   const from=V.flowFrom;V.flowFrom=null;if(from?.isConnected)from.focus({preventScroll:true});else $('#main')?.focus({preventScroll:true});
 }
@@ -148,6 +153,7 @@ Object.assign(ACT,{
   fcrskip:()=>{V.flow.v.craving=null;$('#fcr').value=0;$('#fcrv').textContent='–';$('#fcrw').textContent=CRW(null);fLabel();},
   fprompt:(b,e,x)=>{const ta=$('#ftext');ta.value=(ta.value.trim()?ta.value.trim()+'\n':'')+PROMPTS[x]+' ';V.flow.v.text=ta.value;$('#ftc').textContent=ta.value.length+' / 5000';ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);fLabel();},
   fnext:()=>fNext(),
+  fsave:()=>fSave(),
   fback:()=>{V.flow.ret=false;fGo(V.flow.step-1);},
   fgo:(b,e,x)=>{V.flow.ret=true;fGo(+x);},
   fclose:()=>flowClose()

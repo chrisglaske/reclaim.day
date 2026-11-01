@@ -137,14 +137,17 @@ function journal(){
     <div class="grid main2"><div class="col">${jDay()}</div><div class="col jside">${jCal()}${jSearch()}</div></div>`;
 }
 function jGo(k){V.jday=k;V.jmon=monthNo(k);V.jswap=true;renderJ();V.jswap=false;}
-function renderJ(){const y=$('#main').scrollTop,v=$('#view');v.classList.remove('enter');v.innerHTML=journal();$('#main').scrollTop=y;jSpy();}
+/* the edit sheets also open from Today and Tracking, which then redraw themselves */
+function renderJ(){if(V.view!=='journal'){V.momopen=!!$('#hab-all .hmom')?.open;swapView();return;}const y=$('#main').scrollTop,v=$('#view');v.classList.remove('enter');v.innerHTML=journal();$('#main').scrollTop=y;jSpy();}
 VIEWS.journal=journal;
 
 /* a "when" sheet for waves and dose notes; jTimeVal() reads it back (a past time, or a toast and null) */
-function jTimeSheet(title,q,at,go){openSheet(`<div class="grab"></div><h3>${title}</h3><p class="muted" style="margin:0">${q}</p><div class="fsec" style="border:0"><label class="lbl" for="etime">When</label><input type="datetime-local" class="field" id="etime" value="${lclVal(at)}" max="${nowVal()}"></div><div class="exrow" style="margin-top:6px"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="${go}">Save</button></div>`);}
+function jTimeSheet(title,q,at,go,rm){openSheet(`<div class="grab"></div><h3>${title}</h3><p class="muted" style="margin:0">${q}</p><div class="fsec" style="border:0"><label class="lbl" for="etime">When</label><input type="datetime-local" class="field" id="etime" value="${lclVal(at)}" max="${nowVal()}"></div>${rm?`<button class="link srm" data-act="${rm[0]}">${rm[1]}</button>`:''}<div class="exrow" style="margin-top:6px"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="${go}">Save</button></div>`);}
 function jTimeVal(){const v=$('#etime').value,at=v?new Date(v):null;if(!at||isNaN(at)){toast('Choose when it happened');$('#etime').focus();return null;}if(at>new Date()){toast('Choose a time in the past');$('#etime').focus();return null;}return at;}
 Object.assign(ACT,{
   jpick:(b,e,x)=>jGo(x),
+  /* from a summary elsewhere: that day in the Journal */
+  jopen:(b,e,x)=>{hideTip();V.jday=x;V.jmon=monthNo(x);ACT.nav(b,e,'journal');},
   jf:(b,e,x)=>{V.jf=x;renderJ();},
   jtrio:()=>{V.jtrio=V.jday;renderJ();$('.jck')?.focus({preventScroll:true});},
   jdcrm:()=>{const k=V.jday,entry=journalRecord(k);if(!entry||!dayCheck(k))return;const before=JSON.parse(JSON.stringify(entry));delete entry.checkins.daily;if(entry.moodFrom==='daily'){entry.mood=0;delete entry.moodFrom;}renderJ();
@@ -166,7 +169,7 @@ Object.assign(ACT,{
     saveInBackground(()=>{restoreDoseEvent(x,ev);renderJ();});},
   /* Edit and remove everything in the day line: a moment reopens its form; waves and dose notes change when they happened */
   jed:(b,e,x)=>{const m=S.slips.find(s=>s&&s.id===x),k=m&&HK.find(h=>VK[h]===m.vice);if(!k)return;openSheet(momentSheet(k,m));mguide();requestAnimationFrame(placeSeg);},
-  jwe:(b,e,x)=>{const c=S.cravings.find(v=>v&&v.id===x);if(!c)return;jTimeSheet('Edit this wave','When did you ride it out?',c.at,'jwego:'+esc(x));},
+  jwe:(b,e,x)=>{const c=S.cravings.find(v=>v&&v.id===x);if(!c)return;jTimeSheet('Edit this wave','When did you ride it out?',c.at,'jwego:'+esc(x),['jrw:'+esc(x),'Remove this wave']);},
   jwego:(b,e,x)=>{const c=S.cravings.find(v=>v&&v.id===x),at=jTimeVal();if(!c||!at)return;
     const old=c.at,put=v=>{c.at=v;setC('waves',waves());renderJ();};put(at.toISOString());closeSheet();
     toast('Wave updated',()=>{put(old);saveInBackground(()=>put(at.toISOString()));});saveInBackground(()=>put(old));},
@@ -176,7 +179,7 @@ Object.assign(ACT,{
     const back=()=>{S.cravings.splice(Math.min(i,S.cravings.length),0,c);setC('waves',waves());renderJ();};
     toast('Wave removed',()=>{back();saveInBackground(()=>{const j=S.cravings.indexOf(c);if(j>=0)S.cravings.splice(j,1);setC('waves',waves());renderJ();});});
     saveInBackground(back);},
-  jde:(b,e,x,y)=>{const ev=((S.doses[V.jday]||{})[x]||[]).filter(d=>d&&d.at)[+y];if(!ev)return;jTimeSheet('Edit this dose note','When was it noted?',ev.at,'jdego:'+esc(x)+':'+esc(y));},
+  jde:(b,e,x,y)=>{const ev=((S.doses[V.jday]||{})[x]||[]).filter(d=>d&&d.at)[+y];if(!ev)return;jTimeSheet('Edit this dose note','When was it noted?',ev.at,'jdego:'+esc(x)+':'+esc(y),['jrd:'+esc(x)+':'+esc(y),'Remove this dose note']);},
   jdego:(b,e,x,y)=>{const ev=((S.doses[V.jday]||{})[x]||[]).filter(d=>d&&d.at)[+y],at=jTimeVal(),med=S.meds.find(m=>m.id===x);if(!ev||!at)return;
     if(med&&med.startDate&&dateKey(at)<dateKey(med.startDate)){toast('That is before this medicine was started');return;}
     const old=ev.at,put=v=>{removeDoseEvent(x,ev);ev.at=v;restoreDoseEvent(x,ev);renderJ();};put(at.toISOString());closeSheet();

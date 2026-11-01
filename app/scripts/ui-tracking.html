@@ -15,7 +15,7 @@ function weekBoxes(kind){
     if(t.mode==='track'){ok=true;tip=`${n} ${uw(kind,n)} noted`;show=n;}
     else if(red){const s=limitStatus(VK[kind],k);ok=s.within;show=n;
       tip=s.per==='week'?`${n} ${uw(kind,n)} · week so far ${s.used} of ${s.target} · ${ok?'within range':'over range'}`:!s.allowedToday?(n?`Rest day · ${n} ${uw(kind,n)} noted`:'Rest day'):`${n} ${uw(kind,n)} · ${ok?'within range':'over range'}`;}
-    return `<div class="dy">${dlab(k,{weekday:'narrow'})}<span class="bx ${ok?'in':'out'} ${k===TODAY?'today':''}" style="--d:${i}" tabindex="0" data-tip="<b>${lab}</b> · ${tip}" aria-label="${lab}: ${tip}">${show}</span></div>`;}).join('');
+    return `<div class="dy">${dlab(k,{weekday:'narrow'})}<button class="bx ${ok?'in':'out'} ${k===TODAY?'today':''}" style="--d:${i}" data-act="jopen:${k}" data-tip="<b>${lab}</b> · ${tip}" aria-label="${lab}: ${tip}. Open this day">${show}</button></div>`;}).join('');
 }
 /* every tracked habit in one compact card: a two-line row per habit, one "Note a moment" that asks which */
 function hrow(k,pop){
@@ -40,7 +40,7 @@ function habMoments(){
   const l=HK.flatMap(k=>mlist(k).map(m=>({...m,k}))).sort((a,b)=>new Date(a.rec.at)-new Date(b.rec.at)),
     noted=m=>new Date(m.rec.createdAt||m.rec.at),last=l.reduce((x,m)=>!x||noted(m)>=noted(x)?m:x,null);
   return `<details class="acc hmom" ${V.momopen?'open':''}><summary><span>Today’s moments <span class="muted">· ${l.length}</span></span>${I('chev')}</summary>
-    ${l.length?`<div class="mlist">${l.slice().reverse().map(m=>`<div class="mli"><time>${m.w}</time><div><span aria-label="${HB[m.k].n}">${HEMO[m.k][0]}</span> <b>${esc(m.kind)}</b> · ${m.amt} ${uw(m.k,m.amt)}${m.trig.length?` ${m.trig.map(t=>`<span class="tg">${esc(t)}</span>`).join('')}`:''}</div></div>`).join('')}</div>
+    ${l.length?`<div class="mlist">${l.slice().reverse().map(m=>`<button class="mli" data-act="jed:${esc(m.rec.id)}" aria-label="Edit ${esc(m.kind)}, ${m.amt} ${uw(m.k,m.amt)} at ${m.w}"><time>${m.w}</time><div><span aria-label="${HB[m.k].n}">${HEMO[m.k][0]}</span> <b>${esc(m.kind)}</b> · ${m.amt} ${uw(m.k,m.amt)}${m.trig.length?` ${m.trig.map(t=>`<span class="tg">${esc(t)}</span>`).join('')}`:''}</div>${I('chev','stch')}</button>`).join('')}</div>
       <button class="link" data-act="mundo:${last.k}" style="margin:2px 0 8px">Undo latest</button>`
       :`<p>Nothing noted today. You can start with one moment.</p>`}</details>`;
 }
@@ -66,7 +66,7 @@ function medsCard(){
   return `<section class="card" id="medc"><div class="ctitle"><h2>Today’s doses</h2>${ds.length?`<span class="badge">${blur(dn)} of ${ds.length} scheduled</span>`:''}</div>
     ${cuLine()}<div class="lrows">${ds.map(doseRow).join('')}${ps.map(prnRow).join('')}</div>
     ${ms.length?`<details class="acc" style="margin-top:10px"><summary>History and routine ${I('chev')}</summary>
-      ${hide()?'<p>Your history is here when you want it.</p>':ms.map(m=>{const hist=medWeek(m);return `<p>${esc(m.name)} noted on ${sum(hist)} of the last 7 days</p><div class="wk7">${hist.map((h,i)=>{const k=addD(TODAY,i-6),l=dlab(k,{weekday:'short',month:'short',day:'numeric'});return `<i class="${h?'':'no'}" data-tip="<b>${l}</b> · ${h?'dose noted':'no dose noted'}" aria-label="${l}, ${h?'dose noted':'no dose noted'}" role="img">${h?I('check'):''}</i>`;}).join('')}</div>`;}).join('')}
+      ${hide()?'<p>Your history is here when you want it.</p>':ms.map(m=>{const hist=medWeek(m);return `<p>${esc(m.name)} noted on ${sum(hist)} of the last 7 days</p><div class="wk7">${hist.map((h,i)=>{const k=addD(TODAY,i-6),l=dlab(k,{weekday:'short',month:'short',day:'numeric'});return `<button data-act="jopen:${k}" data-tip="<b>${l}</b> · ${h?'dose noted':'no dose noted'}" aria-label="${l}, ${h?'dose noted':'no dose noted'}. Open this day"><i class="${h?'':'no'}">${h?I('check'):''}</i></button>`;}).join('')}</div>`;}).join('')}
       <details class="acc"><summary>Why this routine can help ${I('chev')}</summary><p>A schedule can make a dose easier to bring to mind. Follow the directions given to you by your prescriber.</p></details>
       ${why.map(m=>`<details class="acc"><summary>${why.length>1?esc(m.name)+' · Why this helps':'Your note · Why this helps'} ${I('chev')}</summary><p>${esc(m.whyThisHelps)}</p></details>`).join('')}
     </details>`:''}</section>`;
@@ -97,16 +97,18 @@ function mguide(){const sh=$('#mmk')?.closest('.sheet');if(!sh)return;const k=sh
   const on=$('#mrads .rad.on')?.dataset.act.split(':')[1]||'log';$('#mmk').textContent=MKS[on];$('#mmks').hidden=!a||a.action!==on;}
 /* ed: a saved moment being edited from the Journal (everything is filled in from it) */
 function momentSheet(k,ed){
-  const kinds=HB[k].kinds,U=unitOf(k);V.mtouch=!!ed;
-  return `<div class="grab"></div><h3>${ed?`Edit this ${HB[k].v} moment`:`A ${HB[k].v} moment`}</h3><p class="muted" style="margin:0">${ed?'Change anything, then save.':'Everything is filled in, so you can save straight away.'} A moment is information, not a verdict.</p>
+  const kinds=HB[k].kinds,U=unitOf(k),last=ed?null:lastMoment(k),kind=ed?(kinds.includes(ed.productType)?ed.productType:kinds[0]):last&&kinds.includes(last.productType)?last.productType:kinds[0],
+    /* a quit plan starts from the usual small amount, so an old large one can't suggest restarting the markers */
+    amt=ed?ed.amount:last&&track(k).mode!=='quit'&&+last.amount>0&&+last.amount<=U.max?+last.amount:U.a0;V.mtouch=!!ed;
+  return `<div class="grab"></div><h3>${ed?`Edit this ${HB[k].v} moment`:`A ${HB[k].v} moment`}</h3><p class="muted" style="margin:0">${ed?'Change anything, then save.':last?'Filled in from last time, so you can save straight away.':'Everything is filled in, so you can save straight away.'} A moment is information, not a verdict.</p>
   <div class="fsec" style="border:0"><span class="lbl">When</span>${seg('mwhen',[['now','Just now'],['earlier','Earlier']],ed?'earlier':'now')}<input type="datetime-local" class="field" id="mwhent" value="${ed?lclVal(ed.at):nowVal()}" max="${nowVal()}" aria-label="When it happened" ${ed?'':'hidden'}></div>
-  <div class="fsec"><span class="lbl">What kind</span><div class="chips" id="mkind">${kinds.map((x,i)=>`<button class="chip ${(ed?x===ed.productType||(!i&&!kinds.includes(ed.productType)):!i)?'on':''}" data-act="one:mkind" data-v="${x}">${ck()}${x}</button>`).join('')}</div></div>
-  <div class="fsec"><div class="inl"><span class="lbl">How much <span class="muted" style="font-weight:500">· ${U.many}</span></span><div class="stepper"><button data-act="mamt:-" aria-label="Less">−</button><input class="num" id="mamt" inputmode="decimal" data-step="${U.as}" data-max="${U.max}" value="${ed?ed.amount:U.a0}" aria-label="How much, in ${U.many}"><button data-act="mamt:+" aria-label="More">+</button></div></div>
+  <div class="fsec"><span class="lbl">What kind</span><div class="chips" id="mkind">${kinds.map((x,i)=>`<button class="chip ${x===kind?'on':''}" data-act="one:mkind" data-v="${x}">${ck()}${x}</button>`).join('')}</div></div>
+  <div class="fsec"><div class="inl"><span class="lbl">How much <span class="muted" style="font-weight:500">· ${U.many}</span></span><div class="stepper"><button data-act="mamt:-" aria-label="Less">−</button><input class="num" id="mamt" inputmode="decimal" data-step="${U.as}" data-max="${U.max}" value="${amt}" aria-label="How much, in ${U.many}"><button data-act="mamt:+" aria-label="More">+</button></div></div>
     <div class="inl"><span class="lbl muted">Cost <span style="font-weight:500">· optional</span></span><input class="field" id="mcost" type="number" min="0" step="0.01" placeholder="Not noted" ${ed&&ed.cost!==''&&ed.cost!=null?`value="${esc(ed.cost)}"`:''} aria-label="Cost, optional" style="max-width:150px"></div></div>
   ${k==='drink'?alcWarn():''}
   <details class="acc"><summary>What was around you? <span class="muted" style="font-weight:500">· optional</span> ${I('chev')}</summary><div class="fsec" style="border:0;padding-top:0"><div class="chips" id="mtrig">${TRIGS.map(t=>`<button class="chip ${ed&&(ed.triggers||[]).includes(t)?'on':''}" data-act="tag" data-v="${t}">${ck()}${t}</button>`).join('')}</div><textarea id="mwhy" maxlength="2000" placeholder="A note to yourself…" aria-label="A note to yourself" style="min-height:76px">${ed?esc(ed.why||''):''}</textarea></div></details>
   <details class="acc"><summary><span>Recovery markers · <b id="mmk">Keep current</b><span class="muted" id="mmks" style="font-weight:500" hidden> · Suggested</span></span> ${I('chev')}</summary><div class="whyask madv" id="madv" role="note" hidden>${I('bulb')}<p></p></div><div class="rads" id="mrads" style="padding-bottom:12px">${MK.map(([v,t,d],i)=>`<button class="rad ${(ed?v===(ed.action||'log'):!i)?'on':''}" data-act="mmark:${v}"><span class="o"></span><span><b>${t} <span class="sugg" hidden>Suggested</span></b><small>${d}</small></span></button>`).join('')}</div></details>
-  <div class="sfoot2"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="msave:${k}" ${ed?`data-edit="${esc(ed.id)}"`:''}>${ed?'Save changes':'Save moment'}</button></div>`;
+  ${ed?`<button class="link srm" data-act="jrm:${esc(ed.id)}">Remove this moment</button>`:''}<div class="sfoot2"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="msave:${k}" ${ed?`data-edit="${esc(ed.id)}"`:''}>${ed?'Save changes':'Save moment'}</button></div>`;
 }
 function refreshTrack(k,pop){if(V.view!=='tracking')return;V.momopen=!!$('#hab-all .hmom')?.open;$('#hab-all')?swap('hab-all',habAll(pop&&k)):renderView();}
 const refreshMeds=()=>{if(V.view==='tracking')swap('medc',medsCard());else if(V.view==='today')refreshHero();};

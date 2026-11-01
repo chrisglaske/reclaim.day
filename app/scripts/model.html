@@ -136,7 +136,16 @@
 
   // storyItems(): everything saved today (S.tasks, S.prnlist, S.mlist, S.wlist), oldest first.
   function storyItems() {
-    return todayStoryItems(localToday()).map(x => ({ at: x.time, ic: x.icon || x.emoji, tint: x.tint, t: x.title, d: x.detail }));
+    return todayStoryItems(localToday()).map(x => ({ at: x.time, ic: x.icon || x.emoji, tint: x.tint, t: x.title, d: x.detail, act: storyAct(x.id) }));
+  }
+  // What tapping a Day story row opens: the check-in, or the same edit sheet the Journal uses.
+  function storyAct(id) {
+    if (id.startsWith('checkin-')) return 'flowrev:' + id.slice(8);
+    if (id.startsWith('moment-')) return 'jed:' + id.slice(7);
+    if (id.startsWith('craving-')) return 'jwe:' + id.slice(8);
+    if (!id.startsWith('dose-')) return '';
+    const i = id.lastIndexOf('-');
+    return 'sdose:' + id.slice(5, i) + ':' + id.slice(i + 1);
   }
   // S.mlist[k]: today's moments for habit k, oldest first, in the mockup's shape ({w, kind, amt, trig}) plus the saved record.
   function mlist(k) {
@@ -144,6 +153,10 @@
     return S.slips.filter(m => m && m.vice === VK[k] && dateKey(m.at) === day)
       .sort((a, b) => new Date(a.at) - new Date(b.at))
       .map(m => ({ w: tstr(m.at), kind: m.productType || HB[k].n, amt: Number(m.amount) || 0, trig: Array.isArray(m.triggers) ? m.triggers : [], rec: m }));
+  }
+  // The newest moment for habit k on any day, for the moment sheet's starting kind and amount.
+  function lastMoment(k) {
+    return S.slips.filter(m => m && m.vice === VK[k]).reduce((last, m) => !last || new Date(m.at) >= new Date(last.at) ? m : last, null);
   }
   // S.mlist[k].at(-1): the moment for habit k noted most recently today (the one "Undo latest" removes).
   function latestMoment(k) {
@@ -322,7 +335,7 @@
     const med = schedMeds().map(m => ({ id: m.id, name: m.name, s: Array.from({ length: 30 }, (_, i) => { const st = medDayStatus(m, addD(td, i - 29)); return st.hasDoseNoted ? '1' : st.skipped ? '2' : '0'; }).join(''), start: addD(td, -29) }));
     const fm = schedMeds()[0];
     return {
-      n, days, use, wave, band: bi < 0 ? null : [bi + 6, bi + 8],
+      n, days, use, wave, prevUse: pu, prevWave: pw, band: bi < 0 ? null : [bi + 6, bi + 8],
       lastPct: pu + pw ? Math.round(pw / (pu + pw) * 100) : null, limitDays, reduce: VICE_KEYS.filter(v => red(td).includes(v)),
       kept: Math.round(sum(days.map(day => dailyEstimatedSavings(day)))), med, medName: fm ? fm.name : '', medDays: fm ? days.filter(day => medDayStatus(fm, day).hasDoseNoted).length : 0,
       best, trig, untagged, heat: past.map(c => c.level), heatStart: hm.cells[0].day,

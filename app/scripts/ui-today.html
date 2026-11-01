@@ -99,7 +99,7 @@ function tFocus(){
 function tStory(){
   const a=storyItems(),cut=V.sall||a.length<=5?0:a.length-4,shown=a.slice(cut);
   return tcard('story','Day story',`${a.length} moment${a.length===1?'':'s'}${a.length?' · latest '+a[a.length-1].at:''}`,
-    a.length?`<ol class="dstory">${cut?`<li class="more"><button class="link" data-act="sall">Show ${cut} earlier</button></li>`:''}${shown.map((x,i)=>`<li class="${V.snew&&i===shown.length-1?'new':''}"><span class="itile ${x.tint}">${I(x.ic)}</span><div style="min-width:0"><b>${esc(x.t)}</b><small>${esc(x.d)}</small></div><time>${x.at}</time></li>`).join('')}</ol>`
+    a.length?`<ol class="dstory">${cut?`<li class="more"><button class="link" data-act="sall">Show ${cut} earlier</button></li>`:''}${shown.map((x,i)=>{const row=`<span class="itile ${x.tint}">${I(x.ic)}</span><div style="min-width:0"><b>${esc(x.t)}</b><small>${esc(x.d)}</small></div><time>${x.at}</time>`;return `<li class="${V.snew&&i===shown.length-1?'new':''}">${x.act?`<button class="strow" data-act="${esc(x.act)}" aria-label="Open ${esc(x.t)} from ${x.at}">${row}${I('chev','stch')}</button>`:row}</li>`;}).join('')}</ol>`
     :`<p class="empty">Nothing saved to today’s story yet. It will gather the moments you choose to note.</p>`,
     `<span class="badge">${a.length}</span>`);
 }
@@ -111,12 +111,12 @@ function hval(k){const t=track(k),n=dBetween(localToday(),t.start),st=taper(t);
   return t.mode==='track'?`<span class="hm">Tracking · </span>${moments(k)}<span class="hm"> today</span>`:hrest(k)?`<span class="hm">Reduce · </span>Rest day`:t.mode==='reduce'?`<span class="hm">Reduce · </span>${hused(k)}/${t.limit}${hwk(k)?'<span class="hm"> this week</span>':''}`:n>0?`<span class="hm">Quit day in </span>${n}d${st.length?'<span class="hm"> · up to '+st[0].v+'</span>':''}`:`Day ${hday(k)}`;}
 /* smoking and vaping share one chip when both are tracked, so drinking stays in view */
 function hchips(){const on=k=>track(k).on;
-  if(on('smoke')&&on('vape'))return `<span class="hchip duo" title="Smoking and vaping"><span class="itile hem ${HB.smoke.tint}" aria-hidden="true">${hemo('smoke')}</span><span class="vh">Smoking: </span><b>${hval('smoke')}</b><span class="hsep" aria-hidden="true"></span><span class="itile hem ${HB.vape.tint}" aria-hidden="true">${hemo('vape')}</span><span class="vh">Vaping: </span><b>${hval('vape')}</b></span>${hchip('drink')}`;
+  if(on('smoke')&&on('vape'))return `<button class="hchip duo" data-act="nav:tracking" title="Smoking and vaping"><span class="itile hem ${HB.smoke.tint}" aria-hidden="true">${hemo('smoke')}</span><span class="vh">Smoking: </span><b>${hval('smoke')}</b><span class="hsep" aria-hidden="true"></span><span class="itile hem ${HB.vape.tint}" aria-hidden="true">${hemo('vape')}</span><span class="vh">Vaping: </span><b>${hval('vape')}</b></button>${hchip('drink')}`;
   return HK.map(hchip).join('');}
 function hchip(k){const t=track(k);if(!t.on)return '';
   const v=hval(k);
   const nm=HB[k].n,em=hemo(k);
-  return `<span class="hchip" title="${nm} · ${t.mode==='reduce'?'cutting down':t.mode==='track'?'just tracking':'quitting'}"><span class="itile hem ${HB[k].tint}" aria-hidden="true">${em}</span><span class="vh">${nm}: </span><b>${v}</b></span>`;}
+  return `<button class="hchip" data-act="nav:tracking" title="${nm} · ${t.mode==='reduce'?'cutting down':t.mode==='track'?'just tracking':'quitting'}"><span class="itile hem ${HB[k].tint}" aria-hidden="true">${em}</span><span class="vh">${nm}: </span><b>${v}</b></button>`;}
 function today(){
   const h=new Date().getHours(),g=h<12?'Good morning':h<18?'Good afternoon':'Good evening',nm=S.profile.name.trim();
   return `<div class="hello"><div><div class="eyebrow">${dlab(localToday())}</div><h1>${g}${nm?', '+esc(nm):''}</h1></div>
@@ -125,7 +125,7 @@ function today(){
 }
 VIEWS.today=today;
 
-function setC(k,v){$$(`[data-c="${k}"]`,app).forEach(el=>{el.textContent=blur(v);bump(el);});const m=$('#meter-'+k);if(m&&hlim(k))m.style.width=Math.min(hused(k)/hlim(k),1)*100+'%';if(['waves',...HK].includes(k))refreshStory();}
+function setC(k,v){$$(`[data-c="${k}"]`,app).forEach(el=>{el.textContent=blur(v);bump(el);});const m=$('#meter-'+k);if(m&&hlim(k))m.style.width=Math.min(hused(k)/hlim(k),1)*100+'%';if(HK.includes(k)&&V.view==='today'){const h=$('.hstrip');if(h)h.innerHTML=dMood()+hchips();}if(['waves',...HK].includes(k))refreshStory();}
 function refreshStory(){if(V.view!=='today')return;V.snew=true;swap('tc-story',tStory());V.snew=false;}
 function refreshHero(){const g=$('#tgrid');if(!g)return;const y=$('#main').scrollTop,calm=!pending().length,flip=g.classList.contains('calm')!==calm;
   const run=()=>{if(flip){g.classList.toggle('calm',calm);g.innerHTML=tgridInner();}else{$('#now').outerHTML=hero();swap('tc-story',tStory());}$('#main').scrollTop=y;};
@@ -172,7 +172,9 @@ Object.assign(ACT,{
   amood:(b,e,x)=>{const day=localToday(),before=S.journal[day],was=amood();setAmood(+x);V.amedit=false;V.amfresh=true;swap('dmood',dMood());V.amfresh=false;$('#dmood .dmpill')?.focus({focusVisible:kbd});if(was==null)sparks($('#dmood .em'),10);toast(MOODFB[+x]);
     saveInBackground(()=>{if(before)S.journal[day]=before;else delete S.journal[day];swap('dmood',dMood());});},
   amedit:()=>{V.amedit=true;swap('dmood',dMood());$('#dmood .dm.on')?.focus({focusVisible:kbd});},
-  sall:()=>{V.sall=true;swap('tc-story',tStory());}
+  sall:()=>{V.sall=true;swap('tc-story',tStory());},
+  /* a dose in the Day story edits like one in the Journal, which works on V.jday */
+  sdose:(b,e,x,y)=>{V.jday=localToday();V.jmon=monthNo(V.jday);ACT.jde(b,e,x,y);}
 });
 /* Enter in the "Taken earlier?" field saves it, on Today or Tracking */
 app.addEventListener('keydown',e=>{const x=e.target.dataset?.earl;if(x&&e.key==='Enter'){e.preventDefault();(V.view==='tracking'?ACT.tearlsave:ACT.earliersave)(e.target,e,x);}});

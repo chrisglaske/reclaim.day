@@ -13,6 +13,7 @@ function storyCard(d){
   const lim=d.reduce.length?`stayed within your ${andL(d.reduce)} limit${d.reduce.length>1?'s':''} on `:'';
   const line=rich?andL([`You rode out ${ws}`,...d.medName?[`kept ${esc(d.medName)} going <em>${d.medDays} of ${d.n} days</em>`]:[],...lim?[`${lim}<em>${d.limitDays} days</em>`]:[]])+'.'
     :`You rode out ${ws}${lim?` and ${lim}<em>${d.limitDays} of ${d.n} days</em>`:''}. The patterns below fill in as you go.`;
+  const was=d.prevUse+d.prevWave>0&&!hide()?`<p class="scmp"><span>Moments: ${u} ${thisP(d)}, ${d.prevUse} ${lastP(d)}</span><span>Waves: ${w} ${thisP(d)}, ${d.prevWave} ${lastP(d)}</span></p>`:'';
   const shown=hide()?`Here’s the shape of ${d.n===7?'your week':'the last 30 days'}. Counters are hidden, so the numbers stay out of sight.`:line;
   return `<section class="hero story"><div class="hhead"><div><div class="eyebrow">${d.n===7?'Your week':'Last 30 days'} · ${rng(d)}</div><h2>${shown}</h2></div></div>
     <div class="stats">
@@ -20,7 +21,7 @@ function storyCard(d){
       ${d.reduce.length?`<button class="stat" data-act="itab:patterns"><b class="num">${blur(d.limitDays)}<small style="font-size:16px;opacity:.7">/${d.n}</small></b><span>Days within limit ${I('chev')}</span></button>`:`<button class="stat" data-act="itab:wellbeing"><b class="num">${blur(sum(Array.from({length:d.n},(_,i)=>Object.keys(ckDay(addD(localToday(),-i))).length)))}</b><span>Check-ins ${I('chev')}</span></button>`}
       <button class="stat" data-act="itab:progress"><b class="num">${blur(curSym()+d.kept)}</b><span>Kept in pocket ${I('chev')}</span></button>
       <button class="stat" data-act="itab:wellbeing"><b>${d.best||blur(u)}</b><span>${d.best?'Your steadiest day':'Moments noted'} ${I('chev')}</span></button>
-    </div></section>`;
+    </div>${was}</section>`;
 }
 function hoursCard(d){
   const u=sum(d.use),w=sum(d.wave),max=Math.max(1,...d.use.map((x,i)=>Math.max(x,d.wave[i])));
@@ -67,7 +68,7 @@ function heatCard(d){
   const lv=['No notes','1–2 notes','3–4 notes','5+ notes'];
   const cells=Array.from({length:35},(_,i)=>{const dt=new Date(start);dt.setDate(start.getDate()+i);const lab=dt.toLocaleDateString(dateLocale(), {weekday:'short',month:'short',day:'numeric'});
     if(i>=d.heat.length)return `<span class="c fut" style="--d:${i}" aria-hidden="true"></span>`;
-    return `<span class="c l${d.heat[i]} ${i===d.heat.length-1?'today':''}" style="--d:${i}" tabindex="0" data-tip="<b>${lab}</b> · ${lv[d.heat[i]]}" aria-label="${lab}: ${lv[d.heat[i]]}"></span>`;}).join('');
+    return `<button class="c l${d.heat[i]} ${i===d.heat.length-1?'today':''}" style="--d:${i}" data-act="jopen:${dk(dt)}" data-tip="<b>${lab}</b> · ${lv[d.heat[i]]}" aria-label="${lab}: ${lv[d.heat[i]]}. Open this day"></button>`;}).join('');
   return `<section class="card"><div class="ctitle"><h2>Showing up</h2><span class="badge">${act} of ${d.heat.length} days</span></div>
     <div class="heat">${['M','T','W','T','F','S','S'].map(x=>`<span class="wd">${x}</span>`).join('')}${cells}</div>
     <div class="hscale">Fewer<i style="background:var(--soft)"></i><i style="background:color-mix(in srgb,var(--primary) 28%,var(--card))"></i><i style="background:color-mix(in srgb,var(--primary) 58%,var(--card))"></i><i style="background:var(--primary)"></i>More</div>
@@ -113,7 +114,7 @@ function msCard(){
 function medCard(m){
   const n=[...m.s].filter(c=>c==='1').length;
   return `<section class="card"><div class="ctitle"><h2>${esc(m.name)}</h2><span class="badge">${blur(n)} of 30 days noted</span></div>
-    <div class="medgrid">${[...m.s].map((c,i)=>`<i class="${c==='1'?'':c==='2'?'skip':'no'}" style="--d:${i}" data-tip="<b>${sdate(addD(m.start,i))}</b> · ${c==='1'?'Dose noted':c==='2'?'Skipped':'None noted'}"></i>`).join('')}</div>
+    <div class="medgrid">${[...m.s].map((c,i)=>{const k=addD(m.start,i),w=c==='1'?'Dose noted':c==='2'?'Skipped':'None noted';return `<button data-act="jopen:${k}" data-tip="<b>${sdate(k)}</b> · ${w}" aria-label="${sdate(k)}: ${w}. Open this day"><i class="${c==='1'?'':c==='2'?'skip':'no'}" style="--d:${i}"></i></button>`;}).join('')}</div>
     <div class="legend" style="margin-top:12px"><span><i style="background:var(--good);border-radius:50%"></i>Dose noted</span><span><i style="border:2px solid var(--line2);border-radius:50%"></i>None noted</span>${m.s.includes('2')?'<span><i class="mskip"></i>Skipped</span>':''}</div></section>`;
 }
 function toolsCard(){
