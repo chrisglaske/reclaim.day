@@ -112,7 +112,7 @@
     const saved = typeof k === 'string' && dateKey(k) === k && k < appt.day ? k : '', days = n => Object.assign(apptRange({ start: dayOffset(end, 1 - n), end }), { label: n === 30 ? 'The last 30 days' : 'The last 3 months' });
     // A look back runs a year at most, however long ago the last visit was (insightsDateRange refuses more).
     const yearBack = dayOffset(end, -365);
-    const since = (day, who) => Object.assign(apptRange({ start: day > end ? end : day < yearBack ? yearBack : day, end }), { label: 'Since your ' + (who ? 'visit with ' + who : 'appointment') + ' on ' + insightsDateLabel(day) });
+    const since = (day, who) => Object.assign(apptRange({ start: day > end ? end : day < yearBack ? yearBack : day, end }), { label: day < yearBack ? 'The last year (last ' + (who ? 'visit with ' + who : 'appointment') + ' was ' + insightsDateLabel(day) + ')' : 'Since your ' + (who ? 'visit with ' + who : 'appointment') + ' on ' + insightsDateLabel(day) });
     if (appt.since === '30') return days(30);
     if (appt.since === '90') return days(90);
     if (appt.since === 'saved' && saved) return since(saved);

@@ -65,10 +65,13 @@ function taskHTML(t){
     ${act}${!t.done&&t.kind==='dose'?earlHTML(t):''}
   </div>`;
 }
+/* a check-in that was missed keeps its place in the day, before the next later check-in */
+const tlMerge=(stops,missed)=>{const o=SLOTS.map(s=>s[0]),r=[...stops];missed.forEach(m=>{const i=r.findIndex(x=>x.ck&&o.indexOf(x.ck)>o.indexOf(m.ck));r.splice(i<0?r.length:i,0,m);});return r;};
 function hero(){
   const L=later(),p=pending(),d=done(),fs=`<button class="link" data-act="nav:tracking">Full schedule ${I('chev')}</button>`,
-    dg=d.length?`<details class="donegrp"><summary>${I('chev')}Done today (${d.length})</summary><div class="tasks">${d.map(taskHTML).join('')}</div></details>`:'',ckn=SLOTS.filter(s=>missedT({kind:'checkin',done:!!ckDay(localToday())[s[0]],id:s[0]})).map(s=>({s:s[3],st:'',act:'flow:'+s[0]})),
-    all=[...ckn,...live().map(t=>({s:esc(t.short),st:t.skipped?'skip':t.done?'done':doseLate(t)?'late':'now',act:t.kind==='checkin'?(t.done?'flowrev:':'flow:')+t.id:t.done?'':'dopt:'+t.id})),{s:esc(L.short)+'<i class="tlt"> · '+L.time+'</i>',st:'',act:L.slot?'flow:'+L.slot:''}],
+    dg=d.length?`<details class="donegrp"><summary>${I('chev')}Done today (${d.length})</summary><div class="tasks">${d.map(taskHTML).join('')}</div></details>`:'',ckn=SLOTS.filter(s=>missedT({kind:'checkin',done:!!ckDay(localToday())[s[0]],id:s[0]})).map(s=>({s:s[3],st:'',act:'flow:'+s[0],ck:s[0]})),
+    stops=live().map(t=>({s:esc(t.short),st:t.skipped?'skip':t.done?'done':doseLate(t)?'late':'now',act:t.kind==='checkin'?(t.done?'flowrev:':'flow:')+t.id:t.done?'':'dopt:'+t.id,ck:t.kind==='checkin'?t.id:''})),
+    all=[...tlMerge(stops,ckn),{s:L.tomorrow?'Tomorrow':esc(L.short)+'<i class="tlt"> · '+L.time+'</i>',st:'',act:L.slot?'flow:'+L.slot:''}],
     dn=p.filter(t=>t.kind==='dose').length;
   return `<section class="hero ${p.length?'':'calm'}" id="now">
     <div class="hhead"><div><h2>${p.length?'When you’re ready':'All caught up'}</h2><div class="hsub">${p.length?'Then you’re set until <span class="nw">'+L.time+'</span>.':`Next: ${esc(L.title)} · <span class="nw">${L.time}</span>`}</div></div><span class="count num">${d.length}/${live().length+(L.tomorrow?0:1)} done</span></div>
