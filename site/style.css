@@ -283,15 +283,25 @@ body.doc-page .btn{background:var(--cob);color:var(--but)}
 .faq summary:focus-visible{outline:3px solid var(--cob);outline-offset:2px}
 .faq details p{margin:0 0 16px}
 .faq details ul{margin:0 0 16px}.faq details li{margin-bottom:8px}
-.changelog .entry{border-top:2px solid var(--navy);padding:18px 0 6px}
+.changelog .logmonth{font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin:30px 0 10px}
+.changelog .logmonth:first-child{margin-top:0}
+.changelog .logmonth[hidden],.changelog .entry[hidden]{display:none}
+.changelog .entry{border-top:2px solid var(--navy);padding:14px 0}
+.changelog summary{position:relative;list-style:none;min-height:44px;padding-right:32px;cursor:pointer}
+.changelog summary::-webkit-details-marker{display:none}
+.changelog summary::after{content:'';position:absolute;right:6px;top:8px;width:10px;height:10px;border:solid var(--navy);border-width:0 3px 3px 0;transform:rotate(45deg)}
+.changelog details[open]>summary::after{top:13px;transform:rotate(-135deg)}
+.changelog summary:focus-visible{outline:3px solid var(--cob);outline-offset:2px}
+.changelog details[open]>summary{margin-bottom:10px}
+.changelog .entry>p:last-child{margin-bottom:6px}
 .changelog{border-bottom:2px solid var(--navy);margin-bottom:28px}
 .logfilter{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 22px}
 .logfilter[hidden]{display:none}
 .logfilter button{min-height:44px;padding:8px 18px;border:2px solid var(--navy);border-radius:99px;background:transparent;color:var(--navy);font:800 15px var(--font);cursor:pointer}
 .logfilter button[aria-pressed=true]{background:var(--cob);color:var(--but)}
 .logfilter button:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
-.changelog .entry h2{font-size:22px;margin:6px 0 8px}
-.changelog .meta{font-size:15px;font-weight:600;margin:0}
+.changelog .entry h3{font-size:21px;font-weight:800;letter-spacing:-.015em;line-height:1.2;margin:6px 0 0}
+.changelog .meta{display:block;font-size:15px;font-weight:600}
 .changelog .tag{display:inline-block;font-weight:800;font-size:13px;letter-spacing:.02em;text-transform:uppercase;padding:2px 10px;border-radius:99px;border:2px solid var(--navy);margin-right:8px}
 .changelog .tag.new{background:var(--cob);color:var(--but)}
 .changelog .tag.fixed{background:transparent;color:var(--navy)}
