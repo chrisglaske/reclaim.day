@@ -13,7 +13,7 @@ function storyCard(d){
   const lim=d.reduce.length?`stayed within your ${andL(d.reduce)} limit${d.reduce.length>1?'s':''} on `:'';
   const line=rich?andL([`You rode out ${ws}`,...d.medName?[`kept ${esc(d.medName)} going <em>${d.medDays} of ${d.n} days</em>`]:[],...lim?[`${lim}<em>${d.limitDays} days</em>`]:[]])+'.'
     :`You rode out ${ws}${lim?` and ${lim}<em>${d.limitDays} of ${d.n} days</em>`:''}. The patterns below fill in as you go.`;
-  const was=d.prevUse+d.prevWave>0&&!hide()?`<p class="scmp"><span>Moments: ${u} ${thisP(d)}, ${d.prevUse} ${lastP(d)}</span><span>Waves: ${w} ${thisP(d)}, ${d.prevWave} ${lastP(d)}</span></p>`:'';
+  const was=d.prevUse+d.prevWave>0&&!hide()?`<p class="scmp">${HK.filter(k=>track(k).on).map(k=>{const v=VK[k],a=sum(d.days.map(x=>dailyUse(v,x))),b=sum(Array.from({length:d.n},(_,i)=>dailyUse(v,addD(d.days[0],-1-i))));return a+b?`<span>${HB[k].n}: ${fmtNum(a)} ${uw(k,a)} ${thisP(d)}, ${fmtNum(b)} ${lastP(d)}</span>`:'';}).join('')}<span>Waves: ${w} ${thisP(d)}, ${d.prevWave} ${lastP(d)}</span></p>`:'';
   const shown=hide()?`Here’s the shape of ${d.n===7?'your week':'the last 30 days'}. Counters are hidden, so the numbers stay out of sight.`:line;
   return `<section class="hero story"><div class="hhead"><div><div class="eyebrow">${d.n===7?'Your week':'Last 30 days'} · ${rng(d)}</div><h2>${shown}</h2></div></div>
     <div class="stats">
@@ -191,7 +191,7 @@ const IPANEL={
   wellbeing:d=>`<div class="grid main2"><div class="col">${moodCard(d)}${sleepCard(d)}</div><div class="col">${d.med.map(medCard).join('')}</div></div>`};
 function insights(){
   const d=V.ins=ins(V.iper),t=V.itab||'overview';
-  return `<div class="hello"><div><div class="eyebrow">Insights · ${rng(d)}</div><h1>What your ${d.n===7?'week':'month'} shows</h1><div class="ins-note" style="margin-top:6px">${I('check')}Built from what you already log. Nothing extra needed.</div></div>
+  return `<div class="hello"><div><div class="eyebrow">Insights · ${rng(d)}</div><h1>What your ${d.n===7?'week':'month'} shows</h1><div class="ins-note" style="margin-top:6px">${I('check')}Built from what you already note. Nothing extra needed.</div></div>
     <div class="chips">${[7,30].map(n=>`<button class="chip ${d.n===n?'on':''}" data-act="iper:${n}" aria-pressed="${d.n===n}">${n} days</button>`).join('')}</div></div>
     <div class="itabs"><div class="seg" role="tablist" aria-label="Insights sections"><span class="sp"></span>${ITABS.map(([k,l])=>`<button role="tab" id="it-${k}" aria-selected="${k===t}" aria-controls="ipanel" class="${k===t?'on':''}" data-act="itab:${k}" ${k===t?'':'tabindex="-1"'}>${l}</button>`).join('')}</div></div>
     <div class="ipanel" id="ipanel" role="tabpanel" aria-labelledby="it-${t}">${IPANEL[t](d)}</div>`;

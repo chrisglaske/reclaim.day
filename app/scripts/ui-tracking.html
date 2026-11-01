@@ -53,12 +53,12 @@ function habAll(pop){
 }
 /* one row per scheduled dose and one per as-needed medicine; the mockup's single Bupropion and lozenge rows */
 const doseRow=t=>`<div class="dose ${t.done?'done':''} ${t.skipped?'skip':''} ${t.late?'late':''}" id="d-${t.id}"><span class="itile peach">${I('pill')}</span>
-      ${t.done||t.skipped?`<div><div class="tt">${esc(t.title)}</div><div class="td">${t.skipped?`${t.multi?esc(t.label)+' · ':''}Skipped${t.reason?' · '+esc(t.reason):''}`:`${t.multi?esc(t.label)+' · noted':'Noted'} at ${t.at}`}</div></div>`
-        :doptBtn(t.id,'t',`<span class="tt">${esc(t.title)} ${t.late?`<span class="due late">${I('clock')}Late</span>`:t.due?'<span class="due">Due</span>':''}</span><span class="td">${esc(t.label)}${t.dueAt?` · ${t.late?'was due ':''}${t.dueAt}`:''}<span class="dhint" aria-hidden="true">›</span></span>`)}
+      ${t.done||t.skipped?`<div><div class="tt">${doseTitle(t.title)}</div><div class="td">${t.skipped?`${t.multi?esc(t.label)+' · ':''}Skipped${t.reason?' · '+esc(t.reason):''}`:`${t.multi?esc(t.label)+' · noted':'Noted'} at ${t.at}`}</div></div>`
+        :doptBtn(t.id,'t',`<span class="tt">${doseTitle(t.title)} ${t.late?`<span class="due late">${I('clock')}Late</span>`:t.due?'<span class="due">Due</span>':''}</span><span class="td">${esc(t.label)}${t.dueAt?` · ${t.late?'was due ':''}${t.dueAt}`:''}<span class="dhint" aria-hidden="true">›</span></span>`)}
       <button class="check ${t.done?'on':''}" data-act="tdose:${t.id}" aria-pressed="${t.done}" aria-label="${t.done?`Undo ${esc(t.name)} dose`:t.skipped?`Undo skipping ${esc(t.name)}`:`Note ${esc(t.name)} as taken now`}">${CHECK}</button>
       <div class="cfg" id="earl-${t.id}" inert><div><div class="earl"><label class="lbl" for="earlt-${t.id}" style="margin:10px 0 0">When did you take it?</label><input type="datetime-local" class="field" id="earlt-${t.id}" data-earl="${t.id}" value="${earlVal(t)}">
         <div class="exrow" style="margin:0"><button class="btn sm ghost" data-act="tearl:${t.id}">Cancel</button><button class="btn sm primary" data-act="tearlsave:${t.id}">Save earlier</button></div></div></div></div></div>`;
-const prnRow=p=>`<div class="prn"><span class="itile sky">${I('pill')}</span><div style="min-width:0"><div class="tt">${esc(p.title)}</div><div class="td">As needed${p.limit?' · personal limit '+p.limit:''}</div></div>
+const prnRow=p=>`<div class="prn"><span class="itile sky">${I('pill')}</span><div style="min-width:0"><div class="tt">${doseTitle(p.title)}</div><div class="td">As needed${p.limit?' · personal limit '+p.limit:''}</div></div>
       <div class="prnact">${hide()?'<span class="muted">Your as-needed notes are here when they help.</span>':`<span class="hv num"><span data-c="prn-${p.id}">${p.n}</span><small> today</small></span>`}<button class="btn sm ghost" data-act="prnundo:${p.id}" ${p.n?'':'disabled'} aria-label="Undo latest ${esc(p.title.split(' ·')[0])} dose">Undo</button><button class="btn sm primary" data-act="prnadd:${p.id}">${I('plus')}Note a dose</button></div></div>`;
 function medsCard(){
   const ds=trackDoses(),ps=prnMeds(),ms=schedMeds();if(!ds.length&&!ps.length)return '';
@@ -71,7 +71,7 @@ function medsCard(){
       ${why.map(m=>`<details class="acc"><summary>${why.length>1?esc(m.name)+' · Why this helps':'Your note · Why this helps'} ${I('chev')}</summary><p>${esc(m.whyThisHelps)}</p></details>`).join('')}
     </details>`:''}</section>`;
 }
-const wavesCard=()=>`<section class="card wavec"><span class="wnum"><span class="hv num" data-c="waves">${blur(waves())}</span></span><div class="grow"><h2>Waves ridden out</h2><small class="muted">Today</small></div><button class="btn sm" data-act="sos">${I('life')}Ride one out</button></section>`;
+const wavesCard=()=>`<section class="card wavec"><span class="wnum"><span class="hv num" data-c="waves">${blur(waves())}</span></span><div class="grow"><h2>Waves ridden out</h2><small class="muted">Today</small></div><button class="btn sm" data-act="sos">${I('life')}Open support</button></section>`;
 /* habits on the left; doses and waves alongside */
 function trackCols(){
   const none=`<section class="card"><div class="ctitle"><h2>No habits tracked</h2></div><p class="muted" style="margin:0 0 12px">Smoking, vaping and drinking are all off. Turn any of them on whenever you like.</p><button class="btn" data-act="sosset:habits">Open habit settings</button></section>`;
@@ -97,16 +97,16 @@ function mguide(){const sh=$('#mmk')?.closest('.sheet');if(!sh)return;const k=sh
   const on=$('#mrads .rad.on')?.dataset.act.split(':')[1]||'log';$('#mmk').textContent=MKS[on];$('#mmks').hidden=!a||a.action!==on;}
 /* ed: a saved moment being edited from the Journal (everything is filled in from it) */
 function momentSheet(k,ed){
-  const kinds=HB[k].kinds,U=unitOf(k),last=ed?null:lastMoment(k),kind=ed?(kinds.includes(ed.productType)?ed.productType:kinds[0]):last&&kinds.includes(last.productType)?last.productType:kinds[0],
+  const kinds=HB[k].kinds,U=unitOf(k),day=ed?'':V.mfor||'',last=ed?null:lastMoment(k),kind=ed?(kinds.includes(ed.productType)?ed.productType:kinds[0]):last&&kinds.includes(last.productType)?last.productType:kinds[0],
     /* a quit plan starts from the usual small amount, so an old large one can't suggest restarting the markers */
     amt=ed?ed.amount:last&&track(k).mode!=='quit'&&+last.amount>0&&+last.amount<=U.max?+last.amount:U.a0;V.mtouch=!!ed;
-  return `<div class="grab"></div><h3>${ed?`Edit this ${HB[k].v} moment`:`A ${HB[k].v} moment`}</h3><p class="muted" style="margin:0">${ed?'Change anything, then save.':last?'Filled in from last time, so you can save straight away.':'Everything is filled in, so you can save straight away.'} A moment is information, not a verdict.</p>
-  <div class="fsec" style="border:0"><span class="lbl">When</span>${seg('mwhen',[['now','Just now'],['earlier','Earlier']],ed?'earlier':'now')}<input type="datetime-local" class="field" id="mwhent" value="${ed?lclVal(ed.at):nowVal()}" max="${nowVal()}" aria-label="When it happened" ${ed?'':'hidden'}></div>
+  return `<div class="grab"></div><h3>${ed?`Edit this ${HB[k].v} moment`:`A ${HB[k].v} moment${day?' on '+sdate(day):''}`}</h3><p class="muted" style="margin:0">${ed?'Change anything, then save.':last?'Filled in from last time, so you can save straight away.':'Everything is filled in, so you can save straight away.'} A moment is information, not a verdict.</p>
+  <div class="fsec" style="border:0"><span class="lbl">When</span>${seg('mwhen',[['now','Just now'],['earlier','Earlier']],ed||day?'earlier':'now')}${ed||day?'':`<div class="chips" id="mago" role="group" aria-label="How long ago" hidden>${[[30,'30 min ago'],[60,'1 hour ago'],[120,'2 hours ago'],[240,'4 hours ago']].map(([m,l])=>`<button class="chip sm" data-act="mago:${m}">${l}</button>`).join('')}</div>`}<input type="datetime-local" class="field" id="mwhent" value="${ed?lclVal(ed.at):day?day+'T12:00':nowVal()}" max="${nowVal()}" aria-label="When it happened" ${ed||day?'':'hidden'}></div>
   <div class="fsec"><span class="lbl">What kind</span><div class="chips" id="mkind">${kinds.map((x,i)=>`<button class="chip ${x===kind?'on':''}" data-act="one:mkind" data-v="${x}">${ck()}${x}</button>`).join('')}</div></div>
   <div class="fsec"><div class="inl"><span class="lbl">How much <span class="muted" style="font-weight:500">· ${U.many}</span></span><div class="stepper"><button data-act="mamt:-" aria-label="Less">−</button><input class="num" id="mamt" inputmode="decimal" data-step="${U.as}" data-max="${U.max}" value="${amt}" aria-label="How much, in ${U.many}"><button data-act="mamt:+" aria-label="More">+</button></div></div>
     <div class="inl"><span class="lbl muted">Cost <span style="font-weight:500">· optional</span></span><input class="field" id="mcost" type="number" min="0" step="0.01" placeholder="Not noted" ${ed&&ed.cost!==''&&ed.cost!=null?`value="${esc(ed.cost)}"`:''} aria-label="Cost, optional" style="max-width:150px"></div></div>
   ${k==='drink'?alcWarn():''}
-  <details class="acc"><summary>What was around you? <span class="muted" style="font-weight:500">· optional</span> ${I('chev')}</summary><div class="fsec" style="border:0;padding-top:0"><div class="chips" id="mtrig">${TRIGS.map(t=>`<button class="chip ${ed&&(ed.triggers||[]).includes(t)?'on':''}" data-act="tag" data-v="${t}">${ck()}${t}</button>`).join('')}</div><textarea id="mwhy" maxlength="2000" placeholder="A note to yourself…" aria-label="A note to yourself" style="min-height:76px">${ed?esc(ed.why||''):''}</textarea></div></details>
+  <details class="acc"><summary><span>What was around you? <span class="muted" style="font-weight:500">· optional</span></span> ${I('chev')}</summary><div class="fsec" style="border:0;padding-top:0"><div class="chips" id="mtrig">${TRIGS.map(t=>`<button class="chip ${ed&&(ed.triggers||[]).includes(t)?'on':''}" data-act="tag" data-v="${t}">${ck()}${t}</button>`).join('')}</div><textarea id="mwhy" maxlength="2000" placeholder="A note to yourself…" aria-label="A note to yourself" style="min-height:76px">${ed?esc(ed.why||''):''}</textarea></div></details>
   <details class="acc"><summary><span>Recovery markers · <b id="mmk">Keep current</b><span class="muted" id="mmks" style="font-weight:500" hidden> · Suggested</span></span> ${I('chev')}</summary><div class="whyask madv" id="madv" role="note" hidden>${I('bulb')}<p></p></div><div class="rads" id="mrads" style="padding-bottom:12px">${MK.map(([v,t,d],i)=>`<button class="rad ${(ed?v===(ed.action||'log'):!i)?'on':''}" data-act="mmark:${v}"><span class="o"></span><span><b>${t} <span class="sugg" hidden>Suggested</span></b><small>${d}</small></span></button>`).join('')}</div></details>
   ${ed?`<button class="link srm" data-act="jrm:${esc(ed.id)}">Remove this moment</button>`:''}<div class="sfoot2"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="msave:${k}" ${ed?`data-edit="${esc(ed.id)}"`:''}>${ed?'Save changes':'Save moment'}</button></div>`;
 }
@@ -146,9 +146,12 @@ Object.assign(ACT,{
     const out=()=>{const i=S.slips.indexOf(m);if(i>=0)S.slips.splice(i,1);setC(k,moments(k));refreshTrack(k);if(V.view==='journal')renderJ();};
     toast(HB[k].n+' moment noted',()=>{out();saveInBackground(()=>{S.slips.push(m);setC(k,moments(k));refreshTrack(k);});});
     saveInBackground(out);},
-  mundo:(b,e,x)=>{const m=latestMoment(x);if(!m)return;openSheet(`<div class="grab"></div><h3>Remove this moment?</h3><p class="muted" style="margin:0">${esc(m.kind)} · ${m.amt} at ${m.w}. Only the latest moment noted today is removed.</p><div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep it</button><button class="btn primary" data-act="mundogo:${x}">Remove</button></div>`);},
-  mundogo:(b,e,x)=>{const m=latestMoment(x);if(!m)return;const i=S.slips.indexOf(m.rec);S.slips.splice(i,1);closeSheet();setC(x,moments(x));refreshTrack(x);toast('Moment removed');
-    saveInBackground(()=>{S.slips.splice(i,0,m.rec);setC(x,moments(x));refreshTrack(x);});},
+  mundo:(b,e,x)=>{const m=latestMoment(x);if(!m)return;const i=S.slips.indexOf(m.rec);S.slips.splice(i,1);closeSheet();setC(x,moments(x));refreshTrack(x);
+    const back=()=>{S.slips.splice(Math.min(i,S.slips.length),0,m.rec);setC(x,moments(x));refreshTrack(x);};
+    toast('Moment removed',()=>{back();saveInBackground(()=>{const j=S.slips.indexOf(m.rec);if(j>=0)S.slips.splice(j,1);setC(x,moments(x));refreshTrack(x);});});
+    saveInBackground(back);},
+  /* the quick choices under Earlier fill in the time field */
+  mago:(b,e,x)=>{$('#mwhent').value=lclVal(new Date(Date.now()-x*6e4));$$('#mago .chip').forEach(c=>c.classList.toggle('on',c===b));mguide();},
   /* one tap notes the dose, Undo, tap again to unmark */
   tdose:(b,e,x)=>{const t=TD(x);if(!t)return;
     if(t.skipped){const ev=dayDoseEvent(localToday(),t.medId,t.slot);if(!ev)return;removeDoseEvent(t.medId,ev);refreshMeds();toast('Skip removed');saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshMeds();});return;}

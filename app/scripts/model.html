@@ -115,7 +115,7 @@
     todayUI.now = new Date();
     const t = todayActions().upcoming[0];
     if (!t) return { short: 'Morning', time: 'tomorrow', title: 'Morning check-in', tomorrow: true };
-    return { short: todayTaskShort(t), time: todayTimeLabel(t.due), title: t.title };
+    return { short: todayTaskShort(t), time: todayTimeLabel(t.due), title: t.title, slot: t.kind === 'checkin' ? t.slot : '' };
   }
   // A scheduled dose's latest note today (to take back out).
   function doseEvent(t) {

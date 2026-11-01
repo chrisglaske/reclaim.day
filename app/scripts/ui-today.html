@@ -30,7 +30,7 @@ const hphrase=k=>cadencePhrase(viceAt(VK[k]));
 try{V.tmin=JSON.parse(localStorage.getItem('reclaim-today-min'))||{};}catch(error){V.tmin={};}
 
 /* ---------- Today ---------- */
-/* a check-in whose time of day has passed without being done is missed: it leaves "When you’re ready" and stays in the Journal as Missed */
+/* a check-in whose time of day has passed without being done leaves "When you’re ready"; its timeline stop and the Journal can still add it */
 const missedT=t=>t.kind==='checkin'&&!t.done&&SLOTS.findIndex(s=>s[0]===t.id)<SLOTS.findIndex(s=>s[0]===curSlot());
 const live=()=>tasks().filter(t=>!missedT(t));
 const pending=()=>live().filter(t=>!t.done),done=()=>tasks().filter(t=>t.done);
@@ -58,7 +58,7 @@ function taskHTML(t){
   if(t.done)act=t.kind==='dose'?`<div class="act round"><button class="check ${t.skipped?'':'on'}" data-act="dose:${t.id}" aria-label="${t.skipped?`Undo skipping ${esc(t.title.split(' ·')[0])}`:'Undo dose'}">${CHECK}</button></div>`:`<div class="act"><button class="btn sm" data-act="flowrev:${t.id}">Review</button></div>`;
   else act=t.kind==='dose'?`<div class="act round"><button class="check" data-act="dose:${t.id}" aria-label="Mark ${esc(t.title)} taken">${CHECK}</button></div>`:`<div class="act"><button class="btn primary" data-act="flow:${t.id}">Check in</button></div>`;
   /* a skipped dose sits in Done today as "Skipped", with the circle to undo the skip */
-  const sub=t.skipped?`Skipped${t.reason?' · '+esc(t.reason):''}`:t.done?`${t.kind==='dose'?'Taken':'Noted'} at ${t.at}${t.mood!=null?' · '+MOODS[t.mood][0]+' '+MOODS[t.mood][1]:''}`:esc(t.detail);
+  const sub=t.skipped?`Skipped${t.reason?' · '+esc(t.reason):''}`:t.done?`Noted at ${t.at}${t.mood!=null?' · '+MOODS[t.mood][0]+' '+MOODS[t.mood][1]:''}`:esc(t.detail);
   return `<div class="task ${t.done?'done':''} ${t.skipped?'skip':''} ${doseLate(t)?'late':''}" id="t-${t.id}">
     <div class="itile ${t.tint}">${I(t.icon)}</div>
     ${((tt,td)=>!t.done&&t.kind==='dose'?doptBtn(t.id,'',`<span class="tt">${tt}</span><span class="td">${td}<span class="dhint" aria-hidden="true">›</span></span>`):`<div><div class="tt">${tt}</div><div class="td">${td}</div></div>`)(`${esc(t.title)}${t.done||!t.due?'':doseLate(t)?`<span class="due late">${I('clock')}Late</span>`:`<span class="due">${t.kind==='dose'?'Due':'Now'}</span>`}`,doseLate(t)?sub.replace('due ','was due '):sub)}
@@ -67,11 +67,13 @@ function taskHTML(t){
 }
 function hero(){
   const L=later(),p=pending(),d=done(),fs=`<button class="link" data-act="nav:tracking">Full schedule ${I('chev')}</button>`,
-    dg=d.length?`<details class="donegrp"><summary>${I('chev')}Done today (${d.length})</summary><div class="tasks">${d.map(taskHTML).join('')}</div></details>`:'',all=[...live().map(t=>({s:esc(t.short),st:t.skipped?'skip':t.done?'done':doseLate(t)?'late':'now'})),{s:esc(L.short)+'<i class="tlt"> · '+L.time+'</i>',st:''}];
+    dg=d.length?`<details class="donegrp"><summary>${I('chev')}Done today (${d.length})</summary><div class="tasks">${d.map(taskHTML).join('')}</div></details>`:'',ckn=SLOTS.filter(s=>missedT({kind:'checkin',done:!!ckDay(localToday())[s[0]],id:s[0]})).map(s=>({s:s[3],st:'',act:'flow:'+s[0]})),
+    all=[...ckn,...live().map(t=>({s:esc(t.short),st:t.skipped?'skip':t.done?'done':doseLate(t)?'late':'now',act:t.kind==='checkin'?(t.done?'flowrev:':'flow:')+t.id:t.done?'':'dopt:'+t.id})),{s:esc(L.short)+'<i class="tlt"> · '+L.time+'</i>',st:'',act:L.slot?'flow:'+L.slot:''}],
+    dn=p.filter(t=>t.kind==='dose').length;
   return `<section class="hero ${p.length?'':'calm'}" id="now">
     <div class="hhead"><div><h2>${p.length?'When you’re ready':'All caught up'}</h2><div class="hsub">${p.length?'Then you’re set until <span class="nw">'+L.time+'</span>.':`Next: ${esc(L.title)} · <span class="nw">${L.time}</span>`}</div></div><span class="count num">${d.length}/${live().length+(L.tomorrow?0:1)} done</span></div>
-    <div class="tl">${all.map(x=>`<div class="st ${x.st}"><span class="d">${x.st==='done'?I('check'):x.st==='skip'?I('x'):''}</span><span>${x.s}</span></div>`).join('')}</div>
-    ${asTask()||p.length?`<div class="tasks">${asTask()}${p.map(taskHTML).join('')}</div>`:''}
+    <div class="tl">${all.map(x=>{const inner=`<span class="d">${x.st==='done'?I('check'):x.st==='skip'?I('x'):''}</span><span>${x.s}</span>`;return x.act?`<button class="st ${x.st}" data-act="${esc(x.act)}">${inner}</button>`:`<div class="st ${x.st}">${inner}</div>`;}).join('')}</div>
+    ${asTask()||p.length?`<div class="tasks">${asTask()}${p.map(taskHTML).join('')}${dn>1?`<button class="btn sm dall" data-act="dall">${I('check')}All ${dn} taken now</button>`:''}</div>`:''}
     ${p.length?`${dg}<div class="hfoot"><span><b>Later:</b> ${esc(L.title)} · ${L.time}</span>${fs}</div>`:`<div class="hfoot calmf">${dg}${fs}</div>`}
   </section>`;
 }
@@ -104,8 +106,8 @@ function tStory(){
     `<span class="badge">${a.length}</span>`);
 }
 function tgridInner(){
-  return pending().length?`<div class="tcol">${hero()}${tStory()}</div><div class="tcol">${tFocus()}${glance()}</div>`
-    :`${hero()}<div class="tcol">${tFocus()}${glance()}</div><div class="tcol">${tStory()}</div>`;
+  return pending().length?`<div class="tcol">${hero()}${cuLine()}${tStory()}</div><div class="tcol">${tFocus()}${glance()}</div>`
+    :`${hero()}${cuLine()}<div class="tcol">${tFocus()}${glance()}</div><div class="tcol">${tStory()}</div>`;
 }
 function hval(k){const t=track(k),n=dBetween(localToday(),t.start),st=taper(t);
   return t.mode==='track'?`<span class="hm">Tracking · </span>${moments(k)}<span class="hm"> today</span>`:hrest(k)?`<span class="hm">Reduce · </span>Rest day`:t.mode==='reduce'?`<span class="hm">Reduce · </span>${hused(k)}/${t.limit}${hwk(k)?'<span class="hm"> this week</span>':''}`:n>0?`<span class="hm">Quit day in </span>${n}d${st.length?'<span class="hm"> · up to '+st[0].v+'</span>':''}`:`Day ${hday(k)}`;}
@@ -121,7 +123,7 @@ function today(){
   const h=new Date().getHours(),g=h<12?'Good morning':h<18?'Good afternoon':'Good evening',nm=S.profile.name.trim();
   return `<div class="hello"><div><div class="eyebrow">${dlab(localToday())}</div><h1>${g}${nm?', '+esc(nm):''}</h1></div>
     <div class="hstrip">${dMood()}${hchips()}</div></div>
-    ${apLine()}${cuLine()}<div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
+    ${apLine()}<div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
 }
 VIEWS.today=today;
 
@@ -145,7 +147,7 @@ Object.assign(ACT,{
     if(t.done){const ev=doseEvent(t);if(!ev)return;removeDoseEvent(t.medId,ev);refreshHero();toast('Dose unmarked');saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});return;}
     const ev=addDoseEvent(t.medId,t.slot);if(!ev)return;
     b.classList.add('on');sparks(b);complete(t,b);
-    toast(t.title.split(' ·')[0]+' taken',()=>{removeDoseEvent(t.medId,ev);refreshHero();saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});});
+    toast(t.title.split(' ·')[0]+' noted',()=>{removeDoseEvent(t.medId,ev);refreshHero();saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});});
     saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshHero();});},
   dopt:(b,e,x,y)=>{const was=$('#sheet.open');if(!was)V.dsr='';const h=doptHTML(x,y);if(!h)return;openSheet(h);if(was)$('#sheet [data-act^="dskip:"]')?.focus({preventScroll:true});},
   dnow:(b,e,x,y)=>{closeSheet();if(y==='t')ACT.tdose(b,e,x);else{const c=$(`#t-${x} .check`);if(c)ACT.dose(c,e,x);}},
@@ -173,6 +175,11 @@ Object.assign(ACT,{
     saveInBackground(()=>{if(before)S.journal[day]=before;else delete S.journal[day];swap('dmood',dMood());});},
   amedit:()=>{V.amedit=true;swap('dmood',dMood());$('#dmood .dm.on')?.focus({focusVisible:kbd});},
   sall:()=>{V.sall=true;swap('tc-story',tStory());},
+  /* every dose due now, in one tap, with Undo */
+  dall:()=>{const evs=pending().filter(t=>t.kind==='dose').map(t=>[t,addDoseEvent(t.medId,t.slot)]).filter(x=>x[1]);if(!evs.length)return;refreshHero();sparks($('#now .count'),18);
+    const out=()=>{evs.forEach(([t,ev])=>removeDoseEvent(t.medId,ev));refreshHero();};
+    toast(`${evs.length} doses noted`,()=>{out();saveInBackground(()=>{evs.forEach(([t,ev])=>restoreDoseEvent(t.medId,ev));refreshHero();});});
+    saveInBackground(out);},
   /* a dose in the Day story edits like one in the Journal, which works on V.jday */
   sdose:(b,e,x,y)=>{V.jday=localToday();V.jmon=monthNo(V.jday);ACT.jde(b,e,x,y);}
 });

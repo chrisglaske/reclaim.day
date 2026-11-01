@@ -130,6 +130,25 @@
   button.mli{width:100%;border-width:1px 0 0;border-style:solid;border-color:var(--line);background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}.hmom button.mli{grid-template-columns:62px minmax(0,1fr) auto}
   .srm{display:block;margin:12px 0 0;color:var(--muted)}
   .scmp{display:grid;gap:2px;margin:12px 0 0;font-size:14px}
+  .tl button.st{min-width:0;margin:-4px 0;padding:4px 0;border:0;background:none;font-family:inherit;cursor:pointer}.tl button.st:hover span:last-child{text-decoration:underline}
+  .tasks .dall.dall{align-self:flex-start;background:var(--card);color:var(--ink);border-color:transparent}
+  .tgrid .culine{margin:0}#culine:empty{display:none}.tgrid.calm #culine{grid-column:1/-1}
+  .hrow .hrn small,.hrow .hrnote{white-space:normal}.hrow .hval{max-width:170px}
+  /* too narrow for name and notes side by side: the count stays by the name, the notes get their own full rows */
+  @container hab (max-width:289px){.hrow{row-gap:4px}.hrow .hval{display:contents}.hrow .hv{justify-self:end}.hrow .hval .hrnote{grid-column:2/-1;text-align:left}.hrow .wk.mini{margin-top:4px}}
+  .jadd{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}.jadd span{flex:1 1 100%;font-size:13px;font-weight:600;color:var(--muted)}
+  .jjump{display:flex;justify-content:center;gap:20px;margin-top:-4px}.jjump .link{display:inline-flex;align-items:center;gap:6px;padding:8px 2px;color:var(--ink)}.jjump .ic{width:15px;height:15px}
+  @container app (min-width:820px){.jjump{display:none}}
+  #mago{margin-top:10px}
+  /* the hidden check takes no room, so an unticked chip's label stays centered */
+  .chip .ck{margin-right:-6px;transition:width .3s cubic-bezier(.34,1.56,.64,1),margin .3s}.chip.on .ck{margin-right:0}.medit .chip .ck{margin-right:-4px}.medit .chip.on .ck{margin-right:0}
+  .jcl{max-width:100%}
+  /* the sheet's scrolling area ends above its padding, so the footer rests at that edge, whole */
+  .sfoot2{bottom:-2px}
+  /* with no room for label and button side by side, the button takes its own full row */
+  .wavec{flex-wrap:wrap;padding:12px 18px}.wavec .grow{flex:1000 1 150px;min-width:0}.wavec .btn{flex:1 1 auto}
+  .qlog{position:relative}.qlog .kbd{position:absolute;right:12px;margin:0}
+  @container app (max-width:359px){.jcl small{white-space:normal;line-height:1.2}.bigmoods{gap:4px}.bm{font-size:10.5px;letter-spacing:-.02em}.qt small{max-width:100%}.qt small .nw{white-space:normal}}
   .flstep{margin-top:4px;font-size:12px;font-weight:600;color:var(--muted);text-align:center}
   .fearly{max-width:560px;margin:-6px auto 6px;text-align:center;font-size:14px;color:var(--muted)}.fearly .link{padding:8px 4px;text-decoration:underline;text-underline-offset:3px}
   .medgrid i.skip{background:color-mix(in srgb,var(--muted) 35%,transparent)}

@@ -11,7 +11,7 @@ function qDoseTile(){
   if(nx){const m=resolveMedication(nx.medId);return ['qdose:'+nx.medId+'-'+nx.slot,'pill','sky','Next dose',esc(m.name+' · '+nx.label.split(' · ').pop())];}
   return on?['nav:tracking','pill','sky','Doses','All of today’s doses are noted']:['sosset:meds','pill','sky','Medication','Turn it on in Settings'];
 }
-const QUICK=()=>[['wave','wave','peach','Rode out a wave','A craving came and went'],['moment','leaf','mint','Log a moment',HK.filter(k=>track(k).on).map((k,i)=>i?HB[k].v:HB[k].n).join(', ').replace(/, (?=[^,]*$)/,' or ')||'Turn on a habit in Settings'],ckQuick(),qDoseTile(),['apnew','cal','butter','Plan an appointment',apptUpcoming()[0]?'Next: '+esc(apptLabel(apptUpcoming()[0])):'Set a date and get ready for it']];
+const QUICK=()=>[['wave','wave','peach','Rode out a wave','A craving came and went'],['moment','leaf','mint','Note a moment',HK.filter(k=>track(k).on).map((k,i)=>i?HB[k].v:HB[k].n).join(', ').replace(/, (?=[^,]*$)/,' or ')||'Turn on a habit in Settings'],ckQuick(),qDoseTile(),['apnew','cal','butter','Plan an appointment',apptUpcoming()[0]?'Next: '+esc(apptLabel(apptUpcoming()[0])):'Set a date and get ready for it']];
 /* Quick log check-in: once this period's check-in is saved, show it as done with the next time, and open it for review */
 function ckQuick(){const sl=curSlot(),c=ckDay(localToday())[sl];
   if(!c)return ['flow:now','pen','lilac','Check in','Mood and a few words, step by step'];
@@ -86,14 +86,14 @@ const qDoseKey=x=>{const i=x.lastIndexOf('-');return [x.slice(0,i),+x.slice(i+1)
 /* the dose, if its set time has already passed today */
 const qDoseLate=(medId,slot)=>{const t=new Date(),d=trackingDoseSchedule(medId,dk(t),t).find(v=>v.slot===slot);return d?.reminderTime&&d.reminderTime<`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`?d:null;};
 function qDoseNote(medId,slot,at=new Date()){const ev=addDoseEvent(medId,slot,at);if(!ev)return;closeSheet();qDoseRedraw();
-  toast(resolveMedication(medId).name+' taken',()=>{removeDoseEvent(medId,ev);qDoseRedraw();saveInBackground(()=>{restoreDoseEvent(medId,ev);qDoseRedraw();});});
+  toast(resolveMedication(medId).name+' noted',()=>{removeDoseEvent(medId,ev);qDoseRedraw();saveInBackground(()=>{restoreDoseEvent(medId,ev);qDoseRedraw();});});
   saveInBackground(()=>{removeDoseEvent(medId,ev);qDoseRedraw();});}
 Object.assign(ACT,{
   quick:b=>{if($('#sheet').classList.contains('open')){closeSheet();return;}b.classList.add('open');openSheet(`<div class="grab"></div><div class="qhd"><h3>Quick log</h3><span>Takes a second. Every note counts.</span></div>${qtiles()}`);},
   qpop:()=>{$('#qpop').classList.contains('open')?closeQ():openQ();},
   /* "Which habit?" only when more than one habit is on */
   moment:(b,e)=>{const on=HK.filter(k=>track(k).on);if(on.length===1)return ACT.mlog(b,e,on[0]);
-    openSheet(`<div class="grab"></div><h3>Log a moment</h3><p class="muted" style="margin:0">A moment captured is information, not a verdict.</p><div class="bigopts">${on.map(k=>`<button class="qbtn" data-act="mlog:${k}"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><span>${HB[k].n}<small>${hsum(k)}</small></span></button>`).join('')||`<p class="empty">Nothing is being tracked right now. You can turn habits on in Settings.</p>`}</div>`);},
+    openSheet(`<div class="grab"></div><h3>Note a moment</h3><p class="muted" style="margin:0">A moment captured is information, not a verdict.</p><div class="bigopts">${on.map(k=>`<button class="qbtn" data-act="mlog:${k}"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><span>${HB[k].n}<small>${hsum(k)}</small></span></button>`).join('')||`<p class="empty">Nothing is being tracked right now. You can turn habits on in Settings.</p>`}</div>`);},
   prn:(b,e,x)=>{if(qFire(b,()=>qprnN()+1))return;closeSheet();ACT.prnadd(b,e,x,'q');},
   qprn:b=>{if(qFire(b,()=>qprnN()+1))return;openSheet(`<div class="grab"></div><h3>Which one?</h3><p class="muted" style="margin:0">Each one counts toward its own limit.</p><div class="bigopts">${prnMeds().map(p=>`<button class="qbtn" data-act="prn:${p.id}"><span class="itile sky">${I('pill')}</span><span>${esc(p.title)}<small>${hide()?'As needed':p.n+' today'+(p.limit?' · personal limit '+p.limit:'')}</small></span></button>`).join('')}</div>`);},
   qdose:(b,e,x)=>{const [medId,slot]=qDoseKey(x),due=qDoseLate(medId,slot);

@@ -1,6 +1,8 @@
 <script>
   // The design mockup's shared view code, copied as is. Its own S (view state only) is V here;
   // saved data is S (scripts/state) and is read through scripts/model.
+// A medication title with its amount ("Name · 1 pill"): the amount stays together on one line.
+const doseTitle=t=>esc(t).replace(/ · ([^·]+)$/,(m,d)=>' ·\u00a0'+d.replace(/ /g,'\u00a0'));
 let kbd=false;addEventListener('keydown',()=>kbd=true,true);addEventListener('pointerdown',()=>kbd=false,true);
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 const P={sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
@@ -110,7 +112,7 @@ addEventListener('resize',()=>{const d=innerWidth<860?'phone':'desktop';if(d!==V
 function openSheet(html){const c=$('#sheetc'),was=$('#sheet').classList.contains('open');if(!was)V.sheetFrom=document.activeElement;c.innerHTML=html;const hd=c.querySelector('h2,h3'),sl=$('#sheet .sheet');if(hd){hd.id='sheett';sl.setAttribute('aria-labelledby','sheett');}else sl.removeAttribute('aria-labelledby');if(was){c.classList.remove('swapc');void c.offsetWidth;c.classList.add('swapc');}$('#sheetc').scrollTop=0;$('#sheet').classList.add('open');if(!was){const sh=$('#sheet .sheet');sh.tabIndex=-1;sh.focus({preventScroll:true});}}
 /* the X, Cancel, Escape and the backdrop: a sheet opened from another one (V.sheetBack) goes back to it */
 function dismissSheet(){const back=V.sheetBack;V.sheetBack=null;if(back)back();else closeSheet();}
-function closeSheet(){V.sheetBack=null;const was=$('#sheet.open');$('#sheet')?.classList.remove('open');$('.plus',app)?.classList.remove('open');
+function closeSheet(){V.sheetBack=null;V.mfor='';const was=$('#sheet.open');$('#sheet')?.classList.remove('open');$('.plus',app)?.classList.remove('open');
   /* focus goes back to where the sheet was opened from */
   if(!was)return;if(window.reclaimLatestWaiting)setTimeout(()=>loadLatest(true),250);const from=V.sheetFrom;V.sheetFrom=null;if(from?.isConnected&&from!==document.body&&from.getClientRects().length)from.focus({preventScroll:true});else($('#flow.open')||$('#sos.open')||$('#main'))?.focus({preventScroll:true});}
 
@@ -123,7 +125,7 @@ const ACT={
   toast:(b,e,x)=>toast(x),
   tag:b=>b.classList.toggle('on'),
   one:b=>{const g=b.parentNode;$$('.chip',g).forEach(c=>c.classList.toggle('on',c===b));},
-  seg:(b,e,x,y)=>{if(x==='mwhen')$('#mwhent').hidden=y!=='earlier';if(x==='sosm'){$('#sbox').hidden=y!=='box';$('#spause').hidden=y!=='pause';}if(x==='mkind'){$('#mk-sched').hidden=y!=='sched';$('#mk-prn').hidden=y!=='prn';}$$(`[data-seg="${x}"] button`,app).forEach(s=>s.classList.toggle('on',s===b));placeSeg();if(x==='mwhen'&&typeof mguide==='function')mguide();},
+  seg:(b,e,x,y)=>{if(x==='mwhen'){$('#mwhent').hidden=y!=='earlier';const a=$('#mago');if(a)a.hidden=y!=='earlier';}if(x==='sosm'){$('#sbox').hidden=y!=='box';$('#spause').hidden=y!=='pause';}if(x==='mkind'){$('#mk-sched').hidden=y!=='sched';$('#mk-prn').hidden=y!=='prn';}$$(`[data-seg="${x}"] button`,app).forEach(s=>s.classList.toggle('on',s===b));placeSeg();if(x==='mwhen'&&typeof mguide==='function')mguide();},
   hide:b=>{const was=hide();setHide(!was);$$('.iconbtn[data-act="hide"]',app).forEach(h=>{h.classList.toggle('on',hide());h.setAttribute('aria-pressed',hide());h.innerHTML=I(hide()?'eyeoff':'eye');});if(V.view==='settings'){b.setAttribute('aria-checked',hide());flashSaved(b);}else swapView();toast(hide()?'Counters hidden':'Counters shown');
     saveInBackground(()=>{setHide(was);renderAll();});}
 };

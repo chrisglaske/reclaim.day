@@ -40,7 +40,7 @@ function jTask(k,sl,l){
   if(st==='done')return `<div class="jtask ck-done"><span class="jm" aria-hidden="true">${MOODS[c.mood]?.[0]||'📝'}</span><div class="grow"><div class="jtt"><b>${l} check-in</b><span class="ckp ok">${I('check')}Done</span></div>
       <div class="jts">${c.at}${c.mood!=null?' · '+MOODS[c.mood][1]:''}</div>${ckFacts(c)}${c.text?`<q>${esc(c.text)}</q>`:''}</div><button class="btn sm ghost" data-act="flowrev:${sl}">${I('pen')}Edit</button></div>`;
   const [pill,sub,go,cls]={now:['<span class="ckp now">Now</span>','Ready when you are · about a minute',`Start ${I('chev')}`,'primary'],
-    late:['<span class="ckp late">Missed</span>','Not done. Add it anytime if you like.',`${I('plus')}Add`,''],
+    late:['<span class="ckp late">Not done</span>','You can add it anytime, if you like.',`${I('plus')}Add`,''],
     later:['<span class="ckp">Later</span>',SLOTFROM[sl],'Start early','ghost'],
     none:['<span class="ckp">Not noted</span>','Nothing saved for this one',`${I('plus')}Add`,'ghost']}[st];
   return `<div class="jtask ck-${st}"><span class="itile ${SLOTS.find(x=>x[0]===sl)[2]}">${I(SLOTS.find(x=>x[0]===sl)[1])}</span><div class="grow"><div class="jtt"><b>${l} check-in</b>${pill}</div><div class="jts">${sub}</div></div><button class="btn sm ${cls}" data-act="flow:${sl}">${go}</button></div>`;
@@ -48,7 +48,7 @@ function jTask(k,sl,l){
 function jCk(k,sl,ic,tint,l){
   const st=slotState(k,sl),c=ckDay(k)[sl];
   const [sub,act,al]={done:[`Done · ${c?.at}`,`flowrev:${sl}`,`done at ${c?.at}. View or edit`],now:['Check in now',`flow:${sl}`,'due now. Start'],
-    late:['Missed · add',`flow:${sl}`,'missed. Add it now if you like'],later:[SLOTFROM[sl],`flow:${sl}`,SLOTFROM[sl].toLowerCase()+'. Start early'],none:['Not noted · add',`flow:${sl}`,'not noted. Add']}[st];
+    late:['Not done · add',`flow:${sl}`,'not done. Add it now if you like'],later:[SLOTFROM[sl],`flow:${sl}`,SLOTFROM[sl].toLowerCase()+'. Start early'],none:['Not noted · add',`flow:${sl}`,'not noted. Add']}[st];
   return `<button class="jck st-${st}" data-sl="${sl}" data-act="${act}" aria-label="${l} check-in, ${al}"><span class="jci ${st==='done'?'':tint}">${st==='done'&&c?.mood!=null?MOODS[c.mood][0]:st==='done'?I('check'):I(ic)}${st==='done'?`<span class="jok" aria-hidden="true">${I('check')}</span>`:''}</span><span class="jcl"><b>${l}</b><small>${sub}</small></span></button>`;
 }
 /* "Earlier day summary": the parts an old-style day has, in the mockup's order */
@@ -67,10 +67,10 @@ function jDay(){
   const per=SLOTS.map(([sl,ic,tint,l])=>{const st=slotState(k,sl),items=ev.filter(e=>perOf(e[0])===sl&&jfShow(e[1])).sort((a,b)=>mins(a[0])-mins(b[0]));
     const task=ckShow()&&st==='done'?jTask(k,sl,l):'';
     if(!task&&!items.length)return '';
-    return `<section class="jper" id="jp-${sl}" data-sl="${sl}" aria-label="${l}"><div class="jph"><b>${l}</b><span>${SLOTSPAN[sl]}</span><i></i><span>${items.length?items.length+' logged':''}</span></div>${task}
+    return `<section class="jper" id="jp-${sl}" data-sl="${sl}" aria-label="${l}"><div class="jph"><b>${l}</b><span>${SLOTSPAN[sl]}</span><i></i><span>${items.length?items.length+' noted':''}</span></div>${task}
       ${items.length?`<ol class="jev">${items.map(([w,ty,txt,tr,id,dn,wv,ap])=>{const a=id?['moment','jed:'+esc(id),'jrm:'+esc(id)]:dn?['dose note','jde:'+esc(dn),'jrd:'+esc(dn)]:wv?['wave','jwe:'+esc(wv),'jrw:'+esc(wv)]:null;
         return `<li class="t-${ty}"><time>${w}</time><span class="dt" style="background:var(--${EVI[ty][1]});color:var(--on-pastel)">${I(EVI[ty][0])}</span><div><span class="jk">${EVL[ty]}</span><b>${esc(txt)}</b>${tr&&tr.length?`<span class="muted"> · ${tr.map(esc).join(', ')}</span>`:''}</div>${a?`<span class="jact"><button class="iconbtn jrm" data-act="${a[1]}" aria-label="Edit ${a[0]} from ${w}">${I('pen')}</button><button class="iconbtn jrm" data-act="${a[2]}" aria-label="Remove ${a[0]} from ${w}">${I('x')}</button></span>`:ap?`<span class="jact"><button class="btn sm" data-act="asopen:${esc(ap.id)}:${asFirst(ap)}" aria-label="Open appointment: ${esc(txt)}">Open</button></span>`:''}</li>`;}).join('')}</ol>`
-        :`<p class="jnone">${task?'Nothing else logged':'Nothing logged'} ${sl==='evening'?'this evening':'this '+sl}${isT&&st!=='done'&&st!=='late'&&st!=='now'?' yet':''}.</p>`}</section>`;}).join('');
+        :`<p class="jnone">${task?'Nothing else noted':'Nothing noted'} ${sl==='evening'?'this evening':'this '+sl}${isT&&st!=='done'&&st!=='late'&&st!=='now'?' yet':''}.</p>`}</section>`;}).join('');
   const lg=earlierDay(k),lgl=lg&&lgLine(lg);
   return `<section class="card jday ${V.jswap?'swap':''}" id="jdayc">
     <div class="jhead"><div class="jh1"><div><div class="eyebrow">${isT?'Today':dlab(k,{weekday:'long'})}</div><h2>${dlab(k,{month:'long',day:'numeric'})}</h2></div>
@@ -78,6 +78,7 @@ function jDay(){
       ${trio?`<div class="jcks" role="group" aria-label="Check-ins">${SLOTS.map(([sl,ic,tint,l])=>jCk(k,sl,ic,tint,l)).join('')}</div>`:''}</div>
     <div class="jfilt" role="group" aria-label="Show">${JF.map(([f,l])=>cnt[f]||f==='all'?`<button class="jfc ${(V.jf||'all')===f?'on':''}" data-act="jf:${f}" aria-pressed="${(V.jf||'all')===f}">${l}<span>${cnt[f]}</span></button>`:'').join('')}</div>
     ${jDayCk(k,n)}<div class="jpers">${per||(k<localToday()&&ckShow()?'':`<p class="empty">Nothing of this kind on this day.</p>`)}</div>
+    ${k<localToday()&&HK.some(h=>track(h).on)?`<div class="jadd"><span>Add to this day</span><button class="btn sm" data-act="jaddm">${I('plus')}A moment</button><button class="btn sm" data-act="jaddw">${I('wave')}A wave</button></div>`:''}
     ${jDoses(k)}${(V.jf||'all')==='all'?jSleep(k):''}
     ${lg?`<details class="acc" style="margin-top:10px"><summary>Earlier day summary ${I('chev')}</summary>${lgl?`<p>${lgl}</p>`:''}${lg.text?`<p>${esc(lg.text)}</p>`:''}<p style="font-size:13px">New check-ins are saved separately by time of day. Any earlier day summary remains here.</p></details>`:''}
   </section>`;
@@ -101,10 +102,10 @@ function jDoses(k){
   const ms=dayMeds(k);if(!ms.length||!['all','m'].includes(V.jf||'all'))return '';
   /* opens by itself on a past day with a dose still to note, so it's in view */
   const all=ms.flatMap(m=>m.prn?[]:m.doses),dn=all.filter(d=>d.noted).length,need=k<localToday()&&all.some(d=>!d.noted&&!d.skipped);
-  const rows=ms.map(m=>m.prn?`<div class="prn" id="jd-${jdKey(m.id,-1)}"><span class="itile sky">${I('pill')}</span><div style="min-width:0"><div class="tt">${esc(m.title)}</div><div class="td">As needed${m.limit?' · personal limit '+m.limit:''}</div></div>
+  const rows=ms.map(m=>m.prn?`<div class="prn" id="jd-${jdKey(m.id,-1)}"><span class="itile sky">${I('pill')}</span><div style="min-width:0"><div class="tt">${doseTitle(m.title)}</div><div class="td">As needed${m.limit?' · personal limit '+m.limit:''}</div></div>
       <div class="prnact">${hide()?'<span class="muted">Your as-needed notes are here when they help.</span>':`<span class="hv num"><span>${m.n}</span><small> this day</small></span>`}<button class="btn sm ghost" data-act="jdundo:${m.id}" ${m.n?'':'disabled'} aria-label="Undo latest ${esc(m.name)} dose on this day">Undo</button><button class="btn sm primary" data-act="jdprn:${m.id}">${I('plus')}Note a dose</button></div>${jdTime(k,m.id,-1,'')}</div>`
     :m.doses.map(d=>`<div class="dose ${d.noted?'done':''} ${d.skipped?'skip':''}" id="jd-${jdKey(m.id,d.slot)}"><span class="itile peach">${I('pill')}</span>
-      <div><div class="tt">${esc(m.title)}</div><div class="td">${d.noted?`${m.multi?esc(d.label)+' · noted':'Noted'} at ${d.at}`:d.skipped?`${m.multi?esc(d.label)+' · ':''}Skipped${d.reason?' · '+esc(d.reason):''}`:`${esc(d.label)} · not noted`}</div></div>
+      <div><div class="tt">${doseTitle(m.title)}</div><div class="td">${d.noted?`${m.multi?esc(d.label)+' · noted':'Noted'} at ${d.at}`:d.skipped?`${m.multi?esc(d.label)+' · ':''}Skipped${d.reason?' · '+esc(d.reason):''}`:`${esc(d.label)} · not noted`}</div></div>
       <button class="check ${d.noted?'on':''}" data-act="jdose:${m.id}:${d.slot}" aria-pressed="${d.noted}" aria-label="${esc(m.name)}, ${esc(d.label)}, ${d.noted?'taken. Remove the note':d.skipped?'skipped. Undo the skip':'not taken. Note it'}">${CHECK}</button>${d.noted||d.skipped?'':jdTime(k,m.id,d.slot,d.time)}</div>`).join('')).join('');
   return `<details class="acc jdoses" id="jdoses" ${V.jdo||need?'open':''}><summary>Medications${all.length?` · ${blur(dn)} of ${all.length} doses noted`:''} ${I('chev')}</summary><div class="lrows">${rows}</div></details>`;
 }
@@ -132,8 +133,8 @@ function jRes(){
 const jSearch=()=>`<section class="card"><div class="ctitle"><h2>Past notes</h2></div><div class="searchf">${I('search')}<input class="field" id="jq" type="search" placeholder="Search your notes" value="${esc(V.jq)}" autocomplete="off" aria-label="Search past notes" maxlength="200"></div><div class="res" id="jres">${jRes()}</div></section>`;
 function journal(){
   const td=localToday();if(!V.jday||V.jday>td){V.jday=td;V.jmon=monthNo(td);}
-  return `<div class="hello"><div><div class="eyebrow">Journal</div><h1>Your day, in your words</h1><div class="lead">Check-ins, notes and what you logged, together.</div></div>${V.jday!==td?`<button class="btn" data-act="jpick:${td}">${I('cal')}Back to today</button>`:''}</div>
-    ${jWeek()}
+  return `<div class="hello"><div><div class="eyebrow">Journal</div><h1>Your day, in your words</h1><div class="lead">Check-ins, notes and what you noted, together.</div></div>${V.jday!==td?`<button class="btn" data-act="jpick:${td}">${I('cal')}Back to today</button>`:''}</div>
+    ${jWeek()}<div class="jjump"><button class="link" data-act="jto:cal">${I('cal')}Calendar</button><button class="link" data-act="jto:notes">${I('search')}Search notes</button></div>
     <div class="grid main2"><div class="col">${jDay()}</div><div class="col jside">${jCal()}${jSearch()}</div></div>`;
 }
 function jGo(k){V.jday=k;V.jmon=monthNo(k);V.jswap=true;renderJ();V.jswap=false;}
@@ -145,7 +146,16 @@ VIEWS.journal=journal;
 function jTimeSheet(title,q,at,go,rm){openSheet(`<div class="grab"></div><h3>${title}</h3><p class="muted" style="margin:0">${q}</p><div class="fsec" style="border:0"><label class="lbl" for="etime">When</label><input type="datetime-local" class="field" id="etime" value="${lclVal(at)}" max="${nowVal()}"></div>${rm?`<button class="link srm" data-act="${rm[0]}">${rm[1]}</button>`:''}<div class="exrow" style="margin-top:6px"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="${go}">Save</button></div>`);}
 function jTimeVal(){const v=$('#etime').value,at=v?new Date(v):null;if(!at||isNaN(at)){toast('Choose when it happened');$('#etime').focus();return null;}if(at>new Date()){toast('Choose a time in the past');$('#etime').focus();return null;}return at;}
 Object.assign(ACT,{
-  jpick:(b,e,x)=>jGo(x),
+  /* on phones the calendar and notes sit below the day, so a pick from them goes up to it */
+  jpick:(b,e,x)=>{jGo(x);if(b?.closest?.('#jcal,.res')&&$('.jjump')?.offsetParent)mainTo($('#jdayc'));},
+  jto:(b,e,x)=>{if(x==='cal'){mainTo($('#jcal'));return;}mainTo($('#jq')?.closest('.card'));$('#jq')?.focus({preventScroll:true});},
+  /* moments and waves for a past day: the day is filled in, at noon, ready to change */
+  jaddm:(b,e)=>{V.mfor=V.jday;const on=HK.filter(k=>track(k).on);if(on.length>1)ACT.mpick();else ACT.mlog(b,e,on[0]);},
+  jaddw:()=>jTimeSheet('Add a wave','When did you ride it out?',new Date(V.jday+'T12:00'),'jwadd'),
+  jwadd:()=>{const at=jTimeVal();if(!at)return;const c=makeCraving(waveVice(),at);S.cravings.push(c);closeSheet();setC('waves',waves());renderJ();
+    const out=()=>{const i=S.cravings.indexOf(c);if(i>=0)S.cravings.splice(i,1);setC('waves',waves());renderJ();};
+    toast('Wave added',()=>{out();saveInBackground(()=>{S.cravings.push(c);setC('waves',waves());renderJ();});});
+    saveInBackground(out);},
   /* from a summary elsewhere: that day in the Journal */
   jopen:(b,e,x)=>{hideTip();V.jday=x;V.jmon=monthNo(x);ACT.nav(b,e,'journal');},
   jf:(b,e,x)=>{V.jf=x;renderJ();},
@@ -155,16 +165,12 @@ Object.assign(ACT,{
     toast('Day check-in removed',()=>{put(before);saveInBackground(()=>put(after));});saveInBackground(()=>put(before));},
   jshift:(b,e,x)=>{const k=addD(V.jday,+x),t=localToday();jGo(k>t?t:k);},
   /* Live app: remove any moment (Settings' Activity log there), with Undo here */
-  jrm:(b,e,x)=>{const m=S.slips.find(s=>s&&s.id===x),r=m&&dayEvents(dateKey(m.at)).find(v=>v[4]===x);if(!r)return;
-    openSheet(`<div class="grab"></div><h3>Remove this moment?</h3><p class="muted" style="margin:0">${esc(r[2])} at ${r[0]}, ${dlab(dateKey(m.at),{weekday:'long',month:'long',day:'numeric'})}. Logged something by mistake? Removing it recalculates everything automatically.</p><div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep it</button><button class="btn primary" data-act="jrmgo:${esc(x)}">Remove</button></div>`);},
-  jrmgo:(b,e,x)=>{const i=S.slips.findIndex(s=>s&&s.id===x);if(i<0)return;const m=S.slips.splice(i,1)[0];closeSheet();renderJ();
+  jrm:(b,e,x)=>{const i=S.slips.findIndex(s=>s&&s.id===x);if(i<0)return;const m=S.slips.splice(i,1)[0];closeSheet();renderJ();$('#jdayc .jfc.on')?.focus({preventScroll:true});
     const back=()=>{S.slips.splice(Math.min(i,S.slips.length),0,m);renderJ();};
     toast('Moment removed',()=>{back();saveInBackground(()=>{const j=S.slips.indexOf(m);if(j>=0)S.slips.splice(j,1);renderJ();});});
     saveInBackground(back);},
   /* a dose note in the day line (taken, as needed or skipped) is removed like a moment, with Undo */
-  jrd:(b,e,x,y)=>{const r=dayEvents(V.jday).find(v=>v[5]===x+':'+y);if(!r)return;
-    openSheet(`<div class="grab"></div><h3>Remove this dose note?</h3><p class="muted" style="margin:0">${esc(r[2])} at ${r[0]}, ${dlab(V.jday,{weekday:'long',month:'long',day:'numeric'})}. Noted something by mistake? Removing it recalculates everything automatically.</p><div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep it</button><button class="btn primary" data-act="jrdgo:${esc(x)}:${esc(y)}">Remove</button></div>`);},
-  jrdgo:(b,e,x,y)=>{const ev=((S.doses[V.jday]||{})[x]||[]).filter(d=>d&&d.at)[+y];if(!ev)return;removeDoseEvent(x,ev);closeSheet();renderJ();
+  jrd:(b,e,x,y)=>{const ev=((S.doses[V.jday]||{})[x]||[]).filter(d=>d&&d.at)[+y];if(!ev)return;removeDoseEvent(x,ev);closeSheet();renderJ();$('#jdayc .jfc.on')?.focus({preventScroll:true});
     toast('Dose note removed',()=>{restoreDoseEvent(x,ev);renderJ();saveInBackground(()=>{removeDoseEvent(x,ev);renderJ();});});
     saveInBackground(()=>{restoreDoseEvent(x,ev);renderJ();});},
   /* Edit and remove everything in the day line: a moment reopens its form; waves and dose notes change when they happened */
@@ -173,9 +179,7 @@ Object.assign(ACT,{
   jwego:(b,e,x)=>{const c=S.cravings.find(v=>v&&v.id===x),at=jTimeVal();if(!c||!at)return;
     const old=c.at,put=v=>{c.at=v;setC('waves',waves());renderJ();};put(at.toISOString());closeSheet();
     toast('Wave updated',()=>{put(old);saveInBackground(()=>put(at.toISOString()));});saveInBackground(()=>put(old));},
-  jrw:(b,e,x)=>{const c=S.cravings.find(v=>v&&v.id===x);if(!c)return;
-    openSheet(`<div class="grab"></div><h3>Remove this wave?</h3><p class="muted" style="margin:0">Rode out a wave at ${tstr(c.at)}, ${dlab(dateKey(c.at),{weekday:'long',month:'long',day:'numeric'})}. Logged it by mistake? Removing it recalculates everything automatically.</p><div class="exrow" style="margin-top:18px"><button class="btn ghost" data-act="sclose">Keep it</button><button class="btn primary" data-act="jrwgo:${esc(x)}">Remove</button></div>`);},
-  jrwgo:(b,e,x)=>{const i=S.cravings.findIndex(v=>v&&v.id===x);if(i<0)return;const c=S.cravings.splice(i,1)[0];closeSheet();setC('waves',waves());renderJ();
+  jrw:(b,e,x)=>{const i=S.cravings.findIndex(v=>v&&v.id===x);if(i<0)return;const c=S.cravings.splice(i,1)[0];closeSheet();setC('waves',waves());renderJ();$('#jdayc .jfc.on')?.focus({preventScroll:true});
     const back=()=>{S.cravings.splice(Math.min(i,S.cravings.length),0,c);setC('waves',waves());renderJ();};
     toast('Wave removed',()=>{back();saveInBackground(()=>{const j=S.cravings.indexOf(c);if(j>=0)S.cravings.splice(j,1);setC('waves',waves());renderJ();});});
     saveInBackground(back);},
