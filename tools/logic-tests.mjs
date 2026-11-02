@@ -28,9 +28,10 @@ const context = vm.createContext({ window: {}, document: {}, requestAnimationFra
 vm.runInContext(`{ const Real = Date; let current = Real.now();
   globalThis.Date = class extends Real { constructor(...args) { super(...(args.length ? args : [current])); } static now() { return current; } };
   globalThis.__clock = at => { current = new Real(at).getTime(); }; }`, context);
-vm.runInContext(['core', 'state', 'habits', 'meds', 'today'].map(source).join('\n') + `
+vm.runInContext(['core', 'state', 'habits', 'meds', 'today', 'settings-meds'].map(source).join('\n') + `
 ;globalThis.__app = { S, applyState, todayUI, localToday, dateKey, dayOffset, dayDistance, dailyUse, limitStatus, streakHistory, nextMilestone, habitWeek,
-  totals, dailyEstimatedSavings, makeMoment, trackingDoseSchedule, trackingDoseLate, medDayStatus, medAdherence, missedDoses, addDoseEvent, skipDoseEvent };`, context);
+  totals, dailyEstimatedSavings, makeMoment, trackingDoseSchedule, trackingDoseLate, medDayStatus, medAdherence, missedDoses, addDoseEvent, skipDoseEvent,
+  todayActions, saveMedication };`, context);
 const app = context.__app;
 const same = (got, want) => assert.deepEqual(JSON.parse(JSON.stringify(got)), want);
 const setNow = at => { context.__clock(at); app.todayUI.now = new context.Date(); };
@@ -173,6 +174,16 @@ test('savings price each unit at the usual cost, and a heavy day adds nothing, n
   const total = app.totals(new context.Date());
   same([total.daysTracked, total.smoking.baselineUnits, total.smoking.loggedUnits, total.unitsAvoided, total.estimatedSavings], [3, 30, 18, 12, 6]);
 });
+test('a plan begun in the afternoon counts its first day, and one later today does not yet', () => {
+  setNow('2026-10-20T16:00:00');
+  start({ vices: smoking({ mode: 'quit', at: '2026-10-20T15:00:00', target: 0 }) });
+  assert.equal(app.dailyEstimatedSavings('2026-10-20'), 5);
+  same([app.totals(new context.Date()).daysTracked, app.totals(new context.Date()).estimatedSavings], [1, 5]);
+  start({ vices: smoking({ mode: 'quit', at: '2026-10-19T21:00:00', target: 0 }) });
+  same([app.dailyEstimatedSavings('2026-10-19'), app.totals(new context.Date()).daysTracked], [5, 2]);
+  start({ vices: smoking({ mode: 'quit', at: '2026-10-20T18:00:00', target: 0 }) });
+  same([app.dailyEstimatedSavings('2026-10-20'), app.totals(new context.Date()).daysTracked], [0, 0]);
+});
 test('no usual amount or cost means no savings, and never NaN', () => {
   setNow('2026-10-20T15:00:00');
   start({ vices: smoking({ mode: 'quit', at: '2026-10-18T09:00:00', target: 0 }, { perDay: 0, costPerDay: 0 }) });
@@ -244,6 +255,52 @@ test('turning medication tracking off stops catch-up', () => {
   setNow('2026-10-20T15:00:00');
   start({ meds: [medication()], profile: { name: 'Sam', companion: { trackMedications: false, reminders: {} } } });
   same(app.missedDoses(3), []);
+});
+test('doses from before a medication was added are optional that day: not due, late or missed, but can be noted', () => {
+  setNow('2026-10-20T20:05:00');
+  start({ meds: [medication({ startDate: '2026-10-20T12:00:00', addedAt: new context.Date('2026-10-20T20:00:00').toISOString() })],
+    profile: { name: 'Sam', companion: { trackMedications: true, reminders } } });
+  const status = app.medDayStatus('daily', '2026-10-20');
+  same([status.expected, status.remaining, status.doses.map(dose => dose.optional)], [1, 1, [true, false]]);
+  const schedule = app.trackingDoseSchedule('daily');
+  same(schedule.map(dose => dose.timingLabel.split(' · ')[0]), ['Before you added it', 'Next']);
+  assert.equal(app.trackingDoseLate(schedule[0]), false);
+  same(app.todayActions().visibleTasks.filter(task => task.kind === 'dose').map(task => task.slot), []);
+  setNow('2026-10-21T09:00:00');
+  same(app.missedDoses(1).map(miss => [miss.day, miss.slot]), [['2026-10-20', 1]]);
+  same(app.medDayStatus('daily', '2026-10-21').expected, 2);
+  setNow('2026-10-20T20:05:00');
+  app.addDoseEvent('daily', 0, new context.Date('2026-10-20T08:40:00'));
+  const noted = app.medDayStatus('daily', '2026-10-20');
+  same([noted.expected, noted.noted, noted.doses[0].optional], [2, 1, false]);
+});
+test('a medication added today remembers when; one started earlier, or moved to another day, does not', () => {
+  setNow('2026-10-20T20:00:00');
+  start({ meds: [] });
+  const draft = { name: 'Sample', dose: '10', unit: 'mg', freq: 2, slots: ['Morning', 'Evening'], times: ['08:30', '20:30'], start: '2026-10-20' };
+  assert.equal(app.saveMedication(draft), '');
+  const added = app.S.meds[0];
+  assert.equal(added.addedAt, new context.Date('2026-10-20T20:00:00').toISOString());
+  assert.equal(app.applyState(JSON.parse(JSON.stringify(app.S))) && app.S.meds[0].addedAt, added.addedAt);
+  setNow('2026-10-20T20:10:00');
+  app.saveMedication({ ...draft, id: app.S.meds[0].id, why: 'Kept' });
+  assert.equal(app.S.meds[0].addedAt, added.addedAt);
+  app.saveMedication({ ...draft, id: app.S.meds[0].id, start: '2026-10-15' });
+  assert.equal(app.S.meds[0].addedAt, undefined);
+  start({ meds: [] });
+  app.saveMedication({ ...draft, start: '2026-10-18' });
+  assert.equal(app.S.meds[0].addedAt, undefined);
+});
+test('a tap that lands after a check-in has closed does nothing', () => {
+  const page = vm.createContext({ V: {}, ACT: {}, app: { addEventListener() {} }, document: { addEventListener() {} },
+    JOURNAL_TAGS: [], SLEEP_WORDS: [], CHECKIN_PROMPTS: [], $: () => null, $$: () => [] });
+  vm.runInContext(source('checkin'), page);
+  vm.runInContext('V.flow = null', page);
+  const button = { parentNode: {}, dataset: { v: 'Other' }, classList: { toggle() {} }, setAttribute() {} };
+  for (const verb of ['fmood', 'fsl', 'fslset', 'fq', 'ftag', 'fhealth', 'fcrskip', 'fnext', 'fsave', 'fback', 'fgo']) {
+    assert.doesNotThrow(() => page.ACT[verb](button, {}, '1'), verb);
+  }
+  assert.doesNotThrow(() => vm.runInContext('fNext(); fSave();', page));
 });
 test('adherence counts full days and the current run', () => {
   setNow('2026-10-20T15:00:00');

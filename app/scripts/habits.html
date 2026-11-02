@@ -15,6 +15,13 @@
       .pop() || null;
   }
 
+  // Whether a plan is in force at some point on a day: one begun in the afternoon counts its first day, but one
+  // that starts later than now doesn't count yet.
+  function viceOnDay(vice, key) {
+    const end = new Date(Math.min(new Date(key + 'T23:59:59').getTime(), Date.now()));
+    return !!(viceAt(vice, key) || viceAt(vice, end));
+  }
+
   // The newest phase, including one that has not started yet (a quit day ahead).
   function vicePlan(vice) {
     return viceAt(vice, new Date(8.64e15));
@@ -292,8 +299,7 @@
       let daysTracked = 0;
       let day = dateKey(firstPhase);
       while (day && day <= endKey) {
-        const phase = viceAt(record, day);
-        if (phase) {
+        if (viceOnDay(record, day)) {
           const baseline = Math.max(0, Number(record.perDay) || 0);
           const observed = dailyUse(name, day);
           baselineUnits += baseline;
@@ -329,7 +335,7 @@
     if (!key) return 0;
     return VICE_KEYS.reduce((total, vice) => {
       const record = S.vices[vice];
-      if (!record || !record.enabled || !viceAt(record, key)) return total;
+      if (!record || !record.enabled || !viceOnDay(record, key)) return total;
       const baseline = Math.max(0, Number(record.perDay) || 0);
       if (!baseline) return total;
       const costPerUnit = Math.max(0, Number(record.costPerDay) || 0) / baseline;

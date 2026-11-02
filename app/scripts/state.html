@@ -304,7 +304,9 @@
           ? Number(med.dailyLimit)
           : null
       // Optional: set when the medication was deleted (kept so it can be restored); left out when not.
-      }, typeof med.deletedAt === 'string' && med.deletedAt ? { deletedAt: med.deletedAt } : {}));
+      }, typeof med.deletedAt === 'string' && med.deletedAt ? { deletedAt: med.deletedAt } : {},
+      // Optional: when a medication starting that day was added; its doses from earlier that day are optional.
+      typeof med.addedAt === 'string' && med.addedAt ? { addedAt: med.addedAt } : {}));
 
     // Slips and cravings for an unknown habit are dropped.
     result.slips = (Array.isArray(data.slips) ? data.slips : [])

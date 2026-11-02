@@ -101,11 +101,11 @@ function jdTime(k,m,sl,t){if(k===localToday())return '';const id=jdKey(m,sl);
 function jDoses(k){
   const ms=dayMeds(k);if(!ms.length||!['all','m'].includes(V.jf||'all'))return '';
   /* opens by itself on a past day with a dose still to note, so it's in view */
-  const all=ms.flatMap(m=>m.prn?[]:m.doses),dn=all.filter(d=>d.noted).length,need=k<localToday()&&all.some(d=>!d.noted&&!d.skipped);
+  const all=ms.flatMap(m=>m.prn?[]:m.doses.filter(d=>!d.optional)),dn=all.filter(d=>d.noted).length,need=k<localToday()&&all.some(d=>!d.noted&&!d.skipped);
   const rows=ms.map(m=>m.prn?`<div class="prn" id="jd-${jdKey(m.id,-1)}"><span class="itile sky">${I('pill')}</span><div style="min-width:0"><div class="tt">${doseTitle(m.title)}</div><div class="td">As needed${m.limit?' · personal limit '+m.limit:''}</div></div>
       <div class="prnact">${hide()?'<span class="muted">Your as-needed notes are here when they help.</span>':`<span class="hv num"><span>${m.n}</span><small> this day</small></span>`}<button class="btn sm ghost" data-act="jdundo:${m.id}" ${m.n?'':'disabled'} aria-label="Undo latest ${esc(m.name)} dose on this day">Undo</button><button class="btn sm primary" data-act="jdprn:${m.id}">${I('plus')}Note a dose</button></div>${jdTime(k,m.id,-1,'')}</div>`
     :m.doses.map(d=>`<div class="dose ${d.noted?'done':''} ${d.skipped?'skip':''}" id="jd-${jdKey(m.id,d.slot)}"><span class="itile peach">${I('pill')}</span>
-      <div><div class="tt">${doseTitle(m.title)}</div><div class="td">${d.noted?`${m.multi?esc(d.label)+' · noted':'Noted'} at ${d.at}`:d.skipped?`${m.multi?esc(d.label)+' · ':''}Skipped${d.reason?' · '+esc(d.reason):''}`:`${esc(d.label)} · not noted`}</div></div>
+      <div><div class="tt">${doseTitle(m.title)}</div><div class="td">${d.noted?`${m.multi?esc(d.label)+' · noted':'Noted'} at ${d.at}`:d.skipped?`${m.multi?esc(d.label)+' · ':''}Skipped${d.reason?' · '+esc(d.reason):''}`:d.optional?`${esc(d.label)} · before you added it`:`${esc(d.label)} · not noted`}</div></div>
       <button class="check ${d.noted?'on':''}" data-act="jdose:${m.id}:${d.slot}" aria-pressed="${d.noted}" aria-label="${esc(m.name)}, ${esc(d.label)}, ${d.noted?'taken. Remove the note':d.skipped?'skipped. Undo the skip':'not taken. Note it'}">${CHECK}</button>${d.noted||d.skipped?'':jdTime(k,m.id,d.slot,d.time)}</div>`).join('')).join('');
   return `<details class="acc jdoses" id="jdoses" ${V.jdo||need?'open':''}><summary>Medications${all.length?` · ${blur(dn)} of ${all.length} doses noted`:''} ${I('chev')}</summary><div class="lrows">${rows}</div></details>`;
 }

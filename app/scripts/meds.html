@@ -29,7 +29,7 @@
     if (fullyTimed) {
       slots.sort((left, right) => left.reminderTime.localeCompare(right.reminderTime));
     }
-    const next = slots.find(dose => !dose.noted && !dose.skipped);
+    const next = slots.find(dose => !dose.noted && !dose.skipped && !dose.optional);
     const now = logicDate(at);
     const nowMinutes = now ? now.getHours() * 60 + now.getMinutes() : 0;
     return slots.map(dose => {
@@ -41,9 +41,9 @@
         : '';
       return Object.assign({}, dose, {
         next: !dose.noted && next === dose,
-        later: !dose.noted && next !== dose,
+        later: !dose.noted && !dose.optional && next !== dose,
         timeLabel: timeLabel,
-        timingLabel: !dose.reminderTime
+        timingLabel: dose.optional ? 'Before you added it · ' + timeLabel : !dose.reminderTime
           ? (next === dose ? 'Next · no reminder set' : 'Later in schedule')
           : (!dose.noted && next === dose
             ? (reminderMinutes <= nowMinutes ? 'Due · ' : 'Next · ') + timeLabel
@@ -76,6 +76,7 @@
     }
 
     const dateEligible = !med.startDate || key >= dateKey(med.startDate);
+    const added = logicDate(med.addedAt), reminders = S.profile.companion.reminders || {};
     const events = dateEligible ? medicationEvents(med, key) : [];
     const slots = med.freq === 'prn' || !dateEligible
       ? []
@@ -83,8 +84,14 @@
           const event = events.find(item => Number(item.slot) === index);
           // A dose saved as "Not taking it today" is handled, but not taken.
           const skipped = !!(event && event.skipped);
+          // On the day a medication was added, a dose whose time had already passed is optional: it can be noted,
+          // but it isn't due, late or missed.
+          const time = (reminders[med.id + ':' + index] || {}).time;
+          const optional = !event && !!added && dateKey(added) === key && typeof time === 'string' &&
+            /^([01]\d|2[0-3]):[0-5]\d$/.test(time) && new Date(key + 'T' + time + ':00') < added;
           return {
             slot: index,
+            optional: optional,
             label: label,
             noted: !!event && !skipped,
             skipped: skipped,
@@ -105,7 +112,7 @@
         }))
       : [];
     const doses = med.freq === 'prn' ? prnEvents : slots;
-    const expected = slots.length;
+    const expected = slots.filter(slot => !slot.optional).length;
     const noted = med.freq === 'prn' ? prnEvents.length : slots.filter(slot => slot.noted).length;
     const skipped = slots.filter(slot => slot.skipped).length;
     return {
@@ -389,7 +396,7 @@
     activeMedications().filter(med => med.freq !== 'prn' && med.startDate).forEach(med => {
       for (let back = days; back >= 1; back -= 1) {
         const day = dayOffset(today, -back);
-        medDayStatus(med, day).doses.filter(dose => !dose.noted && !dose.skipped).forEach(dose => {
+        medDayStatus(med, day).doses.filter(dose => !dose.noted && !dose.skipped && !dose.optional).forEach(dose => {
           const reminder = reminders[med.id + ':' + dose.slot];
           missed.push({ day: day, medId: med.id, slot: dose.slot, label: dose.label, time: (reminder && reminder.time) || '' });
         });

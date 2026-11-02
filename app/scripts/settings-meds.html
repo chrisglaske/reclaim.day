@@ -120,6 +120,9 @@
       whyThisHelps: why,
       dailyLimit: dailyLimit
     });
+    // When a medication is new from today, the moment it was added: earlier doses that day are optional.
+    if (id !== (previousMed && previousMed.id) && startDay === localToday()) nextMedication.addedAt = new Date().toISOString();
+    else if (!previousMed || dateKey(previousMed.startDate) !== startDay) delete nextMedication.addedAt;
     if (preserveScheduleHistory) {
       S.meds.splice(existingIndex, 1, Object.assign({}, previousMed, { active: false }));
       S.meds.push(nextMedication);

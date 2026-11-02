@@ -239,6 +239,9 @@
   .app.zine .seg .sp{border:var(--zw) solid var(--zine-line);box-shadow:2px 2px 0 var(--zine-shadow)}
   .app.zine .tabbar{border-top:var(--zw) solid var(--zine-line)}
   @media (prefers-reduced-motion:reduce){.app.zine .btn:not(.ghost):is(:hover,:active){transform:none}}
+  /* a long name with no spaces (up to 40 letters) breaks inside the word rather than widening the page */
+  #app :is(h1,h2,h3,.eyebrow,.tt,.td,.t-m b,.mrow b,.xchips .chip){overflow-wrap:anywhere}
+  .xchips .chip{max-width:100%}
   @media print{
     .apqbody.min{display:block!important}
     html,body{background:#fff!important;height:auto!important;overflow:visible!important}

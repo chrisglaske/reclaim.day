@@ -21,7 +21,8 @@
     activeMedications().filter(med => !med.startDate || dateKey(med.startDate) <= day)
       .forEach(med => {
         if (med.freq === 'prn') return;
-        medDayStatus(med, day).doses.forEach(dose => {
+        // A dose from before the medication was added stays off Today; Tracking and the Journal can still note it.
+        medDayStatus(med, day).doses.filter(dose => !dose.optional).forEach(dose => {
           // "Not taking it today" settles the dose: it goes to Done today as skipped, not taken.
           const reminder = S.profile.companion.reminders[med.id + ':' + dose.slot];
           const time = reminder && /^([01]\d|2[0-3]):[0-5]\d$/.test(reminder.time)
@@ -119,7 +120,7 @@
 
   // Tracking: a scheduled dose with a reminder time, not noted 30 minutes after it.
   function trackingDoseLate(dose, at = todayUI.now) {
-    if (dose.noted || !dose.reminderTime) return false;
+    if (dose.noted || dose.optional || !dose.reminderTime) return false;
     const due = Number(dose.reminderTime.slice(0, 2)) * 60 + Number(dose.reminderTime.slice(3));
     return at.getHours() * 60 + at.getMinutes() >= due + 30;
   }

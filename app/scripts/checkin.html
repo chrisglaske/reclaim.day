@@ -86,7 +86,7 @@ function renderFlow(){
     <div class="flfoot"><div class="fearly" id="fsave" ${fSaveNow()?'':'hidden'}>Enough for now? <button class="link" data-act="fsave">Save and finish</button></div><div class="inner">${f.step?`<button class="btn lg" data-act="fback">Back</button>`:''}<button class="btn primary lg" id="fnext" data-act="fnext">${fNextLabel()}</button></div></div>`;
 }
 function fGo(n){const f=V.flow;f.dir=n>=f.step?'r':'l';f.step=n;if(n===fRev(f.sl))f.ret=false;renderFlow();}
-function fNext(){const f=V.flow;if(f.step===fRev(f.sl))return fSave();fGo(f.ret?fRev(f.sl):f.step+1);}
+function fNext(){const f=V.flow;if(!f)return;if(f.step===fRev(f.sl))return fSave();fGo(f.ret?fRev(f.sl):f.step+1);}
 
   function validateCheckin(slot, v) {
     const errors = [];
@@ -104,6 +104,7 @@ function fNext(){const f=V.flow;if(f.step===fRev(f.sl))return fSave();fGo(f.ret?
 
   // The mockup's fSave on the saved data.
   function fSave() {
+    if (!V.flow) return;
     const f = V.flow, v = f.v, slot = f.sl, key = f.day;
     const errors = validateCheckin(slot, v);
     if (slot === 'daily' && v.mood == null && !v.health.length && !v.text.trim()) errors.push('Pick a mood or add a few words first');
@@ -142,6 +143,10 @@ function flowClose(){
 Object.assign(ACT,{
   flow:(b,e,x,y,a='flow')=>flowOpen(x==='now'?(ckDay(localToday())[curSlot()]?nextSlot():curSlot()):x,x!=='now'&&V.view==='journal'&&V.jday?V.jday:localToday(),a==='flowrev'),
   flowrev:(b,e,x)=>ACT.flow(b,e,x,null,'flowrev'),
+  fclose:()=>flowClose()
+});
+/* the buttons inside a check-in do nothing once it has closed: a second quick tap can land while it slides away */
+Object.entries({
   fmood:(b,e,x)=>{V.flow.v.mood=+x;const g=b.parentNode;$$('.bm',g).forEach(m=>{m.classList.toggle('on',m===b);m.setAttribute('aria-checked',m===b);});g.classList.add('picked');fLabel();},
   /* picking a mood no longer moves on by itself (user, 2026-10-24: people tapped again on the next page and skipped sleep); Continue does */
   fsl:(b,e,x,y,a='fsl')=>{const v=V.flow.v;v.sleep=a==='fslset'?+x:Math.max(0,Math.min(24,v.sleep==null?7:v.sleep+(x==='+'?.25:-.25)));
@@ -155,9 +160,8 @@ Object.assign(ACT,{
   fnext:()=>fNext(),
   fsave:()=>fSave(),
   fback:()=>{V.flow.ret=false;fGo(V.flow.step-1);},
-  fgo:(b,e,x)=>{V.flow.ret=true;fGo(+x);},
-  fclose:()=>flowClose()
-});
+  fgo:(b,e,x)=>{V.flow.ret=true;fGo(+x);}
+}).forEach(([verb,run])=>{ACT[verb]=(...a)=>V.flow?run(...a):undefined;});
 app.addEventListener('input',e=>{const t=e.target,v=V.flow?.v;if(!v)return;if(t.id==='fhother')v.healthOther=t.value;
   if(t.id==='fcr'){v.craving=+t.value;$('#fcrv').textContent=t.value;$('#fcrw').textContent=CRW(v.craving);fLabel();}
   if(t.id==='ffocus'){v.focus=t.value;fLabel();}

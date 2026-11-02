@@ -184,7 +184,7 @@
     return schedMeds().flatMap(med => trackingDoseSchedule(med, localToday(), now).map((d, i, all) => ({
       id: med.id + '-' + d.slot, medId: med.id, slot: d.slot, name: med.name, title: medTitle(med), label: d.label, multi: all.length > 1,
       dueAt: d.timeLabel || undefined, done: d.noted, at: d.at ? tstr(d.at) : '', skipped: d.skipped, reason: d.reason,
-      due: !d.noted && !d.skipped && (d.reminderTime ? Number(d.reminderTime.slice(0, 2)) * 60 + Number(d.reminderTime.slice(3)) <= nowM : d.next),
+      optional: d.optional, due: !d.noted && !d.skipped && !d.optional && (d.reminderTime ? Number(d.reminderTime.slice(0, 2)) * 60 + Number(d.reminderTime.slice(3)) <= nowM : d.next),
       late: !d.skipped && trackingDoseLate(d, now)
     })));
   }
@@ -234,7 +234,7 @@
       const st = medDayStatus(med, k), rem = S.profile.companion.reminders || {};
       return med.freq === 'prn'
         ? { id: med.id, name: med.name, title: medTitle(med), prn: true, limit: Number(med.dailyLimit) || 0, n: st.noted }
-        : { id: med.id, name: med.name, title: medTitle(med), prn: false, multi: st.doses.length > 1, doses: st.doses.map(d => ({ slot: d.slot, label: d.label, noted: d.noted, skipped: d.skipped, reason: d.reason, at: d.at ? tstr(d.at) : '', time: (rem[med.id + ':' + d.slot] || {}).time || '' })) };
+        : { id: med.id, name: med.name, title: medTitle(med), prn: false, multi: st.doses.length > 1, doses: st.doses.map(d => ({ slot: d.slot, label: d.label, optional: d.optional, noted: d.noted, skipped: d.skipped, reason: d.reason, at: d.at ? tstr(d.at) : '', time: (rem[med.id + ':' + d.slot] || {}).time || '' })) };
     });
   }
   // The latest note on day k for a medicine's dose slot (-1: as needed), to take back out.

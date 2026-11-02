@@ -92,7 +92,7 @@ Dates and times are ISO 8601 strings in UTC. Day keys are `YYYY-MM-DD` in your l
 | `profile.companion` | Your toolkit, daily intentions, weekly reflections, questions for your doctor, saved doctors and appointments, dose times, look and display choices |
 | `vices` | One entry each for `smoking`, `vaping` and `drinking`: on or off, your usual amount and spend, the count unit, and `phases` |
 | `vices.*.phases` | Your goals over time, oldest first. `mode` is `quit`, `reduce` (with a `target` per day, per week, or on chosen weekdays) or `track` (no limit). A phase can start in the future, like a planned quit day |
-| `meds` | Your medications: name, dose and unit, how often (`1` to `4` a day, or `prn` for as needed), dose times, start date, and whether it's active or archived |
+| `meds` | Your medications: name, dose and unit, how often (`1` to `4` a day, or `prn` for as needed), dose times, start date (and, for one added on its first day, when it was added), and whether it's active or archived |
 | `slips` | Each cigarette, vape, drink or slip you logged: when, how much, what it cost, what was going on and your note |
 | `cravings` | Each urge you rode out: which habit and when |
 | `doses` | Doses by day, then by medication: which dose time (`slot`, `-1` for as needed) and when you took it, or that you skipped it and why |
