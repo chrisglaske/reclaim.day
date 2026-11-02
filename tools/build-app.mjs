@@ -28,7 +28,8 @@ const hashFonts = text => fonts.reduce((out, [name, hashed]) => {
   return out.replaceAll(`/fonts/${name}`, `/fonts/${hashed}`);
 }, text);
 
-const config = `<script>window.reclaimGoogle = { clientId: '${CLIENT_ID}' };</script>`;
+// reclaimBuild names this exact build (a hash of the app's source) so an error report says which one it came from.
+const config = `<script>window.reclaimGoogle = { clientId: '${CLIENT_ID}' }; window.reclaimBuild = '${hash(inlineIncludes(readIndex()))}';</script>`;
 const head = `${config}
   <meta name="robots" content="noindex">
   <link rel="preload" href="https://accounts.google.com/gsi/client" as="script">

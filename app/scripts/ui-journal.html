@@ -21,6 +21,7 @@ const calLegend=(extra='')=>`<div class="legend" style="margin-top:12px">${nohis
 function ckFacts(c){
   const f=[];if(c.sleep!=null)f.push(`Slept ${c.sleep}h`);if(c.q)f.push(`Sleep ${SQ[c.q-1].toLowerCase()}`);if(c.focus)f.push(`Focus: ${esc(c.focus)}`);
   if(c.craving!=null)f.push(`Craving ${c.craving}/10`);(c.tags||[]).forEach(t=>f.push(esc(t)));healthWords(c).forEach(t=>f.push(esc(t)));
+  if(c.tomorrow)f.push(`Note for tomorrow: ${esc(c.tomorrow)}`);
   return f.length?`<div class="facts">${f.map(x=>`<span>${x}</span>`).join('')}</div>`:'';
 }
 const EVI={s:['🚬','mint'],v:['💨','butter'],d:['🍷','sky'],w:['wave','peach'],m:['pill','butter'],a:['cal','sky']};

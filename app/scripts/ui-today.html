@@ -109,8 +109,8 @@ function tStory(){
     `<span class="badge">${a.length}</span>`);
 }
 function tgridInner(){
-  return pending().length?`<div class="tcol">${hero()}${cuLine()}${tStory()}</div><div class="tcol">${tFocus()}${glance()}</div>`
-    :`${hero()}${cuLine()}<div class="tcol">${tFocus()}${glance()}</div><div class="tcol">${tStory()}</div>`;
+  return pending().length?`<div class="tcol">${hero()}${cuLine()}${lowHTML()}${tStory()}</div><div class="tcol">${tFocus()}${glance()}</div>`
+    :`${hero()}${cuLine()}${lowHTML()}<div class="tcol">${tFocus()}${glance()}</div><div class="tcol">${tStory()}</div>`;
 }
 function hval(k){const t=track(k),n=dBetween(localToday(),t.start),st=taper(t);
   return t.mode==='track'?`<span class="hm">Tracking · </span>${moments(k)}<span class="hm"> today</span>`:hrest(k)?`<span class="hm">Reduce · </span>Rest day`:t.mode==='reduce'?`<span class="hm">Reduce · </span>${hused(k)}/${t.limit}${hwk(k)?'<span class="hm"> this week</span>':''}`:n>0?`<span class="hm">Quit day in </span>${n}d${st.length?'<span class="hm"> · up to '+st[0].v+'</span>':''}`:`Day ${hday(k)}`;}
@@ -122,17 +122,41 @@ function hchip(k){const t=track(k);if(!t.on)return '';
   const v=hval(k);
   const nm=HB[k].n,em=hemo(k);
   return `<button class="hchip" data-act="nav:tracking" title="${nm} · ${t.mode==='reduce'?'cutting down':t.mode==='track'?'just tracking':'quitting'}"><span class="itile hem ${HB[k].tint}" aria-hidden="true">${em}</span><span class="vh">${nm}: </span><b>${v}</b></button>`;}
+/* first-week checklist: two steps that tick from real data; on a phone in a browser tab, an add-to-home-screen tip that never counts */
+const fwTip=()=>matchMedia('(max-width: 600px)').matches&&!matchMedia('(display-mode: standalone)').matches&&!navigator.standalone;
+function fwHTML(){
+  const c=firstWeekChecklist();if(!c)return '<div id="fw" hidden></div>';
+  const row=(on,t)=>`<li class="${on?'on':''}"><span class="fwk" aria-hidden="true">${on?I('check'):''}</span><span>${t}<span class="vh">${on?', done':''}</span></span></li>`;
+  return `<section class="card fwcard" id="fw" aria-labelledby="fwh"><div class="ctitle"><div><h2 id="fwh">Getting started</h2><span class="hint">Two small things, whenever you like</span></div><button class="iconbtn" data-act="fwclose" aria-label="Close getting started">${I('x')}</button></div>
+    <ul class="fwlist">${row(c.checkin,'Do your first check-in')}${row(c.moment,'Note a first moment or dose')}</ul>
+    ${fwTip()?`<p class="fwtip">Tip: add Reclaim to your home screen to open it like an app. <a href="https://reclaim.day/faq/#home-screen" target="_blank" rel="noopener">How</a></p>`:''}</section>`;
+}
+/* gentle return note: shown once on a return day, until closed or until something is logged; its seen mark is kept on this device only */
+try{V.rtseen=localStorage.getItem('reclaim-return-seen')||'';}catch(error){V.rtseen='';}
+function rtHTML(){const r=returnDay();if(!r||!r.quiet||V.rtseen===r.prior)return '<div id="rt" hidden></div>';
+  return `<section class="card rtcard" id="rt" aria-labelledby="rth"><div class="ctitle"><div><h2 id="rth">Welcome back</h2><span class="hint">It’s good to see you. Start as small as you like.</span></div><button class="iconbtn" data-act="rtclose" aria-label="Close welcome note">${I('x')}</button></div>
+    <button class="btn primary" data-act="flow:now">${I('check')}Do a quick check-in</button></section>`;}
+/* note for tomorrow: last evening's optional line, closed with Got it; it stays in the Journal on its own day */
+function ntHTML(){const n=noteForTomorrow();if(!n)return '<div id="nt" hidden></div>';
+  return `<section class="card ntcard" id="nt" aria-labelledby="nth"><div class="ctitle"><div><h2 id="nth">A note from last night</h2></div><button class="iconbtn" data-act="ntclose" aria-label="Close note from last night">${I('x')}</button></div>
+    <p class="ntq">${esc(n.text)}</p></section>`;}
+/* running-low note: one quiet line per scheduled medication within about a week of running out, an estimate from the pill count in Settings */
+function lowHTML(){const rows=activeMedications().map(m=>[m,runningLow(m)]).filter(r=>r[1]);if(!rows.length)return '<div id="lowline"></div>';
+  return `<div id="lowline">${rows.map(([m,l])=>{const nm=esc(m.name),t=hide()?`${nm} may be running low (an estimate).`:!l.left?`${nm}: your pill count is at zero. Update it if you’ve picked up more.`
+    :l.daysLeft<1?`${nm}: less than a day of pills left (an estimate).`:`${nm}: about ${l.daysLeft} day${l.daysLeft===1?'':'s'} of pills left (an estimate).`;
+    return `<div class="culine lowline"><span class="itile peach">${I('pill')}</span><b>${t}</b><button class="btn sm ghost" data-act="lowgo">Update count</button></div>`;}).join('')}</div>`;}
+const refreshFirstWeek=()=>{if(V.view!=='today')return;if($('#lowline'))$('#lowline').outerHTML=lowHTML();if($('#nt'))$('#nt').outerHTML=ntHTML();if($('#fw'))$('#fw').outerHTML=fwHTML();if($('#rt'))$('#rt').outerHTML=rtHTML();};
 function today(){
   const h=new Date().getHours(),g=h<12?'Good morning':h<18?'Good afternoon':'Good evening',nm=S.profile.name.trim();
   return `<div class="hello"><div><div class="eyebrow">${dlab(localToday())}</div><h1>${g}${nm?', '+esc(nm):''}</h1></div>
     <div class="hstrip">${dMood()}${hchips()}</div></div>
-    ${apLine()}<div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
+    ${fwHTML()}${rtHTML()}${ntHTML()}${apLine()}<div class="tgrid ${pending().length?'':'calm'}" id="tgrid">${tgridInner()}</div>`;
 }
 VIEWS.today=today;
 
 function setC(k,v){$$(`[data-c="${k}"]`,app).forEach(el=>{el.textContent=blur(v);bump(el);});const m=$('#meter-'+k);if(m&&hlim(k))m.style.width=Math.min(hused(k)/hlim(k),1)*100+'%';if(HK.includes(k)&&V.view==='today'){const h=$('.hstrip');if(h)h.innerHTML=dMood()+hchips();}if(['waves',...HK].includes(k))refreshStory();}
-function refreshStory(){if(V.view!=='today')return;V.snew=true;swap('tc-story',tStory());V.snew=false;}
-function refreshHero(){const g=$('#tgrid');if(!g)return;const y=$('#main').scrollTop,calm=!pending().length,flip=g.classList.contains('calm')!==calm;
+function refreshStory(){if(V.view!=='today')return;refreshFirstWeek();V.snew=true;swap('tc-story',tStory());V.snew=false;}
+function refreshHero(){const g=$('#tgrid');if(!g)return;refreshFirstWeek();const y=$('#main').scrollTop,calm=!pending().length,flip=g.classList.contains('calm')!==calm;
   const run=()=>{if(flip){g.classList.toggle('calm',calm);g.innerHTML=tgridInner();}else{$('#now').outerHTML=hero();swap('tc-story',tStory());}$('#main').scrollTop=y;};
   if(flip&&document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.startViewTransition(run);else run();const l=$('.hello .lead');if(l){const p=pending().length;l.innerHTML=`${p?`<b>${p} thing${p>1?'s':''}</b> to do now`:'You’re all caught up'} · next at ${later().time}`;}}
 /* the dose is already noted in S; the row fades, then the hero redraws */
@@ -143,6 +167,13 @@ function complete(t,el){
 
 const T=id=>tasks().find(t=>t.id===id);
 Object.assign(ACT,{
+  lowgo:(b,e)=>{V.sset='meds';V.sopen='meds';ACT.nav(b,e,'settings');setTimeout(()=>mainTo($('#s-meds')),120);},
+  ntclose:()=>{const n=noteForTomorrow();if(!n)return;const c=S.journal[n.day].checkins.evening;c.noteForTomorrowSeen=true;refreshFirstWeek();$('#view button')?.focus({preventScroll:true});
+    saveInBackground(()=>{delete c.noteForTomorrowSeen;refreshFirstWeek();});},
+  rtclose:()=>{const r=returnDay();if(!r)return;V.rtseen=r.prior;try{localStorage.setItem('reclaim-return-seen',r.prior);}catch(error){/* device storage is optional */}
+    refreshFirstWeek();$('#view button')?.focus({preventScroll:true});},
+  fwclose:()=>{if(!S.firstWeek)return;const was=S.firstWeek.dismissed;S.firstWeek.dismissed=true;refreshFirstWeek();toast('Closed. Your check-ins and doses are still on Today.');
+    saveInBackground(()=>{S.firstWeek.dismissed=was;refreshFirstWeek();});},
   dose:(b,e,x)=>{const t=T(x);if(!t)return;
     if(t.skipped){const ev=dayDoseEvent(localToday(),t.medId,t.slot);if(!ev)return;removeDoseEvent(t.medId,ev);refreshHero();$(`#t-${x} .dopt`)?.focus({preventScroll:true});
       toast('Skip removed',()=>{restoreDoseEvent(t.medId,ev);refreshHero();saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshHero();});});

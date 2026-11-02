@@ -9,6 +9,57 @@
     return time.toLocaleTimeString(dateLocale(), clockOptions());
   }
 
+  // First-week checklist. S.firstWeek exists only for people who finished setup for the first time, so everyone
+  // who started earlier never sees it. It ticks from real data, shows for 7 days, and goes once both steps are
+  // done or it is closed. Adding to the home screen is shown as a tip and never counts toward finishing.
+  const FIRST_WEEK_DAYS = 7;
+  function startFirstWeek() {
+    if (!S.onboarded && !S.firstWeek) S.firstWeek = { since: localToday(), dismissed: false };
+  }
+  function firstWeekChecklist() {
+    const week = S.firstWeek;
+    if (!week || week.dismissed || !dateKey(week.since)) return null;
+    const age = dayDistance(week.since, localToday());
+    if (age < 0 || age >= FIRST_WEEK_DAYS) return null;
+    const checkin = Object.values(S.journal).some(entry => entry && entry.checkins && typeof entry.checkins === 'object' &&
+      Object.values(entry.checkins).some(item => item && typeof item === 'object'));
+    const moment = S.slips.length > 0 || S.cravings.length > 0 || Object.values(S.doses).some(byMed =>
+      Object.values(byMed || {}).some(list => Array.isArray(list) && list.some(event => event && !event.skipped)));
+    return checkin && moment ? null : { checkin, moment };
+  }
+
+  // Gentle return note. The days with anything logged (a moment, a wave, a dose taken, a check-in, a mood) make up a
+  // person's activity. If the last one before today was 3 or more days ago, today is a return day: Today says something
+  // warm, and the dose catch-up line stays off Today for the day. Someone with no activity at all is new, not returning.
+  const RETURN_AFTER_DAYS = 3;
+  function activityDays() {
+    const days = new Set();
+    S.slips.concat(S.cravings).forEach(item => { const day = dateKey(item && item.at); if (day) days.add(day); });
+    Object.keys(S.doses).forEach(day => {
+      if (Object.values(S.doses[day] || {}).some(list => Array.isArray(list) && list.some(event => event && !event.skipped))) days.add(day);
+    });
+    Object.keys(S.journal).forEach(day => { if (dateKey(day) && S.journal[day] && typeof S.journal[day] === 'object' && Object.keys(S.journal[day]).length) days.add(day); });
+    return days;
+  }
+  // { prior, quiet }: prior is the last day with activity before today; quiet is true while today has none yet.
+  function returnDay() {
+    const today = localToday(), days = activityDays();
+    const before = [...days].filter(day => day < today).sort();
+    if (!before.length) return null;
+    const prior = before[before.length - 1];
+    if (dayDistance(prior, today) < RETURN_AFTER_DAYS) return null;
+    return { prior, quiet: !days.has(today) };
+  }
+
+  // Note for tomorrow: the optional line from last evening's check-in, shown on Today until it is closed. It stays in
+  // the Journal on its own day. Returns { day, text } or null.
+  function noteForTomorrow() {
+    const day = dayOffset(localToday(), -1), entry = S.journal[day];
+    const evening = entry && entry.checkins && typeof entry.checkins === 'object' ? entry.checkins.evening : null;
+    if (!evening || typeof evening.noteForTomorrow !== 'string' || !evening.noteForTomorrow.trim() || evening.noteForTomorrowSeen === true) return null;
+    return { day, text: evening.noteForTomorrow.trim() };
+  }
+
   // Today's doses and check-ins, split into due, done and upcoming. A dose needs a reminder time to be
   // scheduled; untimed doses are listed separately, and as-needed medicines aren't listed at all. Check-ins
   // run morning to noon, afternoon to 5 PM, evening to midnight; an earlier one that was missed is dropped.

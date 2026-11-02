@@ -70,6 +70,8 @@
     const limitText = String(draft.limit == null ? '' : draft.limit).trim();
     const dailyLimit = !prn || limitText === '' ? null : Number(limitText);
     const why = String(draft.why || '').trim();
+    const leftText = String(draft.left == null ? '' : draft.left).trim(), perDoseText = String(draft.perDose == null ? '' : draft.perDose).trim();
+    const pillsLeft = prn || leftText === '' ? null : Number(leftText), pillsPerDose = perDoseText === '' ? 1 : Number(perDoseText);
     if (!name) return 'Add a name for this medication';
     if (name.length > 40) return 'Keep the name to 40 characters.';
     if (!Number.isFinite(dose) || dose < 0) return 'Enter the dose as a number, like 150.';
@@ -77,6 +79,8 @@
     if (!startDay) return 'Choose the day the schedule starts.';
     if (!prn && (!Number.isInteger(count) || count < 1 || count > 4)) return 'Choose how often you take it.';
     if (dailyLimit !== null && (!Number.isInteger(dailyLimit) || dailyLimit < 1)) return 'Enter a daily limit of 1 or more, or leave it blank.';
+    if (pillsLeft !== null && (!Number.isFinite(pillsLeft) || pillsLeft < 0 || pillsLeft > 9999)) return 'Enter the pills left as a number, or leave it blank.';
+    if (pillsLeft !== null && (!Number.isFinite(pillsPerDose) || pillsPerDose <= 0 || pillsPerDose > 20)) return 'Enter the pills per dose as a number, like 1.';
     if (times.some(time => time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))) return 'Enter valid dose times or leave them blank.';
     if (slots.some(slot => slot.length > 20)) return 'Keep each dose name to 20 characters.';
     if (why.length > 500) return 'Keep the note to 500 characters.';
@@ -120,6 +124,9 @@
       whyThisHelps: why,
       dailyLimit: dailyLimit
     });
+    // Saving restarts the count from the number shown, so a changed schedule (a new copy of the medication) keeps counting from there.
+    if (pillsLeft !== null) nextMedication.supply = { left: pillsLeft, perDose: pillsPerDose, asOf: new Date().toISOString() };
+    else delete nextMedication.supply;
     // When a medication is new from today, the moment it was added: earlier doses that day are optional.
     if (id !== (previousMed && previousMed.id) && startDay === localToday()) nextMedication.addedAt = new Date().toISOString();
     else if (!previousMed || dateKey(previousMed.startDate) !== startDay) delete nextMedication.addedAt;

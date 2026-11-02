@@ -3,7 +3,7 @@
    The line asks about the last 7 days only, so an old gap ages out, and Hide puts it away until tomorrow (kept on this device only). */
 const CUDAYS=7;
 try{V.cuhide=localStorage.getItem('reclaim-catchup-hidden')||'';}catch(error){V.cuhide='';}
-function cuLine(){const n=V.cuhide===localToday()?0:missedDoses(CUDAYS).length;if(!n)return '<div id="culine"></div>';
+function cuLine(){const n=V.cuhide===localToday()||(V.view==='today'&&returnDay())?0:missedDoses(CUDAYS).length;if(!n)return '<div id="culine"></div>';
   const t=hide()?'Some recent doses aren’t noted yet':n===1?'1 dose from recent days isn’t noted yet':`${n} doses from recent days aren’t noted yet`;
   return `<div id="culine" class="culine"><button class="cugo" data-act="cuopen" aria-haspopup="dialog"><span class="itile peach">${I('pill')}</span><b>${t}</b><span class="cuadd">Add ${I('chev')}</span></button><button class="iconbtn" data-act="cuhide" aria-label="Hide until tomorrow">${I('x')}</button></div>`;}
 const cuDose=r=>medDayStatus(r.medId,r.day).doses.find(d=>d.slot===r.slot)||{};

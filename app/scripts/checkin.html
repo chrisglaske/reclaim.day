@@ -25,7 +25,8 @@ const slotL=sl=>sl==='daily'?'Day':SLOTS.find(s=>s[0]===sl)[3];
       tags: Array.isArray(saved.tags) ? saved.tags.filter(tag => JOURNAL_TAGS.includes(tag)) : [],
       health: Array.isArray(saved.health) ? saved.health.filter(tag => HEALTH_TAGS.includes(tag)) : [],
       healthOther: typeof saved.healthOther === 'string' ? saved.healthOther : '',
-      text: typeof saved.text === 'string' ? saved.text : ''
+      text: typeof saved.text === 'string' ? saved.text : '',
+      tomorrow: typeof saved.noteForTomorrow === 'string' ? saved.noteForTomorrow : ''
     };
   }
 
@@ -34,17 +35,17 @@ V.fdraft={};
 function flowOpen(sl,day,review){
   const dc=sl==='daily'&&dayCheck(day),c=dc?checkinAnswers(dc):ckDay(day)[sl],td=localToday();
   const past=day<td||(day===td&&SLOTS.findIndex(s=>s[0]===sl)<SLOTS.findIndex(s=>s[0]===curSlot())); // an earlier time of day asks in the past tense, without today's mood
-  V.flow={sl,day,step:review&&c?fRev(sl):0,dir:'r',edit:!!c,past,pre:!c&&!past&&day===td&&amood()!=null,v:c?JSON.parse(JSON.stringify(c)):{mood:day===td&&!past?amood():null,sleep:null,q:null,focus:'',craving:null,tags:[],health:[],healthOther:'',text:''}};
-  V.flow.v.tags??=[];V.flow.v.health??=[];V.flow.v.healthOther??='';V.flow.v.text??='';
+  V.flow={sl,day,step:review&&c?fRev(sl):0,dir:'r',edit:!!c,past,pre:!c&&!past&&day===td&&amood()!=null,v:c?JSON.parse(JSON.stringify(c)):{mood:day===td&&!past?amood():null,sleep:null,q:null,focus:'',craving:null,tags:[],health:[],healthOther:'',text:'',tomorrow:''}};
+  V.flow.v.tomorrow??='';V.flow.v.tags??=[];V.flow.v.health??=[];V.flow.v.healthOther??='';V.flow.v.text??='';
   /* a new check-in closed partway comes back as it was, for this visit only; nothing is stored until it's saved */
   V.flow.v0=JSON.stringify(V.flow.v);const dr=!c&&V.fdraft[fdKey(sl,day)];if(dr){V.flow.v=dr.v;V.flow.step=dr.step;}
   if(!$('#flow.open'))V.flowFrom=document.activeElement;
   closeSheet();if(typeof closeQ==='function')closeQ();renderFlow();const f=$('#flow');f.classList.add('open');f.tabIndex=-1;f.focus({preventScroll:true});
 }
-function fAnswered(){const f=V.flow,v=f.v;return {mood:v.mood!=null,detail:f.sl==='morning'?(v.sleep!=null||!!v.q||!!v.focus):(v.craving!=null||v.tags.length>0),body:v.health.length>0,words:!!v.text.trim(),review:true}[FKEYS(f.sl)[f.step]];}
+function fAnswered(){const f=V.flow,v=f.v;return {mood:v.mood!=null,detail:f.sl==='morning'?(v.sleep!=null||!!v.q||!!v.focus):(v.craving!=null||v.tags.length>0),body:v.health.length>0,words:!!v.text.trim()||!!v.tomorrow.trim(),review:true}[FKEYS(f.sl)[f.step]];}
 const fNextLabel=()=>V.flow.step===fRev(V.flow.sl)?(V.flow.edit?'Save changes':'Save check-in'):fAnswered()?'Continue':'Skip this step';
 /* Save and finish: after any answer, save what's there and skip the steps left */
-const fSaveNow=()=>{const f=V.flow,v=f.v;return !f.ret&&f.step<fRev(f.sl)&&(v.mood!=null||v.sleep!=null||!!v.q||!!v.focus||v.craving!=null||v.tags.length>0||v.health.length>0||!!v.text.trim());};
+const fSaveNow=()=>{const f=V.flow,v=f.v;return !f.ret&&f.step<fRev(f.sl)&&(v.mood!=null||v.sleep!=null||!!v.q||!!v.focus||v.craving!=null||v.tags.length>0||v.health.length>0||!!v.text.trim()||!!v.tomorrow.trim());};
 const fLabel=()=>{const n=$('#fnext');if(n)n.textContent=fNextLabel();const s=$('#fsave');if(s)s.hidden=!fSaveNow();};
 function flowStep(){
   const f=V.flow,v=f.v,mor=f.sl==='morning',opt='<span class="muted" style="font-weight:500">· optional</span>';
@@ -67,12 +68,14 @@ function flowStep(){
       <div id="fhow" ${v.health.includes('Other')?'':'hidden'}><label class="lbl" for="fhother">What’s going on? <span class="muted" style="font-weight:500">· optional</span></label><input class="field" id="fhother" maxlength="200" placeholder="e.g. Sore throat" value="${esc(v.healthOther||'')}"></div>`;
     case 'words':return `<div class="flq"><h2>A few words, if you like</h2><p>Or none at all. A prompt can help you start.</p></div>
       <div class="chips">${PROMPTS.map((p,i)=>`<button class="chip" data-act="fprompt:${i}">${p}</button>`).join('')}</div>
-      <div><textarea id="ftext" maxlength="5000" placeholder="Whatever is on your mind…" aria-label="Your note">${esc(v.text)}</textarea><div class="tcount" id="ftc">${v.text.length} / 5000</div></div>`;
+      <div><textarea id="ftext" maxlength="5000" placeholder="Whatever is on your mind…" aria-label="Your note">${esc(v.text)}</textarea><div class="tcount" id="ftc">${v.text.length} / 5000</div></div>
+      ${f.sl==='evening'?`<div><label class="lbl" for="ftomorrow">A note for tomorrow morning? ${opt}</label><input class="field" id="ftomorrow" maxlength="200" placeholder="e.g. Take it easy, the walk helped" value="${esc(v.tomorrow||'')}"><p class="muted" style="margin:6px 0 0;font-size:14px">You’ll see it on Today tomorrow.</p></div>`:''}`;
     case 'review':{const rows=[[0,'smile','mint','Mood',v.mood!=null?MOODS[v.mood][0]+' '+MOODS[v.mood][1]:'Not noted']];
       if(mor)rows.push([1,'moon','lilac','Sleep & focus',[v.sleep!=null?fh(v.sleep)+' hours':'',v.q?SQ[v.q-1]:'',v.focus?'Focus: '+esc(v.focus):''].filter(Boolean).join(' · ')||'Not noted']);
       else if(f.sl!=='daily')rows.push([1,'wave','peach','Cravings & context',[v.craving!=null?`Craving ${v.craving}/10`:'Craving not rated',...v.tags].join(' · ')]);
       rows.push([at('body'),'leaf','sky','Your body',healthWords(v).map(esc).join(' · ')||'Nothing noted']);
       const t=v.text.trim();rows.push([at('words'),'pen','butter','Your words',t?esc(t.slice(0,160))+(t.length>160?'…':''):'No note this time']);
+      if(f.sl==='evening')rows.push([at('words'),'sun','sky','Note for tomorrow',v.tomorrow.trim()?esc(v.tomorrow.trim()):'None']);
       return `<div class="flq"><h2>Your check-in</h2><p>Have a look. Tap Edit to change anything.</p></div>
       <section class="card rvlist">${rows.map(([s,i,c,k,val])=>`<div class="rv"><span class="itile ${c}">${I(i)}</span><div><div class="k">${k}</div><div class="muted">${val}</div></div><button class="link" data-act="fgo:${s}">Edit</button></div>`).join('')}</section>`;}
   }
@@ -99,6 +102,7 @@ function fNext(){const f=V.flow;if(!f)return;if(f.step===fRev(f.sl))return fSave
       if ((v.focus || '').length > 200) errors.push('Keep the focus to 200 characters or fewer.');
     }
     if (v.text.length > 5000) errors.push('Keep the note to 5,000 characters or fewer.');
+    if ((v.tomorrow || '').length > 200) errors.push('Keep the note for tomorrow to 200 characters or fewer.');
     return errors;
   }
 
@@ -116,6 +120,10 @@ function fNext(){const f=V.flow;if(!f)return;if(f.step===fRev(f.sl))return fSave
     const checkin = { mood: v.mood != null ? v.mood + 1 : 0, text: v.text.trim().slice(0, 5000), createdAt: previous && (previous.createdAt || previous.updatedAt) || at, updatedAt: at };
     if (slot === 'morning') Object.assign(checkin, { sleepHours: validateSleepHours(v.sleep).value, sleepQuality: v.q || 0, intention: (v.focus || '').trim().slice(0, 200) });
     else if (slot !== 'daily') Object.assign(checkin, { craving: v.craving, tags: v.tags.slice() });
+    // The note for tomorrow is only asked in the evening. It stays unseen until it is shown and closed on Today the next day;
+    // editing its words makes it new again.
+    const note = slot === 'evening' ? (v.tomorrow || '').trim().slice(0, 200) : '';
+    if (note) { checkin.noteForTomorrow = note; if (previous && previous.noteForTomorrow === note && previous.noteForTomorrowSeen === true) checkin.noteForTomorrowSeen = true; }
     if (v.health.length) checkin.health = v.health.slice();
     if (v.health.includes('Other') && v.healthOther.trim()) checkin.healthOther = v.healthOther.trim().slice(0, 200);
     entry.checkins[slot] = checkin;
@@ -165,6 +173,7 @@ Object.entries({
 app.addEventListener('input',e=>{const t=e.target,v=V.flow?.v;if(!v)return;if(t.id==='fhother')v.healthOther=t.value;
   if(t.id==='fcr'){v.craving=+t.value;$('#fcrv').textContent=t.value;$('#fcrw').textContent=CRW(v.craving);fLabel();}
   if(t.id==='ffocus'){v.focus=t.value;fLabel();}
+  if(t.id==='ftomorrow'){v.tomorrow=t.value;fLabel();}
   if(t.id==='ftext'){v.text=t.value;$('#ftc').textContent=t.value.length+' / 5000';fLabel();}});
 document.addEventListener('keydown',e=>{const fo=$('#flow.open');if(!fo||$('#sheet.open'))return;
   if(e.key==='Escape'){flowClose();return;}

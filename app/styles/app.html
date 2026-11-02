@@ -20,6 +20,21 @@
   .toast:not(.show) #tundo{visibility:hidden;transition:visibility 0s .45s}
   .toast.savenote{bottom:164px;white-space:normal;width:max-content;max-width:min(560px,calc(100% - 32px))}
   @container app (min-width:820px){.toast.savenote{bottom:90px}}
+  /* First-week checklist on Today */
+  .fwcard,.rtcard,.ntcard{margin-bottom:16px}
+  .ntq{margin:4px 0 0;font-size:17px;line-height:1.4;overflow-wrap:anywhere}
+  .rtcard .btn{margin-top:4px}
+  .fwlist{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:10px}
+  .fwlist li{display:flex;align-items:center;gap:12px;font-weight:600}
+  .fwk{width:24px;height:24px;border-radius:50%;border:2px solid var(--line2);display:grid;place-items:center;flex:none}
+  .fwlist li.on .fwk{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+  .fwlist li.on .fwk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3}
+  .fwtip{margin:12px 0 0;font-size:14px}
+  /* The error notice stacks above the save notice so it never covers it. */
+  .toast.errnote{bottom:236px;flex-wrap:wrap;justify-content:flex-end;padding:12px 12px 12px 18px;line-height:1.35}
+  .toast.errnote span{flex:1 1 220px}
+  .toast.errnote a{color:inherit;font-weight:700;text-decoration:underline}
+  @container app (min-width:820px){.toast.errnote{bottom:160px}}
   /* Today's "Taken earlier?": Tracking's inline field under the dose row. */
   .task:has(.cfg){row-gap:0}
   .task .cfg{grid-column:1/-1;transition:grid-template-rows .45s cubic-bezier(.2,.8,.2,1),margin-top .45s cubic-bezier(.2,.8,.2,1)}
@@ -97,6 +112,8 @@
   .jdcmore{display:inline-flex;align-items:center;gap:4px;margin-top:10px}.jdcmore .ic{width:15px;height:15px}
   .iconbtn[disabled]{opacity:.4;pointer-events:none}
   #culine:empty{display:none}
+  .lowline{margin:0 0 10px}
+  .lowline b{flex:1;font-weight:600;font-size:15px;overflow-wrap:anywhere}
   .culine{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:16px;background:var(--soft);margin:14px 0}
   #medc .culine{margin:0 0 10px}
   .cugo{flex:1;min-width:0;min-height:44px;display:flex;align-items:center;gap:12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}

@@ -31,7 +31,7 @@ vm.runInContext(`{ const Real = Date; let current = Real.now();
 vm.runInContext(['core', 'state', 'habits', 'meds', 'today', 'settings-meds'].map(source).join('\n') + `
 ;globalThis.__app = { S, applyState, todayUI, localToday, dateKey, dayOffset, dayDistance, dailyUse, limitStatus, streakHistory, nextMilestone, habitWeek,
   totals, dailyEstimatedSavings, makeMoment, trackingDoseSchedule, trackingDoseLate, medDayStatus, medAdherence, missedDoses, addDoseEvent, skipDoseEvent,
-  todayActions, saveMedication };`, context);
+  todayActions, saveMedication, firstWeekChecklist, startFirstWeek, returnDay, noteForTomorrow, supplyLeft, runningLow };`, context);
 const app = context.__app;
 const same = (got, want) => assert.deepEqual(JSON.parse(JSON.stringify(got)), want);
 const setNow = at => { context.__clock(at); app.todayUI.now = new context.Date(); };
@@ -309,4 +309,116 @@ test('adherence counts full days and the current run', () => {
     '2026-10-16': full('2026-10-16'), '2026-10-18': full('2026-10-18'), '2026-10-19': full('2026-10-19') } });
   const adherence = app.medAdherence('daily', '2026-10-19');
   same([adherence.daysFullyNoted, adherence.daysExpected, adherence.currentRun], [3, 4, 2]);
+});
+
+// First-week checklist: only for people who finished setup for the first time, for 7 days, ticking from real data.
+test('first-week checklist: never for people who started before it existed', () => {
+  setNow('2026-03-10T09:00:00'); start();
+  assert.equal(app.firstWeekChecklist(), null);
+  app.startFirstWeek();   // already onboarded: no checklist is created
+  assert.equal(app.firstWeekChecklist(), null);
+});
+test('first-week checklist: starts at first setup, ticks from check-ins, moments and doses', () => {
+  setNow('2026-03-10T09:00:00'); start({ onboarded: false });
+  app.startFirstWeek();
+  same(app.S.firstWeek, { since: '2026-03-10', dismissed: false });
+  same(app.firstWeekChecklist(), { checkin: false, moment: false });
+  app.S.journal['2026-03-10'] = { checkins: { morning: { mood: 3 } } };
+  same(app.firstWeekChecklist(), { checkin: true, moment: false });
+  app.S.slips.push(slip('2026-03-10T09:30:00', { vice: 'smoking' }));
+  assert.equal(app.firstWeekChecklist(), null);   // both done: gone
+});
+test('first-week checklist: a skipped dose is not a first dose; a taken one is', () => {
+  setNow('2026-03-10T09:00:00'); start({ onboarded: false, meds: [medication()] });
+  app.startFirstWeek();
+  app.S.journal['2026-03-10'] = { checkins: { morning: { mood: 3 } } };
+  app.S.doses['2026-03-10'] = { daily: [{ slot: 0, at: '2026-03-10T09:00:00.000Z', skipped: true }] };
+  same(app.firstWeekChecklist(), { checkin: true, moment: false });
+  app.S.doses['2026-03-10'].daily.push({ slot: 1, at: '2026-03-10T10:00:00.000Z' });
+  assert.equal(app.firstWeekChecklist(), null);
+});
+test('first-week checklist: gone after 7 days, or once closed, and a later setup does not bring it back', () => {
+  setNow('2026-03-10T09:00:00'); start({ onboarded: false });
+  app.startFirstWeek();
+  setNow('2026-03-16T23:00:00'); assert.ok(app.firstWeekChecklist());      // day 7 of 7 (six days later)
+  setNow('2026-03-17T00:30:00'); assert.equal(app.firstWeekChecklist(), null);
+  setNow('2026-03-11T09:00:00'); assert.ok(app.firstWeekChecklist());
+  app.S.firstWeek.dismissed = true; assert.equal(app.firstWeekChecklist(), null);
+  app.S.onboarded = true; app.startFirstWeek(); assert.equal(app.S.firstWeek.dismissed, true);
+});
+
+// Gentle return note: today is a return day when the last day with anything logged before it was 3 or more days ago.
+test('return day: not for a new person, or after one or two quiet days', () => {
+  setNow('2026-03-10T09:00:00'); start();
+  assert.equal(app.returnDay(), null);                                    // nothing ever logged
+  app.S.slips.push(slip('2026-03-08T09:00:00'));
+  assert.equal(app.returnDay(), null);                                    // two days ago
+  app.S.slips.push(slip('2026-03-07T09:00:00'));
+  assert.equal(app.returnDay(), null);                                    // the most recent is still 2 days ago
+});
+test('return day: 3 or more quiet days, quiet until something is logged today', () => {
+  setNow('2026-03-10T09:00:00'); start({ slips: [slip('2026-03-07T09:00:00')] });
+  same(app.returnDay(), { prior: '2026-03-07', quiet: true });
+  app.S.cravings.push({ id: 'c', vice: 'smoking', at: '2026-03-10T09:30:00', resisted: true });
+  same(app.returnDay(), { prior: '2026-03-07', quiet: false });           // still the return day, but the note has done its job
+  setNow('2026-03-11T09:00:00');
+  assert.equal(app.returnDay(), null);                                    // yesterday had activity
+});
+test('return day: a skipped dose, or doses never taken, are not activity; a mood or a taken dose is', () => {
+  setNow('2026-03-10T09:00:00');
+  start({ meds: [medication()], doses: { '2026-03-09': { daily: [{ slot: 0, at: '2026-03-09T09:00:00.000Z', skipped: true }] }, '2026-03-02': { daily: [{ slot: 0, at: '2026-03-02T09:00:00.000Z' }] } } });
+  same(app.returnDay(), { prior: '2026-03-02', quiet: true });
+  app.S.journal['2026-03-06'] = { mood: 3 };
+  same(app.returnDay(), { prior: '2026-03-06', quiet: true });
+});
+
+// Note for tomorrow: last evening's optional line, until closed.
+test('note for tomorrow: shows the next day from last evening, once, and only that evening', () => {
+  setNow('2026-03-10T21:00:00'); start({ journal: { '2026-03-10': { checkins: { evening: { mood: 3, noteForTomorrow: ' Go easy ' } } } } });
+  assert.equal(app.noteForTomorrow(), null);                              // same evening: not yet
+  setNow('2026-03-11T08:00:00'); same(app.noteForTomorrow(), { day: '2026-03-10', text: 'Go easy' });
+  app.S.journal['2026-03-10'].checkins.evening.noteForTomorrowSeen = true;
+  assert.equal(app.noteForTomorrow(), null);                              // closed
+  setNow('2026-03-12T08:00:00'); app.S.journal['2026-03-10'].checkins.evening.noteForTomorrowSeen = false;
+  assert.equal(app.noteForTomorrow(), null);                              // two days on: it was for the morning after
+});
+test('note for tomorrow: ignores other check-ins and empty notes', () => {
+  setNow('2026-03-11T08:00:00');
+  start({ journal: { '2026-03-10': { checkins: { afternoon: { mood: 3, noteForTomorrow: 'x' }, evening: { mood: 3, noteForTomorrow: '   ' } } } } });
+  assert.equal(app.noteForTomorrow(), null);
+});
+
+// Running-low note: pills left as of a moment, less one dose's pills for each dose noted since.
+const supplied = (left, over = {}) => medication({ id: 'rx', freq: 2, supply: { left, perDose: 1, asOf: '2026-03-10T08:00:00.000Z' }, ...over });
+test('pill supply counts down by pills per dose as doses are noted taken', () => {
+  setNow('2026-03-12T09:00:00'); start({ meds: [supplied(20, { supply: { left: 20, perDose: 2, asOf: '2026-03-10T08:00:00.000Z' } })],
+    doses: { '2026-03-10': { rx: [{ slot: 0, at: '2026-03-10T09:00:00.000Z' }, { slot: 1, at: '2026-03-10T20:00:00.000Z' }] },
+      '2026-03-11': { rx: [{ slot: 0, at: '2026-03-11T09:00:00.000Z', skipped: true }] } } });
+  assert.equal(app.supplyLeft(app.S.meds[0]), 16);                       // two taken at 2 pills each; the skipped one is not counted
+});
+test('pill supply ignores doses noted from before the count, and never goes below zero', () => {
+  setNow('2026-03-12T09:00:00'); start({ meds: [supplied(1)], doses: { '2026-03-09': { rx: [{ slot: 0, at: '2026-03-09T09:00:00.000Z' }] },
+    '2026-03-11': { rx: [{ slot: 0, at: '2026-03-11T09:00:00.000Z' }, { slot: 1, at: '2026-03-11T20:00:00.000Z' }] } } });
+  assert.equal(app.supplyLeft(app.S.meds[0]), 0);
+});
+test('running low: about a week at the scheduled rate, only for scheduled active medications', () => {
+  setNow('2026-03-12T09:00:00');
+  start({ meds: [supplied(14)] });  same(app.runningLow(app.S.meds[0]), { left: 14, daysLeft: 7 });   // 2 a day: 7 days
+  start({ meds: [supplied(15)] });  assert.equal(app.runningLow(app.S.meds[0]), null);                // 7.5 days: not yet
+  start({ meds: [supplied(3)] });   same(app.runningLow(app.S.meds[0]), { left: 3, daysLeft: 1 });
+  start({ meds: [supplied(1)] });   same(app.runningLow(app.S.meds[0]), { left: 1, daysLeft: 0 });
+  start({ meds: [supplied(0)] });   same(app.runningLow(app.S.meds[0]), { left: 0, daysLeft: 0 });
+  start({ meds: [supplied(3, { active: false })] });  assert.equal(app.runningLow(app.S.meds[0]), null);
+  start({ meds: [supplied(3, { freq: 'prn', slots: [] })] }); assert.equal(app.runningLow(app.S.meds[0]), null);
+  start({ meds: [medication({ id: 'rx' })] }); assert.equal(app.runningLow(app.S.meds[0]), null);     // no count: off
+});
+test('saving a medication keeps the count from the number given, and clearing it turns the note off', () => {
+  setNow('2026-03-12T09:00:00'); start({ meds: [] });
+  const draft = { id: '', name: 'Sample', dose: '10', unit: 'mg', freq: 2, slots: ['Morning', 'Evening'], times: ['09:00', '21:00'], limit: '', start: '2026-03-12', why: '', backfill: false, left: '12', perDose: '' };
+  assert.equal(app.saveMedication(draft), '');
+  const saved = app.S.meds[0];
+  same({ left: saved.supply.left, perDose: saved.supply.perDose }, { left: 12, perDose: 1 });
+  assert.equal(app.saveMedication({ ...draft, id: saved.id, left: '' }), '');
+  assert.equal(app.S.meds.find(m => m.id === saved.id).supply, undefined);
+  assert.match(app.saveMedication({ ...draft, id: saved.id, left: 'lots' }), /pills left/);
 });

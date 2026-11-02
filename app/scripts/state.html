@@ -200,6 +200,10 @@
       onboarded: !!data.onboarded,
       // Optional: the SETUP_VERSION this person last finished or skipped; left out when not set.
       ...(Number(data.setupVersion) > 0 ? { setupVersion: Math.floor(Number(data.setupVersion)) } : {}),
+      // Optional: the first-week checklist for someone new (the day they finished setup, and whether they closed it);
+      // left out for everyone else, which is how people who started earlier never see it.
+      ...(stateObject(data.firstWeek) && /^\d{4}-\d{2}-\d{2}$/.test(data.firstWeek.since)
+        ? { firstWeek: { since: data.firstWeek.since, dismissed: data.firstWeek.dismissed === true } } : {}),
       createdAt: typeof data.createdAt === 'string' && data.createdAt
         ? data.createdAt
         : base.createdAt,
@@ -306,7 +310,11 @@
       // Optional: set when the medication was deleted (kept so it can be restored); left out when not.
       }, typeof med.deletedAt === 'string' && med.deletedAt ? { deletedAt: med.deletedAt } : {},
       // Optional: when a medication starting that day was added; its doses from earlier that day are optional.
-      typeof med.addedAt === 'string' && med.addedAt ? { addedAt: med.addedAt } : {}));
+      typeof med.addedAt === 'string' && med.addedAt ? { addedAt: med.addedAt } : {},
+      // Optional: pills left as of a moment, and pills per dose, for the running-low note; left out when not set.
+      stateObject(med.supply) && Number.isFinite(Number(med.supply.left)) && Number(med.supply.left) >= 0 &&
+        Number(med.supply.perDose) > 0 && typeof med.supply.asOf === 'string' && med.supply.asOf
+        ? { supply: { left: Number(med.supply.left), perDose: Number(med.supply.perDose), asOf: med.supply.asOf } } : {}));
 
     // Slips and cravings for an unknown habit are dropped.
     result.slips = (Array.isArray(data.slips) ? data.slips : [])

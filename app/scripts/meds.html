@@ -371,6 +371,32 @@
     return event;
   }
 
+  // Running-low note. A medication may carry supply { left, perDose, asOf }: the pills left as of a moment, and the pills
+  // taken per dose. What is left now is that count less perDose for each dose noted taken since then, so undoing a dose
+  // or removing one puts the pills back. Only scheduled medications have a daily rate to estimate from.
+  function supplyLeft(med) {
+    const supply = med && med.supply;
+    if (!supply) return null;
+    const since = new Date(supply.asOf);
+    if (isNaN(since)) return null;
+    let taken = 0;
+    Object.keys(S.doses).forEach(day => {
+      if (day < dateKey(since)) return;
+      const list = logicObject(S.doses[day]) ? S.doses[day][med.id] : null;
+      if (Array.isArray(list)) taken += list.filter(event => logicObject(event) && !event.skipped && new Date(event.at) > since).length;
+    });
+    return Math.max(0, Math.round((supply.left - taken * supply.perDose) * 100) / 100);
+  }
+  // { left, daysLeft } for an active scheduled medication that is within a week of running out, else null.
+  const SUPPLY_NOTE_DAYS = 7;
+  function runningLow(med) {
+    if (!med || !med.active || med.deletedAt || med.freq === 'prn' || !med.supply) return null;
+    const left = supplyLeft(med);
+    if (left === null) return null;
+    const daysLeft = left / (Number(med.freq) * med.supply.perDose);
+    return daysLeft <= SUPPLY_NOTE_DAYS ? { left, daysLeft: Math.floor(daysLeft) } : null;
+  }
+
   const SKIP_REASONS = ['Forgot', 'Side effects', 'Ran out', 'Told to stop or pause', 'Other'];
 
   // "Not taking it today" (or "Not taken" for an earlier day): saves the scheduled dose as skipped, with an optional reason,

@@ -199,13 +199,13 @@ Object.assign(ACT,{
     if(k==='meds'&&V.md){if(V.md.name.trim()){if(!obSaveDraft())return;}else V.md=null;}
     if(!obCommit(k))return;
     o.cheer=CHEER[k]?.(o)||'';
-    if(k==='review'){const was=[S.onboarded,S.setupVersion];S.onboarded=true;S.setupVersion=SETUP_VERSION;saveInBackground(()=>{[S.onboarded,S.setupVersion]=was;});
+    if(k==='review'){const was=[S.onboarded,S.setupVersion,S.firstWeek];startFirstWeek();S.onboarded=true;S.setupVersion=SETUP_VERSION;saveInBackground(()=>{[S.onboarded,S.setupVersion,S.firstWeek]=was;if(!was[2])delete S.firstWeek;});
       obGo(OBS().length);[250,800,1400].forEach((d,i)=>setTimeout(()=>sparks($('.obdone .sprout'),14+i*4),d));return;}
     obGo(o.step+1);},
   obgo:()=>{const back=V.ob.back;V.view='today';obLeave();setTimeout(()=>{$('#now .task')?.classList.add('flash');toast(back?'Welcome back. Your check-in is ready when you are.':'Welcome in. Your first check-in is ready when you are.');},500);},
   oback:()=>{V.ob.cheer='';if(!obCommit(obKey()))return;if(V.ob.step)obGo(V.ob.step-1);},
   /* on the first run, Skip marks setup done with what's chosen so far; so does a run setup's new version asked for */
-  oskip:()=>{if(!obCommit(obKey()))return;if(setupDue()){const was=[S.onboarded,S.setupVersion];S.onboarded=true;S.setupVersion=SETUP_VERSION;saveInBackground(()=>{[S.onboarded,S.setupVersion]=was;});}obLeave();},
+  oskip:()=>{if(!obCommit(obKey()))return;if(setupDue()){const was=[S.onboarded,S.setupVersion,S.firstWeek];startFirstWeek();S.onboarded=true;S.setupVersion=SETUP_VERSION;saveInBackground(()=>{[S.onboarded,S.setupVersion,S.firstWeek]=was;if(!was[2])delete S.firstWeek;});}obLeave();},
   ostep:(b,e,x)=>{V.ob.cheer='';if(!obCommit(obKey()))return;obGo(Math.max(0,OBS().findIndex(st=>st[0]===x)));},
   opick:(b,e,x)=>{if(x==='nic'){const m=nicMode();if(m!=='none'){V.ob.nicLast=m;setNicOn('none');}else setNicOn(V.ob.nicLast||'smoke');}else x==='meds'?V.ob.medsOn=!V.ob.medsOn:V.ob.track[x].on=!V.ob.track[x].on;obRefresh();},
   onic:(b,e,x)=>{setNicOn(x);obRefresh();},

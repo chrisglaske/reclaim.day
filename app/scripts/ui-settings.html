@@ -70,6 +70,8 @@ function medForm(){const d=V.md,n=FREQ.find(f=>f[0]===d.freq)[2],today=localToda
     ${n?doseTimes(d,n,sd)
     :`<div class="ffl"><div><label class="lbl" for="mdl">Daily limit ${OPT}</label><input class="field" id="mdl" type="number" min="1" data-md="limit" value="${esc(d.limit)}"></div>${sd}</div><p class="help" style="margin-top:-4px">If a note would go above the limit, the app checks with you first.</p>`}
     ${mbackHTML()}</div>
+  ${n?`<div class="fsec"><span class="lbl">Pill count ${OPT}</span><div class="ffl"><div><label class="lbl sm" for="mpl">Pills left now</label><input class="field" id="mpl" type="number" min="0" step="any" inputmode="decimal" data-md="left" value="${esc(d.left)}"></div><div><label class="lbl sm" for="mppd">Pills per dose</label><input class="field" id="mppd" type="number" min="0.5" step="any" inputmode="decimal" data-md="perDose" value="${esc(d.perDose)}"></div></div>
+    <p class="help" style="margin-top:-4px">Reclaim counts down as you note doses and says when about a week is left, as an estimate. Clear the first box to turn it off.</p></div>`:''}
   <div class="fsec"><label class="lbl" for="mw">Why this helps ${OPT}</label><textarea id="mw" data-md="why" maxlength="500" style="min-height:80px" placeholder="A note for yourself">${esc(d.why)}</textarea></div>`;}
 /* each dose: a name you can change (live "Dose times (rename if you like)") and an optional time; Settings and setup */
 const dtCell=(d,i)=>{const m=esc(d.name||'Medication');return `<div class="dtime"><input class="field" data-md="slots.${i}" maxlength="20" value="${esc(d.slots[i]||'')}" placeholder="${MED_SLOT_LABELS[i]}" aria-label="${m}, name of dose ${i+1}" autocomplete="off"><input type="time" class="field" ${i?'':'id="mdt0"'} data-md="times.${i}" value="${d.times[i]||''}" aria-label="${m}, time of dose ${i+1}"></div>`;};
@@ -79,15 +81,15 @@ const doseTimes=(d,n,sd)=>{const h=`<p class="help" style="margin-top:${n===1?'-
 /* the backfill offer: a new schedule that started before today can mark the doses up to yesterday as taken */
 const mbackHTML=()=>{const d=V.md,n=FREQ.find(f=>f[0]===d.freq)[2];
   return shouldOfferMedicationBackfill({id:d.id,freq:n||'prn',start:d.start})?`<div class="chips" id="mbk"><button class="chip ${d.backfill?'on':''}" aria-pressed="${d.backfill}" data-act="mback">${ck()}Mark doses from ${sdate(d.start)} to yesterday as taken</button></div>`:'<span id="mbk" hidden></span>';};
-const mdraft=m=>m?{id:m.id,name:m.name,dose:m.dose?String(m.dose):'',unit:m.unit,freq:fkey(m.freq),slots:m.slots.slice(),times:medicationReminderTimes(m),limit:m.dailyLimit?String(m.dailyLimit):'',start:dateKey(m.startDate)||localToday(),why:m.whyThisHelps||'',backfill:false}
-    :{id:'',name:'',dose:'',unit:'mg',freq:'once',slots:[],times:['09:00'],limit:'',start:localToday(),why:'',backfill:false};
+const mdraft=m=>m?{id:m.id,name:m.name,dose:m.dose?String(m.dose):'',unit:m.unit,freq:fkey(m.freq),slots:m.slots.slice(),times:medicationReminderTimes(m),limit:m.dailyLimit?String(m.dailyLimit):'',left:m.supply?String(supplyLeft(m)):'',perDose:m.supply?String(m.supply.perDose):'1',start:dateKey(m.startDate)||localToday(),why:m.whyThisHelps||'',backfill:false}
+    :{id:'',name:'',dose:'',unit:'mg',freq:'once',slots:[],times:['09:00'],limit:'',left:'',perDose:'1',start:localToday(),why:'',backfill:false};
 function medSheet(id){const m=id==='new'?null:S.meds.find(x=>x.id===id);if(id!=='new'&&!m)return '';
   V.md=mdraft(m);
   return `<div class="grab"></div><h3>${m?'Edit medication':'Add medication'}</h3><p class="muted" style="margin:0">Follow the directions given to you by your prescriber.</p>
   <div id="medf">${medForm()}</div>
   <div class="sfoot2"><button class="btn ghost" data-act="sclose">Cancel</button><button class="btn primary" data-act="msv">Save medication</button></div>`;}
 /* the field to focus for a save error */
-const MERRF={'Add a name for this medication':'#mn','Keep the name to 40 characters.':'#mn','Enter the dose as a number, like 150.':'#md','Enter a daily limit of 1 or more, or leave it blank.':'#mdl','Choose the day the schedule starts.':'#mds'};
+const MERRF={'Add a name for this medication':'#mn','Keep the name to 40 characters.':'#mn','Enter the dose as a number, like 150.':'#md','Enter a daily limit of 1 or more, or leave it blank.':'#mdl','Choose the day the schedule starts.':'#mds','Enter the pills left as a number, or leave it blank.':'#mpl','Enter the pills per dose as a number, like 1.':'#mppd'};
 const medRedraw=()=>{const f=$('#medf');if(f)f.innerHTML=medForm();};
 /* picking a catalog medicine (chip or name suggestion): a new medication also gets its dose, how often and dose times, as in the live app */
 const mcatFill=c=>{const d=V.md;d.name=c.name;d.unit=c.unit;d.cat=c.id;if(d.id)return;d.dose=String(c.dose);d.freq=fkey(c.freq);d.slots=medicationDefaultSlots(c.freq,c.bedtime);d.times=d.slots.map(s=>MED_SLOT_TIMES[s]||'');};

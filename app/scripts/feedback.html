@@ -48,6 +48,37 @@
     saveupgradeno: () => { saveNotice.upgradeBackupFailed = false; }
   });
 
+  // Friendly error notice: an error after start-up (startup has its own screen) shows one calm notice with
+  // Copy details and the contact address. Nothing is sent anywhere. The details are the build, the screen, the
+  // browser and the error's stack, with any quoted text in the message left out because it could be someone's own words.
+  const errorNotice = { shown: false, details: '' };
+  function errorDetails(error) {
+    const text = value => String(value == null ? '' : value);
+    const name = error && error.name ? text(error.name) : 'Error';
+    const message = text(error && error.message !== undefined ? error.message : error).replace(/(["'`])[^"'`]{12,}?\1/g, '$1…$1').slice(0, 300);
+    const stack = text(error && error.stack).split('\n').slice(1, 9).map(line => line.replace(/https?:\/\/[^/\s)]+/g, '').slice(0, 160)).join('\n');
+    return ['Reclaim ' + (window.reclaimBuild || 'dev'), 'Screen: ' + (V.screen === 'onboard' ? 'setup' : V.view || V.screen),
+      'Browser: ' + (navigator.userAgent || 'unknown'), name + ': ' + message, stack].filter(Boolean).join('\n');
+  }
+  function reportError(error) {
+    if (!window.reclaimStartup.ready || errorNotice.shown) return;
+    errorNotice.shown = true;
+    errorNotice.details = errorDetails(error);
+    const box = $('#errnote');
+    if (!box) return;
+    box.innerHTML = `<span>Something didn’t work as it should. You can carry on, and reloading often clears it up. If it keeps happening, copy the details and send them to <a href="mailto:contact@reclaim.day">contact@reclaim.day</a>.</span><button data-act="errcopy">Copy details</button><button data-act="errdismiss" aria-label="Dismiss error note">×</button>`;
+    box.classList.add('show');
+  }
+  window.addEventListener('error', event => { if (event.error) reportError(event.error); });
+  window.addEventListener('unhandledrejection', event => reportError(event.reason));
+  Object.assign(ACT, {
+    errcopy: async () => {
+      try { await navigator.clipboard.writeText(errorNotice.details); toast('Details copied'); }
+      catch { toast('Couldn’t copy. You can email us and we’ll ask what you saw.'); }
+    },
+    errdismiss: () => { $('#errnote').classList.remove('show'); errorNotice.shown = false; }
+  });
+
   // Instant save: the screen has already changed, so save in the background.
   // If the save fails, rollback() puts the change back and the message says so. A save that
   // couldn't reach Drive isn't a failure: it resolves, the change stays and core.html retries it.
