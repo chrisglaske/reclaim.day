@@ -6,7 +6,7 @@
   "scripts": {
     "app": "node ../tools/build-app.mjs",
     "build": "npm run app && cf build",
-    "deploy": "npm run app && cf deploy && node ../tools/deploy-check.mjs --app"
+    "deploy": "node ../tools/deploy-gate.mjs && npm run app && cf deploy && node ../tools/deploy-check.mjs --app"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^2.0.0-beta.v.4",

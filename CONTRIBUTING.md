@@ -26,6 +26,7 @@ The tests need only Node.js, no browser or network:
 ```sh
 node tools/roundtrip.mjs                    # saved files from older versions load, back up and restore, nothing dropped
 node tools/drive-adapter.mjs                # the Drive storage code against a fake Drive
+node tools/logic-tests.mjs --zones          # dates, limits, streaks, savings and doses in several time zones
 ```
 
 [How Reclaim works](ARCHITECTURE.md) explains the pieces and the data format, and the [README](README.md) shows where things are.
@@ -48,7 +49,7 @@ node tools/drive-adapter.mjs                # the Drive storage code against a f
 
 ## Before you open a pull request
 
-- `node tools/roundtrip.mjs`, `node tools/drive-adapter.mjs` and `node tools/build-app.mjs` pass. The `checks` workflow runs them and builds the site on every pull request.
+- `node tools/roundtrip.mjs`, `node tools/drive-adapter.mjs`, `node tools/logic-tests.mjs --zones` and `node tools/build-app.mjs` pass. The `checks` workflow runs them and builds the site on every pull request.
 - You've tried your change in the browser at phone and desktop width, and with the keyboard.
 - If it changes how the app looks, include before and after screenshots with made-up data.
 - If it changes saved data, describe how older files still load.

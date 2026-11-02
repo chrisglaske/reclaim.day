@@ -30,6 +30,8 @@ jobs:
             site/package-lock.json
       - name: Saved data round trip (old versions load, nothing is dropped)
         run: node tools/roundtrip.mjs
+      - name: Dates, limits, streaks, savings and doses in several time zones
+        run: node tools/logic-tests.mjs --zones
       - name: Drive storage against a fake Drive
         run: node tools/drive-adapter.mjs
       - name: App build (fails on inline handlers or scripts)

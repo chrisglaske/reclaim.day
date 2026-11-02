@@ -7,7 +7,7 @@
     "demo": "node ../tools/build-demo.mjs",
     "dev": "cf dev",
     "build": "cf build",
-    "deploy": "cf deploy && node ../tools/deploy-check.mjs --site",
+    "deploy": "node ../tools/deploy-gate.mjs && cf deploy && node ../tools/deploy-check.mjs --site",
     "shots": "npm run demo && node ../tools/shoot-site.mjs"
   },
   "devDependencies": {
