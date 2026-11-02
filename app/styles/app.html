@@ -12,7 +12,7 @@
   :is(.chip,.iconbtn,.jfc,.link,.minbtn,.check,.seg>button,.stepper>button,.chip .x,.wd2,summary,.tgl){position:relative}
   .ripplebox{position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none}
   :is(.btn.sm,.task .act .btn){overflow:visible} /* .btn clips for its ripple; ripple() clips itself, so the hit area can reach past the edge */
-  :is(.chip,.iconbtn,.jfc,.link,.minbtn,.check,.seg>button,.stepper>button,.chip .x,.wd2,summary,.btn.sm,.task .act .btn)::after,.tgl::before{content:'';position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+  :is(.chip,.iconbtn,.jfc,.link,.minbtn,.check,.seg>button,.stepper>button,.chip .x,.wd2,summary,.btn.sm,.task .act .btn,.fwtip a,.errnote a)::after,.tgl::before{content:'';position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
   /* Closed overlays leave the tab order and the accessibility tree once they have faded out. */
   .sheetw:not(.open){visibility:hidden;transition:visibility 0s .5s}
   .flow:not(.open),.sos:not(.open){visibility:hidden;transition:opacity .35s,visibility 0s .35s}
@@ -30,6 +30,7 @@
   .fwlist li.on .fwk{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
   .fwlist li.on .fwk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3}
   .fwtip{margin:12px 0 0;font-size:14px}
+  .fwtip a,.errnote a{position:relative}
   /* The error notice stacks above the save notice so it never covers it. */
   .toast.errnote{bottom:236px;flex-wrap:wrap;justify-content:flex-end;padding:12px 12px 12px 18px;line-height:1.35}
   .toast.errnote span{flex:1 1 220px}
