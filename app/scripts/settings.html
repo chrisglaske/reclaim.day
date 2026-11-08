@@ -33,7 +33,7 @@
         date.getFullYear(), date.getMonth(), date.getDate(),
         reference.getHours(), reference.getMinutes(), reference.getSeconds(), reference.getMilliseconds()
       );
-    if (phase && day === dateKey(phase.at)) return { at: logicDate(phase.at) };
+    if (phase && day === dateKey(phase.at)) return { at: logicDate(phase.at), day: phase.day };
     if (phase && day <= localToday() && logicDate(phase.at) > new Date()) {
       // A quit day brought forward to today or earlier starts now.
       const now = new Date();
@@ -56,7 +56,16 @@
         return { error: 'Choose a date after your most recently saved plan.' };
       }
     }
-    return { at: candidate };
+    return day > localToday() ? { at: candidate, day: day } : { at: candidate };
+  }
+
+  // Sets a phase's start from a settingsHabitPhaseDate result: a day ahead keeps its `day` (see
+  // statePhaseDay), anything else is a moment.
+  function setPhaseStart(phase, result) {
+    phase.at = result.at.toISOString();
+    if (result.day) phase.day = result.day;
+    else delete phase.day;
+    return phase;
   }
 
   // Ease-in steps are fixed when saved: one reduce phase a week from today to
@@ -83,6 +92,7 @@
     for (let week = 0; week < weeks; week++) {
       const at = week ? new Date(today.getFullYear(), today.getMonth(), today.getDate() + week * 7) : new Date();
       const step = { mode: 'reduce', at: at.toISOString(), target: Math.max(1, Math.round(from * (weeks - week) / (weeks + 0.5))), ease: true };
+      if (week) step.day = dateKey(at);
       if (weekly) step.per = 'week';
       record.phases.push(step);
     }
@@ -115,8 +125,8 @@
       : settingsHabitPhaseDate(vice, null, plan.start, 'quit');
     if (result.error) return result.error;
     let quit = current;
-    if (current && current.mode === 'quit') current.at = result.at.toISOString();
-    else record.phases.push(quit = { mode: 'quit', at: result.at.toISOString(), target: 0 });
+    if (current && current.mode === 'quit') setPhaseStart(current, result);
+    else record.phases.push(quit = setPhaseStart({ mode: 'quit', target: 0 }, result));
     sortPhases(record);
     if (plan.ease && logicDate(quit.at) > new Date()) {
       setUsual(vice, Math.max(1, Math.round(Number(plan.from)) || 1), plan.usualPer);
@@ -201,7 +211,7 @@
     if (start && current && start !== dateKey(current.at)) {
       const result = settingsHabitPhaseDate(vice, current, start);
       if (result.error) return result.error;
-      current.at = result.at.toISOString();
+      setPhaseStart(current, result);
       sortPhases(S.vices[vice]);
     }
     S.vices[vice].costPerDay = Math.round(costPerDay * 10000) / 10000;

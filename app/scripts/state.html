@@ -116,6 +116,16 @@
     return phase.per === 'week' ? { per: 'week' } : {};
   }
 
+  // Optional `day` (YYYY-MM-DD) of a phase that starts at the beginning of a day (a quit day or ease-in step
+  // saved ahead). It wins over `at`, which becomes the start of that day where the data is opened, so the
+  // day doesn't move in another time zone.
+  function statePhaseDay(phase) {
+    const parts = typeof phase.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(phase.day) ? phase.day.split('-').map(Number) : null;
+    const date = parts && new Date(parts[0], parts[1] - 1, parts[2]);
+    if (!date || date.getFullYear() !== parts[0] || date.getMonth() !== parts[1] - 1 || date.getDate() !== parts[2]) return { at: phase.at };
+    return { at: date.toISOString(), day: phase.day };
+  }
+
   // Upgrades saved data from any older version to version 5, then normalizes it. Works on a deep copy.
   // Version 2 kept a single `quitDate` per habit and one bupropion entry in `med`; these become
   // a quit phase and an entry in `meds` (with that day's doses keyed by the new medication id).
@@ -281,8 +291,8 @@
         phases: Array.isArray(vice.phases) ? vice.phases
           .filter(phase => stateObject(phase) && ['quit', 'reduce', 'track'].includes(phase.mode) && typeof phase.at === 'string')
           .map(phase => Object.assign({
-            mode: phase.mode,
-            at: phase.at,
+            mode: phase.mode
+          }, statePhaseDay(phase), {
             target: phase.mode === 'reduce' ? Math.max(0, stateNumber(phase.target, 0)) : 0
           }, phase.ease === true ? { ease: true } : {}, statePhaseCadence(phase))) : []
       }, usual ? { usual: usual } : {}, STATE_VICE_UNITS[key].includes(vice.unit) ? { unit: vice.unit } : {});

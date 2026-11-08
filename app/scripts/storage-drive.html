@@ -32,7 +32,7 @@
     const ids = {};
     // known: the live file as this tab last saw it ({ id: null } when there was none); null before the first load.
     // attempt: the id of a save whose reply never came, so a file changed by it isn't mistaken for another device.
-    let known = null, attempt = null;
+    let known = null, attempt = null, loads = 0;
 
     // One Drive operation at a time per browser, so two tabs don't both create the folders.
     const locks = config.locks === undefined ? (navigator.locks || null) : config.locks;
@@ -51,8 +51,9 @@
       return error;
     }
 
-    // Retries offline and busy replies a couple of times; a 401 drops the token and tries once more.
-    async function request(url, options = {}, allow404 = false) {
+    // Retries offline and busy replies a couple of times (not with once: the caller retries); a 401 drops the token
+    // and tries once more.
+    async function request(url, options = {}, allow404 = false, once = false) {
       let tries = 0, renewed = false;
       for (;;) {
         const token = await config.getToken();
@@ -78,7 +79,7 @@
           config.onUnauthorized();
           continue;
         }
-        if (!error.retryable || tries >= RETRY_DELAYS.length) throw error;
+        if (!error.retryable || once || tries >= RETRY_DELAYS.length) throw error;
         await sleep(RETRY_DELAYS[tries++]);
       }
     }
@@ -131,7 +132,8 @@
     // parent: async () => the parent's id, or null when it doesn't exist.
     async function find(key, name, mimeType, parent, create) {
       if (ids[key] && await getMeta(ids[key])) return ids[key];
-      let id = await first("appProperties has { key='" + TAG + "' and value='" + key + "' }");
+      const tagged = "appProperties has { key='" + TAG + "' and value='" + key + "' }";
+      let id = await first(tagged);
       const parentId = id ? null : await parent();
       if (!id && parentId) {
         const quoted = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -141,7 +143,17 @@
       if (!id && parentId && create) {
         const body = { name, mimeType, appProperties: { [TAG]: key } };
         if (parentId !== 'root') body.parents = [parentId];
-        id = (await json(DRIVE_API + '?fields=id', sendJson('POST', body))).id;
+        // A create whose reply was lost may have happened: look for it before sending it again, so there's never a
+        // second live file.
+        for (let tries = 0; !id; tries++) {
+          try {
+            id = (await (await request(DRIVE_API + '?fields=id', sendJson('POST', body), false, true)).json()).id;
+          } catch (error) {
+            if (!error.retryable || tries >= RETRY_DELAYS.length) throw error;
+            await sleep(RETRY_DELAYS[tries]);
+            id = await first(tagged);
+          }
+        }
       }
       ids[key] = id || undefined;
       return id;
@@ -212,6 +224,7 @@
           const text = meta ? await readFile(id) : '';
           known = { id: meta ? id : null, md5: meta && meta.md5Checksum };
           attempt = null;
+          loads += 1;
           return { state: text || null, fileId: known.id };
         } catch (error) {
           throw prefixed(error, 'Could not load data: ');
@@ -221,8 +234,10 @@
       // True when another device or tab has saved since this tab loaded or saved (start.html checks on return).
       changed: () => exclusive(changedElsewhere),
 
-      save: payload => exclusive(async () => {
+      // A save asked for before a load finished was made from the data on screen then, so it's stale.
+      save: payload => { const asked = loads; return exclusive(async () => {
         try {
+          if (loads !== asked) throw new Error(STATE_STALE_MESSAGE);
           checkPayload(payload);
           if (await changedElsewhere()) throw new Error(STATE_STALE_MESSAGE);
           const id = (known && known.id) || await dataFileId(true);
@@ -236,7 +251,7 @@
         } catch (error) {
           throw error.message === STATE_STALE_MESSAGE ? error : prefixed(error, 'Could not save data: ');
         }
-      }),
+      }); },
 
       saveBackup: (payload, stamp) => exclusive(async () => {
         checkBackup(payload, [3, 4, 5]);

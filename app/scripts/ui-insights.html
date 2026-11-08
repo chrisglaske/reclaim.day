@@ -119,7 +119,7 @@ function medCard(m){
 }
 function toolsCard(){
   return `<section class="card"><div class="ctitle"><h2>Take it further</h2></div><div class="lrows">
-    <button class="lrow" data-act="apps" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile sky">${I('cal')}</span><span><b>Appointments</b><div class="muted" style="font-size:13px">${apptUpcoming()[0]?apptLabel(apptUpcoming()[0]):'Get ready for a visit and keep what came of it'}</div></span>${I('chev','chev')}</button>
+    <button class="lrow" data-act="apps" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile sky">${I('cal')}</span><span><b>Appointments</b><div class="muted" style="font-size:13px">${apptUpcoming()[0]?esc(apptLabel(apptUpcoming()[0])):'Get ready for a visit and keep what came of it'}</div></span>${I('chev','chev')}</button>
     <button class="lrow" data-act="apopen" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile lilac">${I('file')}</span><span><b>Look back</b><div class="muted" style="font-size:13px">Any dates, ready to show or print</div></span>${I('chev','chev')}</button>
     <button class="lrow" data-act="irefl" style="border:0;background:none;text-align:left;font:inherit;color:inherit"><span class="itile butter">${I('pen')}</span><span><b>Weekly reflection</b><div class="muted" style="font-size:13px">What helped this week?</div></span>${I('chev','chev')}</button>
   </div></section>`;
@@ -245,8 +245,11 @@ Object.assign(ACT,{
   irefl:(b,e,x)=>{V.rwk=x&&dateKey(x)?x:weeklyReflectionKey();openSheet(reflHTML());},
   irwk:(b,e,x)=>{V.rwk=addD(weeklyReflectionKey(pd(V.rwk)),+x*7);if(V.rwk>weeklyReflectionKey())V.rwk=weeklyReflectionKey();$('#sheetc').innerHTML=reflHTML();const f=$(`[data-act="irwk:${x}"]`);(f&&!f.disabled?f:$('[data-act="irwk:-1"]'))?.focus();},
   ireflsave:b=>{const k=V.rwk||weeklyReflectionKey(),r=S.profile.companion.reflections,had=Object.prototype.hasOwnProperty.call(r,k),was=r[k],v=$('#refl').value.trim();
-    if(!v){toast('Add a few words first, or choose Not now.');return;}
     const redo=()=>{if($('#jres'))$('#jres').innerHTML=jRes();};
+    /* emptying a saved reflection clears it, with Undo */
+    if(!v&&had){delete r[k];closeSheet();redo();toast('Reflection cleared',()=>{r[k]=was;redo();saveInBackground(()=>{delete r[k];redo();});});
+      saveInBackground(()=>{r[k]=was;redo();});return;}
+    if(!v){toast('Add a few words first, or choose Not now.');return;}
     r[k]=v;sparks(b,12);closeSheet();redo();toast(k===weeklyReflectionKey()?'Reflection saved for this week':`Reflection saved for ${reflWeek(k)}`);
     saveInBackground(()=>{if(had)r[k]=was;else delete r[k];redo();});}
 });

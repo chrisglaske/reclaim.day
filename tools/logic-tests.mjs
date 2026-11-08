@@ -28,10 +28,10 @@ const context = vm.createContext({ window: {}, document: {}, requestAnimationFra
 vm.runInContext(`{ const Real = Date; let current = Real.now();
   globalThis.Date = class extends Real { constructor(...args) { super(...(args.length ? args : [current])); } static now() { return current; } };
   globalThis.__clock = at => { current = new Real(at).getTime(); }; }`, context);
-vm.runInContext(['core', 'state', 'habits', 'meds', 'today', 'settings-meds'].map(source).join('\n') + `
+vm.runInContext(['core', 'state', 'habits', 'meds', 'today', 'settings', 'settings-meds'].map(source).join('\n') + `
 ;globalThis.__app = { S, applyState, todayUI, localToday, dateKey, dayOffset, dayDistance, dailyUse, limitStatus, streakHistory, nextMilestone, habitWeek,
   totals, dailyEstimatedSavings, makeMoment, trackingDoseSchedule, trackingDoseLate, medDayStatus, medAdherence, missedDoses, addDoseEvent, skipDoseEvent,
-  todayActions, saveMedication, firstWeekChecklist, startFirstWeek, returnDay, noteForTomorrow, supplyLeft, runningLow };`, context);
+  todayActions, saveMedication, setQuitPlan, vicePlan, migrate, firstWeekChecklist, startFirstWeek, returnDay, noteForTomorrow, supplyLeft, runningLow };`, context);
 const app = context.__app;
 const same = (got, want) => assert.deepEqual(JSON.parse(JSON.stringify(got)), want);
 const setNow = at => { context.__clock(at); app.todayUI.now = new context.Date(); };
@@ -421,4 +421,86 @@ test('saving a medication keeps the count from the number given, and clearing it
   assert.equal(app.saveMedication({ ...draft, id: saved.id, left: '' }), '');
   assert.equal(app.S.meds.find(m => m.id === saved.id).supply, undefined);
   assert.match(app.saveMedication({ ...draft, id: saved.id, left: 'lots' }), /pills left/);
+});
+
+test('a changed weekly limit keeps counting the week from when the plan began', () => {
+  setNow('2026-11-09T09:00:00');
+  start({ vices: smoking({ mode: 'reduce', at: '2026-10-01T09:00:00', target: 20, per: 'week' }),
+    slips: ['2026-11-04T10:00:00', '2026-11-06T10:00:00', '2026-11-08T10:00:00'].map(at => slip(at, { amount: 6 })) });
+  app.S.vices.smoking.phases.push({ mode: 'reduce', at: '2026-11-09T08:00:00', target: 15, per: 'week' });
+  const now = app.limitStatus('smoking');
+  same([now.target, now.used, now.within], [15, 18, false]);
+});
+test('a limit set or changed this afternoon applies to today; a quit plan begun this afternoon waits for tomorrow', () => {
+  setNow('2026-11-09T15:00:00');                                          // a Monday
+  start({ vices: smoking({ mode: 'reduce', at: '2026-11-09T14:00:00', target: 3, days: [1, 3, 5] }) });
+  same([app.limitStatus('smoking').mode, app.limitStatus('smoking').allowedToday, app.limitStatus('smoking').target], ['reduce', true, 3]);
+  start({ vices: smoking({ mode: 'quit', at: '2026-10-01T09:00:00' }) });
+  app.S.vices.smoking.phases.push({ mode: 'reduce', at: '2026-11-09T14:30:00', target: 20, per: 'week' });
+  same([app.limitStatus('smoking').mode, app.limitStatus('smoking').per], ['reduce', 'week']);
+  start({ vices: smoking({ mode: 'reduce', at: '2026-10-01T09:00:00', target: 5 }), slips: [slip('2026-11-09T09:00:00')] });
+  app.S.vices.smoking.phases.push({ mode: 'quit', at: '2026-11-09T14:30:00' });
+  same([app.limitStatus('smoking').mode, app.limitStatus('smoking').within], ['reduce', true]);
+  // a past day before any plan reads the plan first set that afternoon
+  setNow('2026-11-10T09:00:00');
+  start({ vices: smoking({ mode: 'reduce', at: '2026-11-09T14:00:00', target: 3, days: [1, 3, 5] }) });
+  same([app.limitStatus('smoking', '2026-11-09').mode, app.limitStatus('smoking', '2026-11-09').allowedToday], ['reduce', true]);
+});
+test('changing a dose keeps the doses already noted: the new schedule starts today with today\'s doses on it', () => {
+  setNow('2026-11-09T12:00:00');
+  const doses = {};
+  for (let d = 1; d <= 8; d++) doses['2026-11-0' + d] = { daily: [{ slot: 0, at: '2026-11-0' + d + 'T08:00:00' }, { slot: 1, at: '2026-11-0' + d + 'T20:00:00' }] };
+  doses['2026-11-09'] = { daily: [{ slot: 0, at: '2026-11-09T08:00:00' }] };
+  start({ meds: [medication({ startDate: '2026-11-01T12:00:00' })], doses,
+    profile: { name: 'Sam', companion: { trackMedications: true, reminders: { 'daily:0': { time: '08:00' }, 'daily:1': { time: '20:00' } } } } });
+  const draft = { id: 'daily', name: 'Sample', dose: '20', unit: 'mg', freq: 2, slots: ['Morning', 'Evening'], times: ['08:00', '20:00'], start: '2026-11-01' };
+  assert.equal(app.saveMedication(draft), '');
+  const copy = app.S.meds.find(m => m.active);
+  assert.notEqual(copy.id, 'daily');
+  assert.equal(app.dateKey(copy.startDate), '2026-11-09');
+  same(app.medDayStatus(copy, '2026-11-09').doses.map(d => d.noted), [true, false]);
+  assert.equal(app.missedDoses().length, 0);
+  assert.equal(app.S.doses['2026-11-08'].daily.length, 2);                // earlier days stay with the old schedule
+});
+test('saving a medication without changing its pill count keeps counting from when the count was set', () => {
+  setNow('2026-03-12T09:00:00');
+  start({ meds: [supplied(20)] });
+  const draft = { id: 'rx', name: 'Sample', dose: '10', unit: 'mg', freq: 2, slots: ['Morning', 'Evening'], times: ['08:00', '20:00'], start: '2026-01-01', why: 'A note', left: String(app.supplyLeft(app.S.meds[0])), perDose: '1' };
+  assert.equal(app.saveMedication(draft), '');
+  app.addDoseEvent('rx', 1, new context.Date('2026-03-11T20:00:00'));     // yesterday evening, noted late
+  assert.equal(app.supplyLeft(app.S.meds.find(m => m.id === 'rx')), 19);
+});
+test('a quit day ahead and its ease-in steps keep their days when opened in another time zone', () => {
+  const home = process.env.TZ;
+  const days = () => app.S.vices.smoking.phases.map(phase => [phase.mode, app.dateKey(phase.at)]);
+  const want = [['reduce', '2026-11-09'], ['reduce', '2026-11-16'], ['quit', '2026-11-20']];
+  try {
+    for (const [from, to] of [['America/New_York', 'America/Los_Angeles'], ['Asia/Tokyo', 'Europe/London'], ['Europe/London', 'Asia/Tokyo']]) {
+      process.env.TZ = from;
+      setNow('2026-11-09T09:00:00');
+      start({ vices: smoking({ mode: 'reduce', at: '2026-10-01T09:00:00', target: 8 }) });
+      assert.equal(app.setQuitPlan('smoking', { start: '2026-11-20', ease: true, from: 10 }), '');
+      const saved = JSON.parse(JSON.stringify(app.migrate(JSON.parse(JSON.stringify(app.S)))));
+      same(days().slice(1), want);
+      process.env.TZ = to;
+      setNow('2026-11-09T09:00:00');
+      app.applyState(JSON.parse(JSON.stringify(saved)));
+      same(days().slice(1), want);
+      assert.equal(app.vicePlan('smoking').at, new context.Date(2026, 10, 20).toISOString());
+      // still a day ahead after another save and load there
+      app.applyState(JSON.parse(JSON.stringify(app.migrate(JSON.parse(JSON.stringify(app.S))))));
+      same(days().slice(1), want);
+    }
+  } finally {
+    if (home === undefined) delete process.env.TZ; else process.env.TZ = home;
+  }
+});
+test('a quit day moved to today or earlier, or a plan start date, is a moment again, not a day', () => {
+  setNow('2026-11-09T09:00:00');
+  start({ vices: smoking({ mode: 'reduce', at: '2026-10-01T09:00:00', target: 8 }) });
+  assert.equal(app.setQuitPlan('smoking', { start: '2026-11-20' }), '');
+  assert.equal(app.vicePlan('smoking').day, '2026-11-20');
+  assert.equal(app.setQuitPlan('smoking', { start: '2026-11-08' }), '');
+  assert.equal(app.vicePlan('smoking').day, undefined);
+  assert.equal(app.dateKey(app.vicePlan('smoking').at), '2026-11-08');
 });

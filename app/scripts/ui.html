@@ -37,7 +37,8 @@ const addD=(k,n)=>{const d=pd(k);d.setDate(d.getDate()+n);return dk(d);};
 const dlab=(k,o={weekday:'long',month:'long',day:'numeric'})=>pd(k).toLocaleDateString(dateLocale(), o);
 const mins=t=>{const m=String(t).match(/(\d+):(\d+)\s*(AM|PM)?/i);if(!m)return 0;let h=+m[1];if(m[3]){h%=12;if(/pm/i.test(m[3]))h+=12;}return h*60+ +m[2];};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const hi=(t,q)=>{const e=esc(t);if(!q)return e;return e.replace(new RegExp('('+esc(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');};
+/* the search is matched on the words themselves, then escaped, so "amp" doesn't land inside &amp; */
+const hi=(t,q)=>{if(!q)return esc(t);return String(t).split(new RegExp('('+String(q).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi')).map((p,i)=>i%2?`<mark>${esc(p)}</mark>`:esc(p)).join('');};
 const dBetween=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
 const ck=()=>`<span class="ck">${I('check')}</span>`;
 const SLOTS=[['morning','sun','butter','Morning'],['afternoon','sun','sky','Afternoon'],['evening','moon','lilac','Evening']];
@@ -127,7 +128,7 @@ const ACT={
   tag:b=>b.classList.toggle('on'),
   one:b=>{const g=b.parentNode;$$('.chip',g).forEach(c=>c.classList.toggle('on',c===b));},
   seg:(b,e,x,y)=>{if(x==='mwhen'){$('#mwhent').hidden=y!=='earlier';const a=$('#mago');if(a)a.hidden=y!=='earlier';}if(x==='sosm'){$('#sbox').hidden=y!=='box';$('#spause').hidden=y!=='pause';}if(x==='mkind'){$('#mk-sched').hidden=y!=='sched';$('#mk-prn').hidden=y!=='prn';}$$(`[data-seg="${x}"] button`,app).forEach(s=>s.classList.toggle('on',s===b));placeSeg();if(x==='mwhen'&&typeof mguide==='function')mguide();},
-  hide:b=>{const was=hide();setHide(!was);$$('.iconbtn[data-act="hide"]',app).forEach(h=>{h.classList.toggle('on',hide());h.setAttribute('aria-pressed',hide());h.innerHTML=I(hide()?'eyeoff':'eye');});if(V.view==='settings'){b.setAttribute('aria-checked',hide());flashSaved(b);}else swapView();toast(hide()?'Counters hidden':'Counters shown');
+  hide:b=>{const was=hide();setHide(!was);$$('.iconbtn[data-act="hide"]',app).forEach(h=>{h.classList.toggle('on',hide());h.setAttribute('aria-pressed',hide());h.innerHTML=I(hide()?'eyeoff':'eye');});if(V.view==='settings'){$$('.tgl[data-act="hide"]',app).forEach(t=>t.setAttribute('aria-checked',hide()));const sm=$('#s-look .ssum');if(sm)sm.textContent=SSUM.look();if(b.classList.contains('tgl'))flashSaved(b);}else swapView();toast(hide()?'Counters hidden':'Counters shown');
     saveInBackground(()=>{setHide(was);renderAll();});}
 };
 function act(b,e){const [a,x,y]=b.dataset.act.split(':');ACT[a]?.(b,e,x,y);}

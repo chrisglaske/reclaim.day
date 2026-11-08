@@ -123,9 +123,12 @@
       return { day: key, mode: null, per: 'day', target: 0, used: 0, within: false, allowedToday: false, rest: 0 };
     }
 
-    // An ease-in step saved this afternoon still sets today's range, as in reduceStats.
-    const current = key === localToday() ? viceAt(record, new Date()) : null;
-    const phase = current && current.ease ? current : viceAt(record, key);
+    // A day reads the plan in force at noon. A limit set or changed this afternoon (an ease-in step too, as in
+    // reduceStats) already sets today's range, and a plan first set after noon counts its first day.
+    const noon = viceAt(record, key);
+    const late = key === localToday() ? viceAt(record, new Date())
+      : noon ? null : viceAt(record, new Date(Math.min(new Date(key + 'T23:59:59').getTime(), Date.now())));
+    const phase = late && (!noon || late.mode === 'reduce') ? late : noon;
     const mode = phase ? phase.mode : null;
     const dayUsed = dailyUse(name, key);
     if (mode === 'track') {
@@ -137,7 +140,7 @@
 
     const limit = Math.max(0, Number(phase.target) || 0);
     if (phase.per === 'week' && !(Array.isArray(phase.days) && phase.days.length)) {
-      const start = dateKey(phase.at);
+      const start = dateKey(reduceRunStart(record, phase).at);
       let used = 0;
       for (let offset = 6; offset >= 0; offset -= 1) {
         const rangeDay = dayOffset(key, -offset);
@@ -150,6 +153,17 @@
     const allowedToday = !(Array.isArray(phase.days) && phase.days.length) || phase.days.includes(dayDate(key).getDay());
     const target = allowedToday ? limit : 0;
     return { day: key, mode: mode, per: 'day', target: target, used: dayUsed, within: dayUsed <= target, allowedToday: allowedToday, rest: Math.max(0, target - dayUsed) };
+  }
+
+  // The first entry of the unbroken run of limits `phase` belongs to: a changed limit doesn't restart the week.
+  function reduceRunStart(record, phase) {
+    const phases = record.phases
+      .filter(entry => logicObject(entry) && logicDate(entry.at) && logicDate(entry.at) <= logicDate(phase.at))
+      .sort((left, right) => logicDate(left.at) - logicDate(right.at));
+    let i = phases.indexOf(phase);
+    if (i < 0) return phase;
+    while (i > 0 && phases[i - 1].mode === 'reduce' && !phases[i - 1].ease) i--;
+    return phases[i];
   }
 
   // The words after a limit: "a day", "a week", "on weekends", "on Mon, Wed and Fri".

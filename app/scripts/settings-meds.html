@@ -100,6 +100,9 @@
       dateKey(previousMed.startDate) !== startDay
     );
     const preserveScheduleHistory = scheduleChanged && medicationHasDoses(previousMed.id);
+    // A changed schedule with its start date left as it was begins today: the earlier doses stay with the old
+    // schedule, so past days aren't read as missed and a dose already noted today stays noted.
+    const fromDay = preserveScheduleHistory && startDay === dateKey(previousMed.startDate) && startDay < localToday() ? localToday() : startDay;
     const backfill = !!draft.backfill && shouldOfferMedicationBackfill({ id: draft.id, freq: prn ? 'prn' : count, start: startDay });
     let id = draft.id;
     if (!id || preserveScheduleHistory) {
@@ -117,7 +120,7 @@
       unit: draft.unit,
       freq: prn ? 'prn' : count,
       slots: slots,
-      startDate: new Date(startDay + 'T12:00:00').toISOString(),
+      startDate: new Date(fromDay + 'T12:00:00').toISOString(),
       active: previousMed ? !!previousMed.active : true,
       timeline: catalog ? catalog.timeline || null : sameName ? previousMed.timeline || null : null,
       alcohol: catalog ? catalog.alcohol || null : sameName ? previousMed.alcohol || null : null,
@@ -125,14 +128,24 @@
       dailyLimit: dailyLimit
     });
     // Saving restarts the count from the number shown, so a changed schedule (a new copy of the medication) keeps counting from there.
-    if (pillsLeft !== null) nextMedication.supply = { left: pillsLeft, perDose: pillsPerDose, asOf: new Date().toISOString() };
+    // An unchanged count keeps counting from when it was set, so doses noted later for an earlier time still count.
+    if (pillsLeft !== null && id === (previousMed && previousMed.id) && previousMed.supply &&
+      pillsLeft === supplyLeft(previousMed) && pillsPerDose === previousMed.supply.perDose) nextMedication.supply = previousMed.supply;
+    else if (pillsLeft !== null) nextMedication.supply = { left: pillsLeft, perDose: pillsPerDose, asOf: new Date().toISOString() };
     else delete nextMedication.supply;
     // When a medication is new from today, the moment it was added: earlier doses that day are optional.
-    if (id !== (previousMed && previousMed.id) && startDay === localToday()) nextMedication.addedAt = new Date().toISOString();
+    if (id !== (previousMed && previousMed.id) && fromDay === localToday()) nextMedication.addedAt = new Date().toISOString();
     else if (!previousMed || dateKey(previousMed.startDate) !== startDay) delete nextMedication.addedAt;
     if (preserveScheduleHistory) {
       S.meds.splice(existingIndex, 1, Object.assign({}, previousMed, { active: false }));
       S.meds.push(nextMedication);
+      const today = logicObject(S.doses[localToday()]) ? S.doses[localToday()] : null;
+      if (fromDay === localToday() && today && Array.isArray(today[previousMed.id])) {
+        const fits = event => prn ? Number(event.slot) === -1 : Number(event.slot) >= 0 && Number(event.slot) < slots.length;
+        const moved = today[previousMed.id].filter(fits), kept = today[previousMed.id].filter(event => !fits(event));
+        if (moved.length) today[id] = (Array.isArray(today[id]) ? today[id] : []).concat(moved);
+        if (kept.length) today[previousMed.id] = kept; else delete today[previousMed.id];
+      }
     } else if (existingIndex >= 0) S.meds.splice(existingIndex, 1, nextMedication);
     else S.meds.push(nextMedication);
 

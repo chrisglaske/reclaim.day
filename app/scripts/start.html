@@ -15,18 +15,24 @@
       window.reclaimStartup.fail(error);
     });
   // Another device or tab saved: load its data and redraw in place (a page reload would ask to sign in again).
-  // quiet: on returning to the tab, so it waits rather than interrupt Guided setup or an open sheet.
+  // quiet: on returning to the tab, so it waits rather than interrupt Guided setup, an open sheet, a check-in or Support.
   // message: a toast in place of the usual one.
   let loadingLatest = false;
   async function loadLatest(quiet, message) {
     if (loadingLatest) return;
-    // A quiet update that has to wait (Guided setup or a sheet is open) runs when the sheet closes (closeSheet in ui.html).
-    if (quiet && (V.screen === 'onboard' || $('#sheet.open'))) { window.reclaimLatestWaiting = true; return; }
+    // A quiet update that has to wait runs when the sheet, check-in or Support closes (closeSheet, flowClose, closeSos).
+    if (quiet && (V.screen === 'onboard' || $('#sheet.open') || $('#flow.open') || $('#sos.open'))) { window.reclaimLatestWaiting = true; return; }
     window.reclaimLatestWaiting = false;
     loadingLatest = true;
     try {
+      // A change saved just now that the newer file refused isn't passed over in silence.
+      await savesSettled();
+      if (quiet && !message && saveNotice.stale) message = 'Reclaim was updated on another device or tab, so your last change wasn’t saved. Here’s the latest.';
       await loadState();
       forgetUnsavedChanges();
+      // An open check-in keeps its words as a draft, as when it's closed.
+      flowClose();
+      closeSos();
       closeSheet();
       window.reclaimStartup.applyTheme(S.profile.companion.theme, true);
       if (setupDue()) { V.ob = obFresh(); V.screen = 'onboard'; V.ob.was = obWas(); }

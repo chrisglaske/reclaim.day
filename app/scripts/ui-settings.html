@@ -15,7 +15,7 @@ const sec=(k,title,sub,body)=>{const [,ic,tint]=SETSEC.find(x=>x[0]===k),o=V.sop
   <div class="tbody" id="sb-${k}" ${o?'':'inert'}><div><div class="sbin">${sub?`<p class="muted">${sub}</p>`:''}${body}</div></div></div></section>`;};
 const SSUM={
   profile:()=>`${esc(obName())||'No name yet'} · ${cur()}${goalInfo().name?' · saving for '+esc(goalInfo().name):''}`,
-  habits:()=>HK.map(k=>{const t=track(k);return `${HB[k].n} ${t.on?(t.mode==='reduce'?'· reduce':'· quit'):'· off'}`;}).join(', '),
+  habits:()=>HK.map(k=>{const t=track(k);return `${HB[k].n} ${t.on?(t.mode==='reduce'?'· reduce':t.mode==='track'?'· just track':'· quit'):'· off'}`;}).join(', '),
   meds:()=>!medicationTrackingEnabled()?'Tracking off':medsList().length?medsList().map(m=>esc(m.name)).join(', '):'None added',
   ideas:()=>`${foc().length} focus ${foc().length===1?'idea':'ideas'} · ${cope().length} coping ${cope().length===1?'idea':'ideas'}`,
   why:()=>why().length?`${why().length} ${why().length===1?'reason':'reasons'} · “${esc(why()[0])}”`:'No reasons saved yet',

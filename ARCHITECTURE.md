@@ -93,7 +93,7 @@ Dates and times are ISO 8601 strings in UTC. Day keys are `YYYY-MM-DD` in your l
 | `profile` | Your name, currency (`USD`, `CAD`, `EUR`, `GBP`, `AUD`, `NZD`), reasons, savings goal optional country for support resources, and how dates and times read (`companion.dateFormat`: `us` or `intl`, left out to follow the device) |
 | `profile.companion` | Your toolkit, daily intentions, weekly reflections, questions for your doctor, saved doctors and appointments, dose times, look and display choices |
 | `vices` | One entry each for `smoking`, `vaping` and `drinking`: on or off, your usual amount and spend, the count unit, and `phases` |
-| `vices.*.phases` | Your goals over time, oldest first. `mode` is `quit`, `reduce` (with a `target` per day, per week, or on chosen weekdays) or `track` (no limit). A phase can start in the future, like a planned quit day |
+| `vices.*.phases` | Your goals over time, oldest first. `mode` is `quit`, `reduce` (with a `target` per day, per week, or on chosen weekdays) or `track` (no limit). A phase can start in the future, like a planned quit day; one that starts at the beginning of a day also keeps that `day` (`YYYY-MM-DD`), so it stays on the same date in another time zone |
 | `meds` | Your medications: name, dose and unit, how often (`1` to `4` a day, or `prn` for as needed), dose times, start date (and, for one added on its first day, when it was added), an optional pill count for the running-low note (pills left as of a moment, and pills per dose), and whether it's active or archived |
 | `slips` | Each cigarette, vape, drink or slip you logged: when, how much, what it cost, what was going on and your note |
 | `cravings` | Each urge you rode out: which habit and when |

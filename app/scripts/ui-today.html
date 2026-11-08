@@ -40,7 +40,7 @@ const CHECK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg>';
 /* "Taken earlier?" is Tracking's inline date-and-time field with Cancel */
 const earlVal=t=>{const at=new Date(),m=mins(t.dueAt||'');if(t.dueAt&&m<at.getHours()*60+at.getMinutes())at.setHours(Math.floor(m/60),m%60);
   const p=n=>String(n).padStart(2,'0');return `${dk(at)}T${p(at.getHours())}:${p(at.getMinutes())}`;};
-const earlHTML=t=>`<div class="cfg" id="earl-${t.id}" inert><div><div class="earl"><label class="lbl" for="earlt-${t.id}">When did you take it?</label><input type="datetime-local" class="field" id="earlt-${t.id}" data-earl="${t.id}" value="${earlVal(t)}">
+const earlHTML=t=>`<div class="cfg" id="earl-${t.id}" inert><div><div class="earl"><label class="lbl" for="earlt-${t.id}">When did you take it?</label><input type="datetime-local" class="field" id="earlt-${t.id}" data-earl="${t.id}" min="${localToday()}T00:00" value="${earlVal(t)}">
         <div class="exrow"><button class="btn sm ghost" data-act="earlier:${t.id}">Cancel</button><button class="btn sm primary" data-act="earliersave:${t.id}">Save earlier</button></div></div></div></div>`;
 /* a scheduled dose row's text opens its options (y='t' on Tracking); the circle stays one tap = taken now */
 const doptBtn=(x,y,inner)=>`<button class="dopt" data-act="dopt:${x}${y?':'+y:''}" aria-haspopup="dialog">${inner}<span class="vh">, dose options</span></button>`;
@@ -161,7 +161,7 @@ function refreshHero(){const g=$('#tgrid');if(!g)return;refreshFirstWeek();const
   if(flip&&document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches)document.startViewTransition(run);else run();const l=$('.hello .lead');if(l){const p=pending().length;l.innerHTML=`${p?`<b>${p} thing${p>1?'s':''}</b> to do now`:'You’re all caught up'} · next at ${later().time}`;}}
 /* the dose is already noted in S; the row fades, then the hero redraws */
 function complete(t,el){
-  const row=$('#t-'+t.id);
+  const row=$('#t-'+t.id);if(row)row.dataset.going='1';
   setTimeout(()=>{(row?row.animate([{opacity:1,transform:'none'},{opacity:0,transform:'translateY(-8px) scale(.97)'}],{duration:260,easing:'ease-in'}).finished:Promise.resolve()).then(()=>{refreshHero();const nx=pending()[0];if(nx)$('#t-'+nx.id)?.classList.add('flash');else sparks($('#now .count'),18);});},el?450:0);
 }
 
@@ -174,11 +174,11 @@ Object.assign(ACT,{
     refreshFirstWeek();$('#view button')?.focus({preventScroll:true});},
   fwclose:()=>{if(!S.firstWeek)return;const was=S.firstWeek.dismissed;S.firstWeek.dismissed=true;refreshFirstWeek();toast('Closed. Your check-ins and doses are still on Today.');
     saveInBackground(()=>{S.firstWeek.dismissed=was;refreshFirstWeek();});},
-  dose:(b,e,x)=>{const t=T(x);if(!t)return;
+  dose:(b,e,x)=>{const t=T(x);if(!t||$('#t-'+x)?.dataset.going)return;
     if(t.skipped){const ev=dayDoseEvent(localToday(),t.medId,t.slot);if(!ev)return;removeDoseEvent(t.medId,ev);refreshHero();$(`#t-${x} .dopt`)?.focus({preventScroll:true});
       toast('Skip removed',()=>{restoreDoseEvent(t.medId,ev);refreshHero();saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshHero();});});
       saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});return;}
-    if(t.done){const ev=doseEvent(t);if(!ev)return;removeDoseEvent(t.medId,ev);refreshHero();toast('Dose unmarked');saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});return;}
+    if(t.done){const ev=doseEvent(t);if(!ev)return;removeDoseEvent(t.medId,ev);refreshHero();toast('Dose unmarked',()=>{restoreDoseEvent(t.medId,ev);refreshHero();saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshHero();});});saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});return;}
     const ev=addDoseEvent(t.medId,t.slot);if(!ev)return;
     b.classList.add('on');sparks(b);complete(t,b);
     toast(t.title.split(' ·')[0]+' noted',()=>{removeDoseEvent(t.medId,ev);refreshHero();saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshHero();});});
@@ -195,7 +195,7 @@ Object.assign(ACT,{
     toast('Skipped today',()=>{undo();saveInBackground(()=>{restoreDoseEvent(t.medId,ev);redraw();});});
     saveInBackground(undo);},
   earlier:(b,e,x)=>{const c=$('#earl-'+x);if(!c)return;const open=c.classList.toggle('open');c.inert=!open;if(open)$('#earlt-'+x)?.focus({preventScroll:true});else $(`#t-${x} .dopt`)?.focus({preventScroll:true});},
-  earliersave:(b,e,x)=>{const t=T(x),v=$('#earlt-'+x)?.value,d=new Date(v);if(!t)return;if(!v||isNaN(d)){toast('Choose the time the dose was taken');return;}if(d>new Date()){toast('Choose a time in the past');return;}
+  earliersave:(b,e,x)=>{const t=T(x),v=$('#earlt-'+x)?.value,d=new Date(v);if(!t)return;if(!v||isNaN(d)){toast('Choose the time the dose was taken');return;}if(d>new Date()){toast('Choose a time in the past');return;}if(dateKey(d)!==localToday()){toast('Choose a time earlier today');return;}
     const ev=addDoseEvent(t.medId,t.slot,d);if(!ev)return;
     const c=$('#earl-'+x);c.classList.remove('open');c.inert=true;const btn=$('#t-'+x+' .check');btn?.classList.add('on');sparks(btn||b);complete(t,btn);toast('Dose noted for earlier');
     saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshHero();});},

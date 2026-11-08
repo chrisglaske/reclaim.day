@@ -94,7 +94,7 @@ for (const file of fixtures) {
 const strip = name => readFileSync(join(root, 'app/scripts', name), 'utf8').replace(/^\s*<script>/, '').replace(/<\/script>\s*$/, '');
 const helperContext = vm.createContext({ window: {}, document: {}, requestAnimationFrame: fn => fn(), localStorage: { getItem: () => null, setItem() {} } });
 vm.runInContext(['core.html', 'state.html', 'habits.html'].map(strip).join('\n') +
-  '\n;globalThis.__h = { S, applyState, limitStatus, reduceStats, habitWeek, cadencePhrase, dayOffset };', helperContext);
+  '\n;globalThis.__h = { S, applyState, limitStatus, reduceStats, habitWeek, cadencePhrase, dayOffset, dateKey };', helperContext);
 const helpers = helperContext.__h;
 const load = name => helpers.applyState(JSON.parse(readFileSync(join(root, 'tools/fixtures', name), 'utf8')));
 const same = (label, got, want) => check(label, JSON.stringify(got) === JSON.stringify(want)
@@ -108,6 +108,18 @@ const pick = (status, keys) => Object.fromEntries(keys.map(key => [key, status[k
   const a = look('auto', 'ocean'), b = look('auto', 'nonsense');
   same('auto with Ocean by day loads as Ocean', [a.theme, a.autoLight], ['ocean', 'ocean']);
   same('auto with an unknown day look loads as Pine', b.theme, 'pine');
+}
+
+// A plan's optional day survives a backup and restore; an invalid one is dropped and `at` stays.
+{
+  const base = plain(migrate(JSON.parse(readFileSync(join(root, 'tools/fixtures/mockup-twin.json'), 'utf8'))));
+  base.vices.smoking.phases = [
+    { mode: 'quit', at: '2026-12-01T05:00:00.000Z', day: '2026-12-01', target: 0 },
+    { mode: 'quit', at: '2026-12-02T05:00:00.000Z', day: '2026-02-30', target: 0 }
+  ];
+  const phases = plain(migrate(plain(migrate(base)))).vices.smoking.phases;
+  same('plan day kept, invalid day dropped', phases.map(phase => [phase.day, helpers.dateKey(phase.at)]),
+    [['2026-12-01', '2026-12-01'], [undefined, helpers.dateKey('2026-12-02T05:00:00.000Z')]]);
 }
 
 // Plans with no new fields: limitStatus agrees with reduceStats on every day in a long range.

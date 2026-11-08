@@ -11,9 +11,11 @@ const hsum=k=>{const t=track(k),lim=hlim(k),n=dBetween(localToday(),t.start);ret
 function weekBoxes(kind){
   const t=track(kind),lim=hlim(kind),TODAY=localToday(),red=t.mode==='reduce'&&t.how!=='day'&&V.screen!=='onboard';
   return Array.from({length:7},(_,i)=>{const k=addD(TODAY,i-6),n=dailyUse(VK[kind],k),lab=dlab(k,{weekday:'short',month:'short',day:'numeric'});
-    let ok=lim?n<=lim:n===0,tip=lim?`${n} ${uw(kind,n)} · ${ok?'within range':'over range'}`:(ok?'No moment noted':`${n} moment noted`),show=lim?n:ok?I('check'):n;
-    if(t.mode==='track'){ok=true;tip=`${n} ${uw(kind,n)} noted`;show=n;}
-    else if(red){const s=limitStatus(VK[kind],k);ok=s.within;show=n;
+    /* each day is read against its own plan: a day under Just track, or before any plan, is never over or under */
+    const s=V.screen!=='onboard'&&t.mode!=='track'?limitStatus(VK[kind],k):null,l=s?s.target:lim;
+    let ok=l?n<=l:n===0,tip=l?`${n} ${uw(kind,n)} · ${ok?'within range':'over range'}`:(ok?'No moment noted':`${n} moment${n>1?'s':''} noted`),show=l?n:ok?I('check'):n;
+    if(t.mode==='track'||s&&s.mode!=='reduce'&&s.mode!=='quit'){ok=true;tip=`${n} ${uw(kind,n)} noted`;show=n;}
+    else if(red){ok=s.within;show=n;
       tip=s.per==='week'?`${n} ${uw(kind,n)} · week so far ${s.used} of ${s.target} · ${ok?'within range':'over range'}`:!s.allowedToday?(n?`Rest day · ${n} ${uw(kind,n)} noted`:'Rest day'):`${n} ${uw(kind,n)} · ${ok?'within range':'over range'}`;}
     return `<div class="dy">${dlab(k,{weekday:'narrow'})}<button class="bx ${ok?'in':'out'} ${k===TODAY?'today':''}" style="--d:${i}" data-act="jopen:${k}" data-tip="<b>${lab}</b> · ${tip}" aria-label="${lab}: ${tip}. Open this day">${show}</button></div>`;}).join('');
 }
@@ -56,7 +58,7 @@ const doseRow=t=>`<div class="dose ${t.done?'done':''} ${t.skipped?'skip':''} ${
       ${t.done||t.skipped?`<div><div class="tt">${doseTitle(t.title)}</div><div class="td">${t.skipped?`${t.multi?esc(t.label)+' · ':''}Skipped${t.reason?' · '+esc(t.reason):''}`:`${t.multi?esc(t.label)+' · noted':'Noted'} at ${t.at}`}</div></div>`
         :doptBtn(t.id,'t',`<span class="tt">${doseTitle(t.title)} ${t.late?`<span class="due late">${I('clock')}Late</span>`:t.due?'<span class="due">Due</span>':''}</span><span class="td">${esc(t.label)}${t.dueAt?` · ${t.late?'was due ':''}${t.dueAt}${t.optional?', before you added it':''}`:''}<span class="dhint" aria-hidden="true">›</span></span>`)}
       <button class="check ${t.done?'on':''}" data-act="tdose:${t.id}" aria-pressed="${t.done}" aria-label="${t.done?`Undo ${esc(t.name)} dose`:t.skipped?`Undo skipping ${esc(t.name)}`:`Note ${esc(t.name)} as taken now`}">${CHECK}</button>
-      <div class="cfg" id="earl-${t.id}" inert><div><div class="earl"><label class="lbl" for="earlt-${t.id}" style="margin:10px 0 0">When did you take it?</label><input type="datetime-local" class="field" id="earlt-${t.id}" data-earl="${t.id}" value="${earlVal(t)}">
+      <div class="cfg" id="earl-${t.id}" inert><div><div class="earl"><label class="lbl" for="earlt-${t.id}" style="margin:10px 0 0">When did you take it?</label><input type="datetime-local" class="field" id="earlt-${t.id}" data-earl="${t.id}" min="${localToday()}T00:00" value="${earlVal(t)}">
         <div class="exrow" style="margin:0"><button class="btn sm ghost" data-act="tearl:${t.id}">Cancel</button><button class="btn sm primary" data-act="tearlsave:${t.id}">Save earlier</button></div></div></div></div></div>`;
 const prnRow=p=>`<div class="prn"><span class="itile sky">${I('pill')}</span><div style="min-width:0"><div class="tt">${doseTitle(p.title)}</div><div class="td">As needed${p.limit?' · personal limit '+p.limit:''}</div></div>
       <div class="prnact">${hide()?'<span class="muted">Your as-needed notes are here when they help.</span>':`<span class="hv num"><span data-c="prn-${p.id}">${p.n}</span><small> today</small></span>`}<button class="btn sm ghost" data-act="prnundo:${p.id}" ${p.n?'':'disabled'} aria-label="Undo latest ${esc(p.title.split(' ·')[0])} dose">Undo</button><button class="btn sm primary" data-act="prnadd:${p.id}">${I('plus')}Note a dose</button></div></div>`;
@@ -154,13 +156,13 @@ Object.assign(ACT,{
   mago:(b,e,x)=>{$('#mwhent').value=lclVal(new Date(Date.now()-x*6e4));$$('#mago .chip').forEach(c=>c.classList.toggle('on',c===b));mguide();},
   /* one tap notes the dose, Undo, tap again to unmark */
   tdose:(b,e,x)=>{const t=TD(x);if(!t)return;
-    if(t.skipped){const ev=dayDoseEvent(localToday(),t.medId,t.slot);if(!ev)return;removeDoseEvent(t.medId,ev);refreshMeds();toast('Skip removed');saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshMeds();});return;}
-    if(t.done){const ev=doseEvent(t);if(!ev)return;removeDoseEvent(t.medId,ev);refreshMeds();toast('Dose note removed');saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshMeds();});return;}
+    if(t.skipped){const ev=dayDoseEvent(localToday(),t.medId,t.slot);if(!ev)return;removeDoseEvent(t.medId,ev);refreshMeds();toast('Skip removed',()=>{restoreDoseEvent(t.medId,ev);refreshMeds();saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshMeds();});});saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshMeds();});return;}
+    if(t.done){const ev=doseEvent(t);if(!ev)return;removeDoseEvent(t.medId,ev);refreshMeds();toast('Dose note removed',()=>{restoreDoseEvent(t.medId,ev);refreshMeds();saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshMeds();});});saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshMeds();});return;}
     const ev=addDoseEvent(t.medId,t.slot);if(!ev)return;refreshMeds();sparks($(`#d-${x} .check`),12);
     toast(t.name+' noted',()=>{removeDoseEvent(t.medId,ev);refreshMeds();saveInBackground(()=>{restoreDoseEvent(t.medId,ev);refreshMeds();});});
     saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshMeds();});},
   tearl:(b,e,x)=>{const c=$('#earl-'+x);if(!c)return;const open=c.classList.toggle('open');c.inert=!open;if(open)$('#earlt-'+x)?.focus({preventScroll:true});else $(`#d-${x} .dopt`)?.focus({preventScroll:true});},
-  tearlsave:(b,e,x)=>{const t=TD(x),v=$('#earlt-'+x)?.value,d=new Date(v);if(!t)return;if(!v||isNaN(d)){toast('Choose the time the dose was taken');return;}if(d>new Date()){toast('Choose a time in the past');return;}
+  tearlsave:(b,e,x)=>{const t=TD(x),v=$('#earlt-'+x)?.value,d=new Date(v);if(!t)return;if(!v||isNaN(d)){toast('Choose the time the dose was taken');return;}if(d>new Date()){toast('Choose a time in the past');return;}if(dateKey(d)!==localToday()){toast('Choose a time earlier today');return;}
     const ev=addDoseEvent(t.medId,t.slot,d);if(!ev)return;refreshMeds();sparks($(`#d-${x} .check`),12);toast('Dose noted for earlier');
     saveInBackground(()=>{removeDoseEvent(t.medId,ev);refreshMeds();});},
   /* one tap, but ask first when it would go over the personal limit */

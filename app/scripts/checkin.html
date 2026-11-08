@@ -141,7 +141,7 @@ function fNext(){const f=V.flow;if(!f)return;if(f.step===fRev(f.sl))return fSave
   }
 
 function flowClose(){
-  const f=V.flow;$('#flow')?.classList.remove('open');if(!f){const was=V.flowFrom;V.flowFrom=null;if(was?.isConnected)was.focus({preventScroll:true});else $('#main')?.focus({preventScroll:true});return;}V.flow=null;
+  const f=V.flow;if($('#flow.open')&&window.reclaimLatestWaiting)setTimeout(()=>loadLatest(true),250);$('#flow')?.classList.remove('open');if(!f){const was=V.flowFrom;V.flowFrom=null;if(was?.isConnected)was.focus({preventScroll:true});else $('#main')?.focus({preventScroll:true});return;}V.flow=null;
   const key=fdKey(f.sl,f.day);if(f.saved||JSON.stringify(f.v)===f.v0)delete V.fdraft[key];else if(!f.edit)V.fdraft[key]={v:f.v,step:f.step};
   if(f.saved){if(V.view==='journal'&&typeof renderJ==='function')renderJ();if(V.view==='today'){refreshHero();V.amfresh=!!amsrc();swap('dmood',dMood());V.amfresh=false;sparks($('#now .count'),14);}toast(f.edit?`${slotL(f.sl)} check-in updated`:'Check-in saved. Thanks for pausing.');}
   /* focus goes back to where the check-in was opened from */
