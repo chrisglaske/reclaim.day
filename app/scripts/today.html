@@ -141,7 +141,7 @@
         .map(([slot, checkin]) => ({
           id: 'checkin-' + slot, at: checkin.createdAt || checkin.updatedAt, icon: 'book', tint: 'lilac',
           title: slot.charAt(0).toUpperCase() + slot.slice(1) + ' check-in',
-          detail: (Number(checkin.mood) ? ['😣', '🙁', '😐', '🙂', '😄'][checkin.mood - 1] + ' ' : '') + (checkin.text || checkin.intention || 'A moment captured')
+          detail: (Number(checkin.mood) ? ['😣', '🙁', '😐', '🙂', '😄'][checkin.mood - 1] + ' ' : '') + (checkin.text || checkin.intention || 'Checked in')
         })),
       ...(S.profile.companion.trackMedications ? Object.entries(S.doses[day] || {})
         .flatMap(([medId, events]) => (Array.isArray(events) ? events : [])
@@ -149,7 +149,7 @@
           .map((event, index) => ({
             id: 'dose-' + medId + '-' + index, at: event.at, icon: 'pill', tint: event.slot === -1 ? 'sky' : 'peach',
             title: (S.meds.find(med => med.id === medId) || {}).name || 'Medication dose',
-            detail: event.skipped ? 'Not taking it today' + (event.reason ? ' · ' + event.reason : '') : event.slot === -1 ? 'As-needed dose' : 'Dose noted'
+            detail: event.skipped ? 'Not taking it today' + (event.reason ? ' · ' + event.reason : '') : event.slot === -1 ? 'As-needed dose' : 'Dose taken'
           }))) : []),
       ...S.cravings
         .filter(item => dateKey(item.at) === day)
@@ -160,7 +160,7 @@
           id: 'moment-' + item.id, at: item.at, emoji: viceInfo(item.vice).emoji,
           tint: viceInfo(item.vice).tint,
           title: viceInfo(item.vice).label + ' moment',
-          detail: (item.triggers || []).join(', ') || item.why || 'A moment captured'
+          detail: (item.triggers || []).join(', ') || item.why || 'Noted'
         })),
       ...(journal.updatedAt && !Object.keys(journal.checkins || {}).length
         ? [{ id: 'journal-summary', at: journal.updatedAt, icon: 'pen', tint: 'butter', title: 'Journal note', detail: journal.text || 'A day summary saved' }]

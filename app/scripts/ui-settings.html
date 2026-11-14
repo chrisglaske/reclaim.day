@@ -14,7 +14,7 @@ const sec=(k,title,sub,body)=>{const [,ic,tint]=SETSEC.find(x=>x[0]===k),o=V.sop
   return `<section class="card sets ${o?'open':''}" id="s-${k}"><h2 class="shd"><button data-act="stog:${k}" aria-expanded="${o}" aria-controls="sb-${k}"><span class="itile ${tint}">${I(ic)}</span><span class="grow"><span class="st">${title}</span><span class="ssum">${SSUM[k]()}</span></span><span class="svd" aria-live="polite">${I('check')}Saved</span>${I('chev')}</button></h2>
   <div class="tbody" id="sb-${k}" ${o?'':'inert'}><div><div class="sbin">${sub?`<p class="muted">${sub}</p>`:''}${body}</div></div></div></section>`;};
 const SSUM={
-  profile:()=>`${esc(obName())||'No name yet'} · ${cur()}${goalInfo().name?' · saving for '+esc(goalInfo().name):''}`,
+  profile:()=>`${esc(obName())||'No name yet'} · ${cur()}${goalInfo().name?' · saving for “'+esc(goalInfo().name)+'”':''}`,
   habits:()=>HK.map(k=>{const t=track(k);return `${HB[k].n} ${t.on?(t.mode==='reduce'?'· reduce':t.mode==='track'?'· just track':'· quit'):'· off'}`;}).join(', '),
   meds:()=>!medicationTrackingEnabled()?'Tracking off':medsList().length?medsList().map(m=>esc(m.name)).join(', '):'None added',
   ideas:()=>`${foc().length} focus ${foc().length===1?'idea':'ideas'} · ${cope().length} coping ${cope().length===1?'idea':'ideas'}`,
@@ -104,7 +104,7 @@ const SECS={
   ideas:()=>sec('ideas','Focus & coping','Focus ideas show on Today. Your coping ideas appear in “Need support?” when you want one.',ideaBlock('foc')+ideaBlock('cope')),
   why:()=>sec('why','Remember why','Shown in “Need support?”, for the harder moments.',`<div class="frow"><label class="lbl" for="swhy">Your reasons</label><textarea id="swhy" data-save style="min-height:130px">${esc(why().join('\n'))}</textarea><div class="inl"><p class="help">One personal reason per line, up to 15.</p><span class="help" id="whyc">${why().length} of 15</span></div></div>`),
   support:()=>sec('support','Support','',`<div class="frow"><label class="lbl" for="scountry">Country for support <span class="muted" style="font-weight:500">· optional</span></label><select class="field" id="scountry" data-save>${countryOpts(country())}</select>${WHYCOUNTRY}</div>`),
-  look:()=>sec('look','Look & feel','Changes save immediately.',`${swatches()}
+  look:()=>sec('look','Look & feel','Colors, counters and motion.',`${swatches()}
     <div class="frow" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px"><div class="inl"><div><b>Hide counters</b><p class="help">Show gentle words instead of numbers, everywhere.</p></div><button class="tgl" role="switch" aria-checked="${hide()}" aria-label="Hide counters" data-act="hide"></button></div></div>
     <div class="frow" style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">${dateChoices()}</div>`),
   data:()=>sec('data','Your data','',`<p class="muted" style="font-size:14px;margin:0 0 14px">Reclaim has no advertising or usage analytics. What you save is stored in your own Google Drive, not a shared Reclaim database.</p>
@@ -318,11 +318,11 @@ app.addEventListener('change',e=>{const t=e.target;if(t.id==='ercb'){$('#erok').
   if(!t.matches('[data-save]'))return;
   const p=S.profile,was={name:p.name,currency:p.currency,goal:Object.assign({},p.goal),reasons:p.reasons.slice(),country:p.country};
   if(t.id==='samt'){const a=t.value===''?0:Number(t.value);if(!isFinite(a)||a<0){toast('Enter a goal amount of 0 or more.');t.value=goalInfo().amt;return;}p.goal={name:p.goal.name,amount:a};}
-  if(t.id==='sname'){p.name=t.value.trim()||p.name;t.value=p.name;$$('.avatar',app).forEach(a=>a.textContent=initial());}
+  if(t.id==='sname'){p.name=t.value.trim()||p.name;t.value=p.name;$$('.avatar',app).forEach(a=>a.innerHTML=avatarIn());}
   if(t.id==='scountry')p.country=t.value;
   if(t.id==='scur'){p.currency=t.value;const l=$('label[for=samt]',app);if(l)l.textContent=`Goal amount (${curSym()})`;}
   if(t.id==='sgoal')p.goal={name:t.value.trim(),amount:p.goal.amount};
   if(t.id==='swhy'){const all=t.value.split('\n').map(x=>x.trim()).filter(Boolean);if(all.length>15)toast('Keep up to 15 personal reasons. The first 15 are saved.');p.reasons=all.slice(0,15);}
   flashSaved(t);
-  saveInBackground(()=>{Object.assign(p,was);const k=t.closest('.sets')?.id.slice(2);if(k)resec(k);$$('.avatar',app).forEach(a=>a.textContent=initial());});});
+  saveInBackground(()=>{Object.assign(p,was);const k=t.closest('.sets')?.id.slice(2);if(k)resec(k);$$('.avatar',app).forEach(a=>a.innerHTML=avatarIn());});});
 </script>

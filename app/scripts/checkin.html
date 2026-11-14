@@ -60,8 +60,8 @@ function flowStep(){
       <div><label class="lbl" for="ffocus">One small focus for today? ${opt}</label><input class="field" id="ffocus" maxlength="200" placeholder="e.g. Walk at lunch" value="${esc(v.focus||'')}"></div>`
     :`<div class="flq"><h2>${f.past?`How strong were cravings in the ${slotL(f.sl).toLowerCase()}?`:'How strong are cravings right now?'}</h2><p>Just a number. It isn’t a test.</p></div>
       <div class="fcard"><span class="bigval" id="fcrv">${v.craving??'–'}</span><div class="cword" id="fcrw">${CRW(v.craving)}</div>
-        <input type="range" class="bigrng" id="fcr" min="0" max="10" value="${v.craving??0}" aria-label="Craving strength, 0 to 10"><div class="scale"><span>0 · None</span><span>10 · Very strong</span></div>
-        <button class="link" data-act="fcrskip">Leave unrated</button></div>
+        <input type="range" class="bigrng ${v.craving==null?'unset':''}" id="fcr" min="0" max="10" value="${v.craving??0}" aria-label="Craving strength, 0 to 10"><div class="scale"><span>0 · None</span><span>10 · Very strong</span></div>
+        <button class="link" data-act="fcrskip" ${v.craving==null?'hidden':''}>Leave unrated</button></div>
       <div><span class="lbl">What’s been around you? <span class="muted" style="font-weight:500">· pick any</span></span><div class="chips">${CTX.map(t=>`<button class="chip ${v.tags.includes(t)?'on':''}" data-act="ftag" data-v="${t}">${ck()}${t}</button>`).join('')}</div></div>`;
     case 'body':return `<div class="flq"><h2>${f.sl==='daily'?'How did your body feel?':f.past?`How did your body feel in the ${slotL(f.sl).toLowerCase()}?`:'How’s your body feeling?'}</h2><p>Pick any, or skip.</p></div>
       <div class="chips">${HEALTH_TAGS.map(t=>`<button class="chip ${v.health.includes(t)?'on':''}" data-act="fhealth" data-v="${t}" aria-pressed="${v.health.includes(t)}">${ck()}${t}</button>`).join('')}</div>
@@ -163,15 +163,17 @@ Object.entries({
   fq:(b,e,x)=>{const v=V.flow.v;v.q=v.q===+x?null:+x;$$('#fsq .chip').forEach(c=>c.classList.toggle('on',c===b&&v.q!=null));fLabel();},
   ftag:b=>{const t=V.flow.v.tags,i=t.indexOf(b.dataset.v);i<0?t.push(b.dataset.v):t.splice(i,1);b.classList.toggle('on',i<0);fLabel();},
   fhealth:b=>{const t=V.flow.v.health,i=t.indexOf(b.dataset.v);i<0?t.push(b.dataset.v):t.splice(i,1);b.classList.toggle('on',i<0);b.setAttribute('aria-pressed',i<0);fLabel();if(b.dataset.v==='Other'){$('#fhow').hidden=i>=0;if(i<0)$('#fhother').focus({preventScroll:true});}},
-  fcrskip:()=>{V.flow.v.craving=null;$('#fcr').value=0;$('#fcrv').textContent='–';$('#fcrw').textContent=CRW(null);fLabel();},
+  fcrskip:b=>{V.flow.v.craving=null;$('#fcr').value=0;$('#fcr').classList.add('unset');b.hidden=true;$('#fcr').focus();$('#fcrv').textContent='–';$('#fcrw').textContent=CRW(null);fLabel();},
   fprompt:(b,e,x)=>{const ta=$('#ftext');ta.value=(ta.value.trim()?ta.value.trim()+'\n':'')+PROMPTS[x]+' ';V.flow.v.text=ta.value;$('#ftc').textContent=ta.value.length+' / 5000';ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);fLabel();},
   fnext:()=>fNext(),
   fsave:()=>fSave(),
   fback:()=>{V.flow.ret=false;fGo(V.flow.step-1);},
   fgo:(b,e,x)=>{V.flow.ret=true;fGo(+x);}
 }).forEach(([verb,run])=>{ACT[verb]=(...a)=>V.flow?run(...a):undefined;});
+/* a tap on the unrated slider at its own value (0) still rates it */
+app.addEventListener('click',e=>{const t=e.target;if(t.id==='fcr'&&t.classList.contains('unset'))t.dispatchEvent(new Event('input',{bubbles:true}));});
 app.addEventListener('input',e=>{const t=e.target,v=V.flow?.v;if(!v)return;if(t.id==='fhother')v.healthOther=t.value;
-  if(t.id==='fcr'){v.craving=+t.value;$('#fcrv').textContent=t.value;$('#fcrw').textContent=CRW(v.craving);fLabel();}
+  if(t.id==='fcr'){v.craving=+t.value;t.classList.remove('unset');$('[data-act=fcrskip]').hidden=false;$('#fcrv').textContent=t.value;$('#fcrw').textContent=CRW(v.craving);fLabel();}
   if(t.id==='ffocus'){v.focus=t.value;fLabel();}
   if(t.id==='ftomorrow'){v.tomorrow=t.value;fLabel();}
   if(t.id==='ftext'){v.text=t.value;$('#ftc').textContent=t.value.length+' / 5000';fLabel();}});

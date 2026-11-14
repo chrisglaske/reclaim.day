@@ -211,6 +211,8 @@
     days.forEach(day => apptDayHealth(day).forEach(tag => found.set(tag, [...(found.get(tag) || []), day])));
     return [...found].map(([tag, list]) => ({ tag, days: list })).sort((a, b) => b.days.length - a.days.length);
   }
+  // The app's own unit words on the summary: drinks rather than the setup's "drink servings".
+  const apptUnit = (v, n) => { const u = viceUnit(v); return u.v === 'drinks' ? (Number(n) === 1 ? 'drink' : 'drinks') : (Number(n) === 1 ? u.one : u.many); };
   const apptUsed = m => m && ['use', 'slip'].includes(m.kind || 'slip');
 
   // Deleted medications never appear. By default: active ones that have started, plus archived ones with doses in the range.
@@ -302,7 +304,7 @@
       const planText = !plan ? 'No plan set' : plan.mode === 'quit'
         ? 'Quit day ' + insightsDateLabel(dateKey(quitFrom.at))
         : plan.mode === 'track' ? 'Just tracking'
-        : 'Cut down · limit ' + formatQuantity(plan.target) + ' ' + habitUnitLabel(v, plan.target) + ' ' + cadencePhrase(plan);
+        : 'Reduce · limit ' + formatQuantity(plan.target) + ' ' + apptUnit(v, plan.target) + ' ' + cadencePhrase(plan);
       const use = days.map(day => dailyUse(v, day));
       const rows = weeks.map(w => {
         const amt = w.days.reduce((a, day) => a + dailyUse(v, day), 0), n = moments.filter(m => w.days.includes(dateKey(m.at))).length;
@@ -316,14 +318,14 @@
         // Only moments from the quit day on are slips; the ones before it were the habit as usual.
         const qd = dateKey(quitFrom.at), slips = moments.filter(m => dateKey(m.at) >= qd).length;
         const lead = qd > range.start ? name + ' (quit day ' + apptShort(qd) + '): ' : name + ' (quit): ';
-        glance = lead + (slips ? apptPlural(slips, 'slip') + (qd > range.start ? ' since the quit day' : '') + (since ? ', none in the last ' + apptPlural(since, 'day') : ', the latest on ' + apptShort(last))
-          : 'no slips' + (qd > range.start ? ' since the quit day' : ' noted')) + (qd > range.start && moments.length > slips ? ' · ' + (moments.length - slips) + ' moments before it' : '');
+        glance = lead + (slips ? apptPlural(slips, 'moment') + (qd > range.start ? ' since the quit day' : '') + (since ? ', none in the last ' + apptPlural(since, 'day') : ', the latest on ' + apptShort(last))
+          : 'no moments' + (qd > range.start ? ' since the quit day' : ' noted')) + (qd > range.start && moments.length > slips ? ' · ' + (moments.length - slips) + ' moments before it' : '');
       } else {
         const limDays = days.filter(day => target(day) != null), within = limDays.filter(day => target(day)).length;
         const t = apptTrendWords(apptTrend(use), ' a day');
-        glance = name + (plan && plan.mode === 'reduce' ? ' (limit ' + formatQuantity(plan.target) + ' ' + cadencePhrase(plan) + ')' : '') + ': ' + apptOne(apptAvg(use)) + ' ' + unit.many + ' a day on average' + (t ? ', ' + t : '') + (limDays.length ? ' · within the limit on ' + within + ' of ' + apptPlural(limDays.length, 'day') : '');
+        glance = name + (plan && plan.mode === 'reduce' ? ' (limit ' + formatQuantity(plan.target) + ' ' + cadencePhrase(plan) + ')' : '') + ': ' + apptOne(apptAvg(use)) + ' ' + apptUnit(v, 2) + ' a day on average' + (t ? ', ' + t : '') + (limDays.length ? ' · within the limit on ' + within + ' of ' + apptPlural(limDays.length, 'day') : '');
       }
-      return { key: v, name, unit: unit.many, plan: planText, quit: !!(plan && plan.mode === 'quit'), reduce: !!(plan && plan.mode === 'reduce'), moments: moments.length, rows, glance };
+      return { key: v, name, unit: apptUnit(v, 2), plan: planText, quit: !!(plan && plan.mode === 'quit'), reduce: !!(plan && plan.mode === 'reduce'), moments: moments.length, rows, glance };
     }).filter(Boolean);
   }
 

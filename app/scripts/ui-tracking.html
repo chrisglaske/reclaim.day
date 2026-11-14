@@ -5,7 +5,7 @@
 const TRIGS=MOMENT_TRIGGERS;
 const MK=[['log','Keep the current markers','The moment is saved without restarting them.'],['streak','Restart the current counter','Keep the broader recovery timeline.'],['full','Restart both recovery markers','Your earlier history remains saved.']];
 const hshort=k=>{const t=track(k),lim=hlim(k),n=dBetween(localToday(),t.start);return t.mode==='track'?`${moments(k)} today`:hrest(k)?'Rest day':hwk(k)&&lim?`${hused(k)} of ${lim} this week`:lim?`${moments(k)} of ${lim} today`:n>0?`Quit day in ${n}d`:`Day ${hday(k)}`;};
-const hsum=k=>{const t=track(k),lim=hlim(k),n=dBetween(localToday(),t.start);return t.mode==='track'?`${moments(k)} ${uw(k,moments(k))} today, just tracking`:hrest(k)?'Rest day, nothing planned':hwk(k)&&lim?`${hused(k)} of ${lim} ${uw(k,lim)} this week`:lim?`${moments(k)} of ${lim} ${uw(k,lim)} today`:n>0?`Quit day in ${n} day${n>1?'s':''}`:`Day ${hday(k)} of quit journey`;};
+const hsum=k=>{const t=track(k),lim=hlim(k),n=dBetween(localToday(),t.start);return t.mode==='track'?`${moments(k)} ${uw(k,moments(k))} today, just tracking`:hrest(k)?'Rest day, nothing planned':hwk(k)&&lim?`${hused(k)} of ${lim} ${uw(k,lim)} this week`:lim?`${moments(k)} of ${lim} ${uw(k,lim)} today`:n>0?`Quit day in ${n} day${n>1?'s':''}`:`Day ${hday(k)} of your quit journey`;};
 
 /* ---------- Tracking ---------- */
 function weekBoxes(kind){
@@ -55,13 +55,13 @@ function habAll(pop){
 }
 /* one row per scheduled dose and one per as-needed medicine; the mockup's single Bupropion and lozenge rows */
 const doseRow=t=>`<div class="dose ${t.done?'done':''} ${t.skipped?'skip':''} ${t.late?'late':''}" id="d-${t.id}"><span class="itile peach">${I('pill')}</span>
-      ${t.done||t.skipped?`<div><div class="tt">${doseTitle(t.title)}</div><div class="td">${t.skipped?`${t.multi?esc(t.label)+' · ':''}Skipped${t.reason?' · '+esc(t.reason):''}`:`${t.multi?esc(t.label)+' · noted':'Noted'} at ${t.at}`}</div></div>`
+      ${t.done||t.skipped?`<div><div class="tt">${doseTitle(t.title)}</div><div class="td">${t.skipped?`${t.multi?esc(t.label)+' · ':''}Skipped${t.reason?' · '+esc(t.reason):''}`:`${t.multi?esc(t.label)+' · taken':'Taken'} at ${t.at}`}</div></div>`
         :doptBtn(t.id,'t',`<span class="tt">${doseTitle(t.title)} ${t.late?`<span class="due late">${I('clock')}Late</span>`:t.due?'<span class="due">Due</span>':''}</span><span class="td">${esc(t.label)}${t.dueAt?` · ${t.late?'was due ':''}${t.dueAt}${t.optional?', before you added it':''}`:''}<span class="dhint" aria-hidden="true">›</span></span>`)}
       <button class="check ${t.done?'on':''}" data-act="tdose:${t.id}" aria-pressed="${t.done}" aria-label="${t.done?`Undo ${esc(t.name)} dose`:t.skipped?`Undo skipping ${esc(t.name)}`:`Note ${esc(t.name)} as taken now`}">${CHECK}</button>
       <div class="cfg" id="earl-${t.id}" inert><div><div class="earl"><label class="lbl" for="earlt-${t.id}" style="margin:10px 0 0">When did you take it?</label><input type="datetime-local" class="field" id="earlt-${t.id}" data-earl="${t.id}" min="${localToday()}T00:00" value="${earlVal(t)}">
         <div class="exrow" style="margin:0"><button class="btn sm ghost" data-act="tearl:${t.id}">Cancel</button><button class="btn sm primary" data-act="tearlsave:${t.id}">Save earlier</button></div></div></div></div></div>`;
 const prnRow=p=>`<div class="prn"><span class="itile sky">${I('pill')}</span><div style="min-width:0"><div class="tt">${doseTitle(p.title)}</div><div class="td">As needed${p.limit?' · personal limit '+p.limit:''}</div></div>
-      <div class="prnact">${hide()?'<span class="muted">Your as-needed notes are here when they help.</span>':`<span class="hv num"><span data-c="prn-${p.id}">${p.n}</span><small> today</small></span>`}<button class="btn sm ghost" data-act="prnundo:${p.id}" ${p.n?'':'disabled'} aria-label="Undo latest ${esc(p.title.split(' ·')[0])} dose">Undo</button><button class="btn sm primary" data-act="prnadd:${p.id}">${I('plus')}Note a dose</button></div></div>`;
+      <div class="prnact">${hide()?'<span class="muted">Your as-needed notes are here when they help.</span>':`<span class="hv num"><span data-c="prn-${p.id}">${p.n}</span><small> today</small></span>`}${p.n?`<button class="btn sm ghost" data-act="prnundo:${p.id}" aria-label="Undo latest ${esc(p.title.split(' ·')[0])} dose">Undo</button>`:''}<button class="btn sm primary" data-act="prnadd:${p.id}">${I('plus')}Note a dose</button></div></div>`;
 function medsCard(){
   const ds=trackDoses(),ps=prnMeds(),ms=schedMeds();if(!ds.length&&!ps.length)return '';
   const dn=ds.filter(t=>t.done).length,dsn=ds.filter(t=>!t.optional).length,TODAY=localToday(),why=activeMedications().filter(m=>String(m.whyThisHelps||'').trim());
@@ -84,6 +84,8 @@ function tracking(){
 }
 VIEWS.tracking=tracking;
 /* "Just now" or the full date and time it happened */
+/* editing a moment or adding one to a past day shows only the date field (no Just now / Earlier), so its time always counts */
+const mEarly=()=>{const g=$('[data-seg="mwhen"]');return !g||g.querySelector('.on')?.textContent==='Earlier';};
 const lclVal=at=>{const d=new Date(at),p=n=>String(n).padStart(2,'0');return `${dk(d)}T${p(d.getHours())}:${p(d.getMinutes())}`;};
 const nowVal=()=>lclVal(new Date());
 /* live app: when a drink is logged, each active medicine's alcohol note */
@@ -91,7 +93,7 @@ const alcWarn=()=>{const w=alcoholWarnings();return w.length?`<div class="whyask
 /* live app: the suggested recovery-marker choice and the cost estimate follow the amount and time, until a choice is tapped */
 const MKS={log:'Keep current',streak:'Restart counter',full:'Restart both'};
 function mguide(){const sh=$('#mmk')?.closest('.sheet');if(!sh)return;const k=sh.querySelector('[data-act^="msave:"]').dataset.act.split(':')[1],amt=+String($('#mamt').value).replace(',','.')||0,
-    early=$('[data-seg="mwhen"] .on')?.textContent==='Earlier',ti=$('#mwhent').value,at=early&&ti&&!isNaN(new Date(ti))?new Date(ti):new Date(),a=slipAdvice(k,amt,at),c=slipCost(k,amt);
+    early=mEarly(),ti=$('#mwhent').value,at=early&&ti&&!isNaN(new Date(ti))?new Date(ti):new Date(),a=slipAdvice(k,amt,at),c=slipCost(k,amt);
   $('#mcost').placeholder=c>0?c.toFixed(2):'Not noted';
   const n=$('#madv');n.hidden=!a;if(a)$('p',n).textContent=a.text;
   if(a&&!V.mtouch)$$('#mrads .rad').forEach(r=>r.classList.toggle('on',r.dataset.act==='mmark:'+a.action));
@@ -103,7 +105,7 @@ function momentSheet(k,ed){
     /* a quit plan starts from the usual small amount, so an old large one can't suggest restarting the markers */
     amt=ed?ed.amount:last&&track(k).mode!=='quit'&&+last.amount>0&&+last.amount<=U.max?+last.amount:U.a0;V.mtouch=!!ed;
   return `<div class="grab"></div><h3>${ed?`Edit this ${HB[k].v} moment`:`A ${HB[k].v} moment${day?' on '+sdate(day):''}`}</h3><p class="muted" style="margin:0">${ed?'Change anything, then save.':last?'Filled in from last time, so you can save straight away.':'Everything is filled in, so you can save straight away.'} A moment is information, not a verdict.</p>
-  <div class="fsec" style="border:0"><span class="lbl">When</span>${seg('mwhen',[['now','Just now'],['earlier','Earlier']],ed||day?'earlier':'now')}${ed||day?'':`<div class="chips" id="mago" role="group" aria-label="How long ago" hidden>${[[30,'30 min ago'],[60,'1 hour ago'],[120,'2 hours ago'],[240,'4 hours ago']].map(([m,l])=>`<button class="chip sm" data-act="mago:${m}">${l}</button>`).join('')}</div>`}<input type="datetime-local" class="field" id="mwhent" value="${ed?lclVal(ed.at):day?day+'T12:00':nowVal()}" max="${nowVal()}" aria-label="When it happened" ${ed||day?'':'hidden'}></div>
+  <div class="fsec" style="border:0"><span class="lbl">When</span>${ed||day?'':seg('mwhen',[['now','Just now'],['earlier','Earlier']],'now')}${ed||day?'':`<div class="chips" id="mago" role="group" aria-label="How long ago" hidden>${[[30,'30 min ago'],[60,'1 hour ago'],[120,'2 hours ago'],[240,'4 hours ago']].map(([m,l])=>`<button class="chip sm" data-act="mago:${m}">${l}</button>`).join('')}</div>`}<input type="datetime-local" class="field" id="mwhent" value="${ed?lclVal(ed.at):day?day+'T12:00':nowVal()}" max="${nowVal()}" aria-label="When it happened" ${ed||day?'':'hidden'}></div>
   <div class="fsec"><span class="lbl">What kind</span><div class="chips" id="mkind">${kinds.map((x,i)=>`<button class="chip ${x===kind?'on':''}" data-act="one:mkind" data-v="${x}">${ck()}${x}</button>`).join('')}</div></div>
   <div class="fsec"><div class="inl"><span class="lbl">How much <span class="muted" style="font-weight:500">· ${U.many}</span></span><div class="stepper"><button data-act="mamt:-" aria-label="Less">−</button><input class="num" id="mamt" inputmode="decimal" data-step="${U.as}" data-max="${U.max}" value="${amt}" aria-label="How much, in ${U.many}"><button data-act="mamt:+" aria-label="More">+</button></div></div>
     <div class="inl"><span class="lbl muted">Cost <span style="font-weight:500">· optional</span></span><input class="field" id="mcost" type="number" min="0" step="0.01" placeholder="Not noted" ${ed&&ed.cost!==''&&ed.cost!=null?`value="${esc(ed.cost)}"`:''} aria-label="Cost, optional" style="max-width:150px"></div></div>
@@ -133,7 +135,7 @@ Object.assign(ACT,{
   mamt:(b,e,x,y)=>{const v=$('#mamt'),st=+v.dataset.step||.5,n=Math.max(st,Math.min(+v.dataset.max||40,+((+String(v.value).replace(',','.')||0)+(y==='+'||x==='+'?st:-st)).toFixed(1)));v.value=n;bump(v);mguide();},
   mmark:(b,e,x)=>{V.mtouch=true;$$('.rad',b.parentNode).forEach(r=>r.classList.toggle('on',r===b));mguide();},
   /* kind, amount, triggers, the full earlier date and time, cost and note are all saved */
-  msave:(b,e,k)=>{const U=unitOf(k),amt=+String($('#mamt').value).replace(',','.'),early=$('[data-seg="mwhen"] .on')?.textContent==='Earlier',ti=$('#mwhent').value,at=early&&ti?new Date(ti):new Date();
+  msave:(b,e,k)=>{const U=unitOf(k),amt=+String($('#mamt').value).replace(',','.'),early=mEarly(),ti=$('#mwhent').value,at=early&&ti?new Date(ti):new Date();
     if(!(amt>0)||amt>U.max){toast(`Choose an amount up to ${U.max}`);$('#mamt').focus();return;}
     if(early&&(!ti||isNaN(at))){toast('Choose when it happened');$('#mwhent').focus();return;}
     if(at>new Date()){toast('Choose a time in the past');$('#mwhent').focus();return;}

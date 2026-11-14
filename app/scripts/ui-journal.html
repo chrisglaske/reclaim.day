@@ -106,7 +106,7 @@ function jDoses(k){
   const rows=ms.map(m=>m.prn?`<div class="prn" id="jd-${jdKey(m.id,-1)}"><span class="itile sky">${I('pill')}</span><div style="min-width:0"><div class="tt">${doseTitle(m.title)}</div><div class="td">As needed${m.limit?' · personal limit '+m.limit:''}</div></div>
       <div class="prnact">${hide()?'<span class="muted">Your as-needed notes are here when they help.</span>':`<span class="hv num"><span>${m.n}</span><small> this day</small></span>`}<button class="btn sm ghost" data-act="jdundo:${m.id}" ${m.n?'':'disabled'} aria-label="Undo latest ${esc(m.name)} dose on this day">Undo</button><button class="btn sm primary" data-act="jdprn:${m.id}">${I('plus')}Note a dose</button></div>${jdTime(k,m.id,-1,'')}</div>`
     :m.doses.map(d=>`<div class="dose ${d.noted?'done':''} ${d.skipped?'skip':''}" id="jd-${jdKey(m.id,d.slot)}"><span class="itile peach">${I('pill')}</span>
-      <div><div class="tt">${doseTitle(m.title)}</div><div class="td">${d.noted?`${m.multi?esc(d.label)+' · noted':'Noted'} at ${d.at}`:d.skipped?`${m.multi?esc(d.label)+' · ':''}Skipped${d.reason?' · '+esc(d.reason):''}`:d.optional?`${esc(d.label)} · before you added it`:`${esc(d.label)} · not noted`}</div></div>
+      <div><div class="tt">${doseTitle(m.title)}</div><div class="td">${d.noted?`${m.multi?esc(d.label)+' · taken':'Taken'} at ${d.at}`:d.skipped?`${m.multi?esc(d.label)+' · ':''}Skipped${d.reason?' · '+esc(d.reason):''}`:d.optional?`${esc(d.label)} · before you added it`:`${esc(d.label)} · not noted`}</div></div>
       <button class="check ${d.noted?'on':''}" data-act="jdose:${m.id}:${d.slot}" aria-pressed="${d.noted}" aria-label="${esc(m.name)}, ${esc(d.label)}, ${d.noted?'taken. Remove the note':d.skipped?'skipped. Undo the skip':'not taken. Note it'}">${CHECK}</button>${d.noted||d.skipped?'':jdTime(k,m.id,d.slot,d.time)}</div>`).join('')).join('');
   return `<details class="acc jdoses" id="jdoses" ${V.jdo||need?'open':''}><summary>Medications${all.length?` · ${blur(dn)} of ${all.length} doses noted`:''} ${I('chev')}</summary><div class="lrows">${rows}</div></details>`;
 }
@@ -134,7 +134,7 @@ function jRes(){
 const jSearch=()=>`<section class="card"><div class="ctitle"><h2>Past notes</h2></div><div class="searchf">${I('search')}<input class="field" id="jq" type="search" placeholder="Search your notes" value="${esc(V.jq)}" autocomplete="off" aria-label="Search past notes" maxlength="200"></div><div class="res" id="jres">${jRes()}</div></section>`;
 function journal(){
   const td=localToday();if(!V.jday||V.jday>td){V.jday=td;V.jmon=monthNo(td);}
-  return `<div class="hello"><div><div class="eyebrow">Journal</div><h1>Your day, in your words</h1><div class="lead">Check-ins, notes and what you noted, together.</div></div>${V.jday!==td?`<button class="btn" data-act="jpick:${td}">${I('cal')}Back to today</button>`:''}</div>
+  return `<div class="hello"><div><div class="eyebrow">Journal</div><h1>Your day, in your words</h1><div class="lead">Check-ins, moments, doses and notes, day by day.</div></div>${V.jday!==td?`<button class="btn" data-act="jpick:${td}">${I('cal')}Back to today</button>`:''}</div>
     ${jWeek()}<div class="jjump"><button class="link" data-act="jto:cal">${I('cal')}Calendar</button><button class="link" data-act="jto:notes">${I('search')}Search notes</button></div>
     <div class="grid main2"><div class="col">${jDay()}</div><div class="col jside">${jCal()}${jSearch()}</div></div>`;
 }
@@ -184,7 +184,7 @@ Object.assign(ACT,{
     const back=()=>{S.cravings.splice(Math.min(i,S.cravings.length),0,c);setC('waves',waves());renderJ();};
     toast('Wave removed',()=>{back();saveInBackground(()=>{const j=S.cravings.indexOf(c);if(j>=0)S.cravings.splice(j,1);setC('waves',waves());renderJ();});});
     saveInBackground(back);},
-  jde:(b,e,x,y)=>{const ev=((S.doses[V.jday]||{})[x]||[]).filter(d=>d&&d.at)[+y];if(!ev)return;jTimeSheet('Edit this dose note','When was it noted?',ev.at,'jdego:'+esc(x)+':'+esc(y),['jrd:'+esc(x)+':'+esc(y),'Remove this dose note']);},
+  jde:(b,e,x,y)=>{const ev=((S.doses[V.jday]||{})[x]||[]).filter(d=>d&&d.at)[+y];if(!ev)return;jTimeSheet(ev.skipped?'Edit this skipped dose':'Edit this dose',ev.skipped?'When was it skipped?':'When was it taken?',ev.at,'jdego:'+esc(x)+':'+esc(y),['jrd:'+esc(x)+':'+esc(y),'Remove this dose note']);},
   jdego:(b,e,x,y)=>{const ev=((S.doses[V.jday]||{})[x]||[]).filter(d=>d&&d.at)[+y],at=jTimeVal(),med=S.meds.find(m=>m.id===x);if(!ev||!at)return;
     if(med&&med.startDate&&dateKey(at)<dateKey(med.startDate)){toast('That is before this medicine was started');return;}
     const old=ev.at,put=v=>{removeDoseEvent(x,ev);ev.at=v;restoreDoseEvent(x,ev);renderJ();};put(at.toISOString());closeSheet();

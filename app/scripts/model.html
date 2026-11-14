@@ -7,7 +7,7 @@
   function setHide(value) { S.profile.companion.hideCounters = !!value; }
 
   // The avatar's "C": the first letter of the saved name.
-  function initial() { return (S.profile.name.trim()[0] || '·').toUpperCase(); }
+  function initial() { return (S.profile.name.trim()[0] || '').toUpperCase(); }
   // The mockup's habit keys (smoke, vape, drink) → the saved vice names.
   const VK = { smoke: 'smoking', vape: 'vaping', drink: 'drinking' };
   const tstr = at => new Date(at).toLocaleTimeString(dateLocale(), clockOptions());
@@ -169,7 +169,7 @@
   const MARKW = { 1: '1 day', 3: '3 days', 7: '1 week', 14: '2 weeks', 30: '1 month', 60: '2 months', 90: '3 months', 180: '6 months', 365: '1 year' };
   function nextMark(k) {
     const m = nextMilestone(VK[k]);
-    return m ? `${MARKW[m.days]} in ${m.daysRemaining} day${m.daysRemaining === 1 ? '' : 's'}` : 'More than a year in';
+    return m ? `${MARKW[m.days]} · ${m.daysRemaining}\u00a0day${m.daysRemaining === 1 ? '' : 's'} to\u00a0go` : 'More than a year in';
   }
 
   // The mockup's Bupropion: today's scheduled medicines (started, active, tracking on).

@@ -179,7 +179,7 @@ function moneyCard(){
     ${amt>0?`<div class="goalbar"><div class="inl"><b>${esc(S.profile.goal.name)||'Savings goal'}</b><span class="muted">${hide()?'':`${pct}% of ${y}${amt}`}</span></div>
       <div class="gtrack"><i style="width:${pct}%"></i>${[25,50,75,100].map(m=>`<span class="gm ${pct>=m?'on':''}" style="left:${m}%" title="${m}%"></span>`).join('')}</div>
       <div class="gl2">${[25,50,75,100].map(m=>`<span class="${pct>=m?'on':''}">${pct>=m?I('check'):''}${m}%</span>`).join('')}</div>
-      <p class="help" style="margin:6px 0 0">${hide()?'Your goal is here when you want it.':stop?`Next stop ${stop}% · ${y}${Math.max(0,Math.round(amt*stop/100-kept))} to go`:'Goal reached'}</p></div>`:''}
+      <p class="help" style="margin:6px 0 0">${hide()?'Your goal is here when you want it.':stop?`${y}${Math.max(0,Math.round(amt*stop/100-kept))} to go until ${stop}%`:'Goal reached'}</p></div>`:''}
     ${hs.length?`<div class="notused"><span class="lbl">Estimated amounts not used</span>${hs.map(k=>`<div class="nu"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><b class="num">${hide()?'':'~'+NOT[k][0]}</b><span>${NOT[k][1]}</span></div>`).join('')}</div>`:''}
     <p class="muted" style="margin:10px 0 0;font-size:12.5px">From your usual amounts and spend, minus what you’ve noted. Not exact.</p></section>`;
 }

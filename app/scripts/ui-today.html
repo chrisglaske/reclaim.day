@@ -58,7 +58,7 @@ function taskHTML(t){
   if(t.done)act=t.kind==='dose'?`<div class="act round"><button class="check ${t.skipped?'':'on'}" data-act="dose:${t.id}" aria-label="${t.skipped?`Undo skipping ${esc(t.title.split(' ·')[0])}`:'Undo dose'}">${CHECK}</button></div>`:`<div class="act"><button class="btn sm" data-act="flowrev:${t.id}">Review</button></div>`;
   else act=t.kind==='dose'?`<div class="act round"><button class="check" data-act="dose:${t.id}" aria-label="Mark ${esc(t.title)} taken">${CHECK}</button></div>`:`<div class="act"><button class="btn primary" data-act="flow:${t.id}">Check in</button></div>`;
   /* a skipped dose sits in Done today as "Skipped", with the circle to undo the skip */
-  const sub=t.skipped?`Skipped${t.reason?' · '+esc(t.reason):''}`:t.done?`Noted at ${t.at}${t.mood!=null?' · '+MOODS[t.mood][0]+' '+MOODS[t.mood][1]:''}`:esc(t.detail);
+  const sub=t.skipped?`Skipped${t.reason?' · '+esc(t.reason):''}`:t.done?`${t.kind==='dose'?'Taken':'Noted'} at ${t.at}${t.mood!=null?' · '+MOODS[t.mood][0]+' '+MOODS[t.mood][1]:''}`:esc(t.detail);
   return `<div class="task ${t.done?'done':''} ${t.skipped?'skip':''} ${doseLate(t)?'late':''}" id="t-${t.id}">
     <div class="itile ${t.tint}">${I(t.icon)}</div>
     ${((tt,td)=>!t.done&&t.kind==='dose'?doptBtn(t.id,'',`<span class="tt">${tt}</span><span class="td">${td}<span class="dhint" aria-hidden="true">›</span></span>`):`<div><div class="tt">${tt}</div><div class="td">${td}</div></div>`)(`${esc(t.title)}${t.done||!t.due?'':doseLate(t)?`<span class="due late">${I('clock')}Late</span>`:`<span class="due">${t.kind==='dose'?'Due':'Now'}</span>`}`,doseLate(t)?sub.replace('due ','was due '):sub)}
@@ -87,7 +87,7 @@ function glRow(k){const u=hused(k),lim=hlim(k),t=track(k),n=dBetween(localToday(
 function glance(){
   const nk=['smoke','vape'].filter(hShown),G=goal();
   return tcard('glance','Today at a glance',`${blur(formatCurrency(pocket()))} · ${blur(waves())} waves${nk.map(k=>` · ${HEMO[k][0]} ${blur(hused(k))}${hlim(k)&&!hrest(k)?'/'+hlim(k):''}`).join('')}`,`<div class="gls">
-    <div class="gl"><span class="itile sky">${I('wallet')}</span><div><div class="lbl">Kept in pocket</div><div class="sub">${G?`Toward ${esc(G.name)} · ${G.pct}%`:'Estimated from usual daily spend'}</div></div><span class="v num" data-c="pocket">${blur(formatCurrency(pocket()))}</span>${G?`<div class="meter"><i style="width:${G.pct}%"></i></div>`:''}</div>
+    <div class="gl"><span class="itile sky">${I('wallet')}</span><div><div class="lbl">Kept in pocket</div><div class="sub">${G?`Toward “${esc(G.name)}” · ${G.pct}%`:'Estimated from usual daily spend'}</div></div><span class="v num" data-c="pocket">${blur(formatCurrency(pocket()))}</span>${G?`<div class="meter"><i style="width:${G.pct}%"></i></div>`:''}</div>
     <div class="gl"><span class="itile peach">${I('wave')}</span><div><div class="lbl">Waves ridden out</div><div class="sub">Cravings you resisted</div></div><span class="v num" data-c="waves">${blur(waves())}</span></div>
     ${nk.map(glRow).join('')}</div>`);
 }

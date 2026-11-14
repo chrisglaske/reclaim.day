@@ -2,6 +2,8 @@
   // The design mockup's shared view code, copied as is. Its own S (view state only) is V here;
   // saved data is S (scripts/state) and is read through scripts/model.
 // A medication title with its amount ("Name · 1 pill"): the amount stays together on one line.
+/* the avatar: the name's first letter, or a person icon before a name is set */
+const avatarIn=()=>initial()?esc(initial()):I('user');
 const doseTitle=t=>esc(t).replace(/ · ([^·]+)$/,(m,d)=>' ·\u00a0'+d.replace(/ /g,'\u00a0'));
 let kbd=false;addEventListener('keydown',()=>kbd=true,true);addEventListener('pointerdown',()=>kbd=false,true);
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -55,13 +57,13 @@ function shell(){
   return `<a class="skip-link" href="#main">Skip to main content</a><div class="shell">
     <aside class="side"><div class="logo"><span class="mark">${I('leaf')}</span>reclaim</div>
       <button class="btn primary qlog" data-act="qpop" aria-haspopup="menu" aria-expanded="false" aria-controls="qpop">${I('plus')}Quick log<span class="kbd" aria-hidden="true">N</span></button>
-      <nav><span class="navpill"></span>${NAV.map(nvBtn).join('')}</nav>
+      <nav><span class="navpill"></span>${NAV.map(n=>nvBtn(n)).join('')}</nav>
       <div class="sfoot"><div class="supcard"><b>Need support?</b><span class="muted">Breathing, coping tools and people to reach.</span><button class="btn sm" data-act="sos">${I('life')}Open support</button></div>
       <div class="srow"><span><span class="dot"></span>All changes saved</span><button class="iconbtn ${hide()?'on':''}" data-act="hide" title="Hide counters" aria-pressed="${hide()}">${I(hide()?'eyeoff':'eye')}</button></div></div></aside>
     <header class="mtop"><div class="logo"><span class="mark">${I('leaf')}</span>reclaim</div>
       <button class="iconbtn ${hide()?'on':''}" data-act="hide" aria-label="Hide counters" aria-pressed="${hide()}">${I(hide()?'eyeoff':'eye')}</button>
       <button class="iconbtn lifebtn" data-act="sos" aria-label="Need support">${I('life')}</button>
-      <button class="avatar" data-act="nav:settings" aria-label="Settings">${esc(initial())}</button></header>
+      <button class="avatar" data-act="nav:settings" aria-label="Settings">${avatarIn()}</button></header>
     <main id="main" tabindex="-1"><div class="wrap enter" id="view"></div></main>
     <nav class="tabbar"><span class="navpill"></span>${nvBtn(NAV[0])}${nvBtn(NAV[1])}${nvBtn(NAV[2])}${nvBtn(NAV[3])}${nvBtn(NAV[4],1)}<button class="plus" data-act="quick" aria-label="Quick log">${I('plus')}</button></nav>
   </div>

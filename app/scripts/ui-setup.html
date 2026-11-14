@@ -25,7 +25,7 @@ function obTrack(){
   const tile=([k,i,c,n,d,on])=>`<button class="ptile ${on?'on':''}" role="checkbox" aria-checked="${on}" data-act="opick:${k}"><span class="itile ${c}">${I(i)}</span><span class="pt"><b>${n}</b><small>${d}</small></span><span class="tick">${I('check')}</span></button>`;
   const nicq=nic?`<div class="nicq" role="radiogroup" aria-labelledby="nicql"><span class="lbl" id="nicql">Which do you use?</span><div class="nicopts">${[['smoke','🚬','Smoke'],['vape','💨','Vape'],['both','🚬💨','Both']].map(([v,e,l])=>`<button class="nico ${nm===v?'on':''}" role="radio" aria-checked="${nm===v}" data-act="onic:${v}"><span class="e" aria-hidden="true">${e}</span>${l}</button>`).join('')}</div><p class="help">${nm==='both'?'Each gets its own plan, so you could quit one and cut down the other.':'Use both? Pick Both and each gets its own plan.'}</p></div>`:'';
   return `<div class="obq"><h1>What would you like support with?</h1><p>Pick any that fit. Each one gets its own short setup next.</p></div>
-  <div class="pick">${tile(['nic',nm==='vape'?'💨':'🚬','mint','Smoking or vaping','Cigarettes, a vape, or both',nic])}${nicq}${tile(['drink','🍷','sky','Drinking','Quit or cut down, at your own pace',t.drink.on])}${tile(['meds','pill','peach','Medication','Doses and gentle reminders',o.medsOn])}</div>
+  <div class="pick">${tile(['nic',nm==='vape'?'💨':'🚬','mint','Smoking or vaping','Cigarettes, a vape, or both',nic])}${nicq}${tile(['drink','🍷','sky','Drinking','Quit or cut down, at your own pace',t.drink.on])}${tile(['meds','pill','peach','Medication','Doses, shown on Today when they’re due',o.medsOn])}</div>
   <div class="nextup" aria-live="polite">${picked.length?`${I('chev')}<span>Next: ${picked.map(s=>s[1]).join(' → ')}</span>`:`${I('heart')}<span>Nothing picked? That’s okay. Check-ins, your journal and support still work for you.</span>`}</div>
   ${LATER}`;
 }
@@ -93,15 +93,15 @@ function obStep(){
     case 'theme':return `<div class="obq"><div class="obicon lilac">${I('palette')}</div><h1>Pick a look</h1><p>It applies right away, so try them on.</p></div>
       ${swatches()}`;
     case 'review':{const t=o.track,NT='Not tracking · you can turn this on in Settings anytime',since=k=>t[k].mode==='quit'&&dBetween(localToday(),t[k].start)>0?'':' · from '+(t[k].start===localToday()?'today':dlab(t[k].start,{month:'short',day:'numeric'})),ms=medsList(),c=country();
-      const rows=[['user','lilac','About you',`${esc(o.name)||'—'} · ${c&&STATE_SUPPORT_COUNTRIES[c]?'helplines for '+STATE_SUPPORT_COUNTRIES[c]:'no country chosen'} · ${cur()}`,'profile'],
+      const rows=[['user','lilac','About you',`${esc(o.name)||'No name yet'} · ${c&&STATE_SUPPORT_COUNTRIES[c]?'helplines for '+STATE_SUPPORT_COUNTRIES[c]:'no country chosen'} · ${cur()}`,'profile'],
         ...(t.smoke.on||t.vape.on?['smoke','vape'].filter(k=>t[k].on).map(k=>[hemo(k),HB[k].tint,HB[k].n,trackDesc(t[k],k)+since(k),k]):[['🚬','mint','Smoking or vaping',NT,'track',1]]),
         [hemo('drink'),'sky','Drinking',t.drink.on?trackDesc(t.drink,'drink')+since('drink'):NT,t.drink.on?'drink':'track',!t.drink.on],
         ['pill','peach','Medication',o.medsOn?(ms.map(m=>`${esc(m.name)} · ${medSub(m)}`).join('<br>')||'None added yet'):NT,o.medsOn?'meds':'track',!o.medsOn],
-        ['spark','butter','Focus & coping',`${foc().length} focus idea${foc().length===1?'':'s'} · ${cope().length} coping idea${cope().length===1?'':'s'}`,'ideas'],
+        ['spark','butter','Focus & coping',foc().length+cope().length?`${foc().length} focus idea${foc().length===1?'':'s'} · ${cope().length} coping idea${cope().length===1?'':'s'}`:'None chosen yet','ideas'],
         ['palette','sky','Theme',THEMES.find(x=>x[0]===theme())[1],'theme']];
-      rows.splice(1,0,['heart','peach','Your why',`${why().length} reason${why().length===1?'':'s'}${g.name?` · saving toward ${esc(g.name)}${g.amt?' ('+curSym()+esc(g.amt)+')':''}`:''}`,'why']);
+      rows.splice(1,0,['heart','peach','Your why',`${why().length?why().length+' reason'+(why().length===1?'':'s'):'No reasons yet'}${g.name?` · saving toward “${esc(g.name)}”${g.amt?' ('+curSym()+esc(g.amt)+')':''}`:''}`,'why']);
       return `<div class="obq"><h1>Looks good${o.name?', '+esc(o.name):''}</h1><p>Here’s your setup. Tap Edit to change anything.</p></div>
-      <section class="card">${rows.map(([i,c,k,v,s,off])=>`<div class="rv ${off?'off':''}"><span class="itile ${off?'':c}" ${off?'style="background:var(--soft);color:var(--muted)"':''}>${I(i)}</span><div><div class="k">${k}</div><div class="muted">${v}</div></div><button class="link" data-act="ostep:${s}">${off?'Turn on':'Edit'}</button></div>`).join('')}</section>
+      <section class="card">${rows.map(([i,c,k,v,s,off])=>`<div class="rv ${off?'off':''}"><span class="itile ${off?'':c}" ${off?'style="background:var(--soft);color:var(--muted)"':''}>${I(i)}</span><div><div class="k">${k}</div><div class="muted">${v}</div></div><button class="link nw" data-act="ostep:${s}">${off?'Turn on':'Edit'}</button></div>`).join('')}</section>
       <p class="help" style="text-align:center">Everything here can be changed in Settings, and you can walk through this setup again from there.</p>`;}
   }
 }

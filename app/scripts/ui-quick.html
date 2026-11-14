@@ -16,7 +16,7 @@ const QUICK=()=>[['wave','wave','peach','Rode out a wave','A craving came and we
 function ckQuick(){const sl=curSlot(),c=ckDay(localToday())[sl];
   if(!c)return ['flow:now','pen','lilac','Check in','Mood and a few words, step by step'];
   const nx=quickLogCounts(new Date()).next;
-  return [`flowrev:${sl}`,'check','mint',`${slotL(sl)} check-in`,`<span class="nw">Next: ${nx}</span><span class="qedit">${I('pen')}Tap to view or edit</span>`,'<span class="qdone">Done</span>'];}
+  return [`flowrev:${sl}`,'check','mint',`${slotL(sl)} check\u2011in`,`<span class="nw">Next: ${nx}</span><span class="qedit">${I('pen')}View or edit</span>`,'<span class="qdone">Done</span>'];}
 const qprnN=()=>sum(prnMeds().map(p=>p.n));
 /* Quick log: five bright tiles that pop in one after another. Each shows today's count, and a tap gives instant feedback. */
 function qtiles(kb){const q=QUICK(),tot=HK.reduce((n,k)=>n+mlist(k).length,0),dn=q[3][0].startsWith('qdose')||q[3][0].startsWith('nav');
