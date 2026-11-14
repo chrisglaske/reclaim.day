@@ -30,6 +30,20 @@
   .fwlist li.on .fwk{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
   .fwlist li.on .fwk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3}
   .fwtip{margin:12px 0 0;font-size:14px}
+  .fwgo{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;margin:-10px 0;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:10px}
+  .fwgo>span:nth-child(2){flex:1}
+  .fwgo .chev{width:18px;height:18px;flex:none;opacity:.6}
+  .fwgo:hover>span:nth-child(2){text-decoration:underline;text-underline-offset:3px}
+  /* Today at a glance with a single row (nothing tracked): one full-width line, not a lone tile */
+  .gls:has(>.gl:only-child),.tgrid.calm .gls:has(>.gl:only-child){display:block}
+  .gls>.gl:only-child{display:flex;flex-direction:row;align-items:center;gap:12px}
+  .gls>.gl:only-child .itile{align-self:center;margin-bottom:0}
+  .gls>.gl:only-child>div:not(.meter){flex:1;padding-bottom:0}
+  .gls>.gl:only-child .v{order:3}
+  .gls>.gl:only-child .sub{display:block}
+  /* Insights in the first days, before anything is noted */
+  .sfirst{margin:10px 0 0;font-size:15px;max-width:52ch}
+  .hero.story .cact .btn{margin-top:14px;background:var(--card);color:var(--ink)}
   .fwtip a,.errnote a{position:relative}
   /* The error notice stacks above the save notice so it never covers it. */
   .toast.errnote{bottom:236px;flex-wrap:wrap;justify-content:flex-end;padding:12px 12px 12px 18px;line-height:1.35}

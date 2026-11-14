@@ -9,6 +9,9 @@ const thisP=d=>d.n===7?'this week':'in the last 30 days',lastP=d=>d.n===7?'last 
 const andL=p=>p.length<3?p.join(' and '):p.slice(0,-1).join(', ')+', and '+p.at(-1);
 
 function storyCard(d){
+  if(d.since&&!d.noted)return `<section class="hero story"><div class="hhead"><div><div class="eyebrow">Your first days · ${rng(d)}</div><h2>Insights fill in as you go.</h2></div></div>
+    <p class="sfirst">Every check-in and note you add shapes what shows up here. There’s nothing to catch up on.</p>
+    <div class="cact"><button class="btn" data-act="flow:now">${I('check')}Do a check-in</button></div></section>`;
   const u=sum(d.use),w=sum(d.wave),rich=u+w>=6,ws=`<em>${w} wave${w===1?'':'s'}</em>`;
   const lim=d.reduce.length?`stayed within your ${andL(d.reduce)} limit${d.reduce.length>1?'s':''} on `:'';
   const line=rich?andL([`You rode out ${ws}`,...d.medName?[`kept ${esc(d.medName)} going <em>${d.medDays} of ${d.n} days</em>`]:[],...lim?[`${lim}<em>${d.limitDays} days</em>`]:[]])+'.'
@@ -23,15 +26,21 @@ function storyCard(d){
       <button class="stat" data-act="itab:wellbeing"><b>${d.best||blur(u)}</b><span>${d.best?'Your steadiest day':'Moments noted'} ${I('chev')}</span></button>
     </div>${was}</section>`;
 }
+const HOURS_AT=3;
 function hoursCard(d){
-  const u=sum(d.use),w=sum(d.wave),max=Math.max(1,...d.use.map((x,i)=>Math.max(x,d.wave[i])));
+  const u=sum(d.use),w=sum(d.wave);
+  if(u+w<HOURS_AT)return `<section class="card unlock"><div class="ctitle"><h2>When urges show up</h2><span class="badge">${I('lock')}${u+w} of ${HOURS_AT}</span></div>
+    <p class="muted" style="margin:0">After ${HOURS_AT} moments or waves ${thisP(d)}, you’ll see what times of day they tend to show up.</p>
+    <div class="pdots">${Array.from({length:HOURS_AT},(_,i)=>`<i class="${i<u+w?'on':''}"></i>`).join('')}</div>
+    <div class="cact"><button class="btn sm" data-act="sos">${I('life')}Practice a coping tool</button></div></section>`;
+  const max=Math.max(1,...d.use.map((x,i)=>Math.max(x,d.wave[i])));
   const [b0,b1]=d.band||[6,8],bi0=HRS.indexOf(b0),bi1=HRS.indexOf(b1);
   const inU=d.use.slice(bi0,bi1+1).reduce((a,b)=>a+b,0),inW=d.wave.slice(bi0,bi1+1).reduce((a,b)=>a+b,0);
   const cols=HRS.map((h,i)=>{const tip=`<b>${hl(h)}</b> · ${d.use[i]} moment${d.use[i]===1?'':'s'} · ${d.wave[i]} wave${d.wave[i]===1?'':'s'}`;
     return `<div class="hcol" style="grid-column:${i+1}" tabindex="0" data-tip="${tip.replace(/"/g,'&quot;')}" aria-label="${hl(h)}: ${d.use[i]} moments, ${d.wave[i]} waves">
       <i class="u" style="height:${d.use[i]/max*94}%;--d:${i}"></i><i class="w" style="height:${d.wave[i]/max*94}%;--d:${i}"></i></div>`;}).join('');
   const lab=[0,3,6,9,12,15].map(i=>`<span class="hx" style="grid-column:${i+1}/span 3">${hl(HRS[i]).replace(' ','')}</span>`).join('');
-  const msg=!(u+w)?`Nothing noted in the last ${d.n} days yet. Moments and waves show up here by the hour.`:u+w>=6?`<b>${inU} of your ${u} moments</b> happened between ${hl(b0)} and ${hl(b1+1)}, and so did <b>${inW} of ${w} waves</b>. That stretch is worth a plan.`
+  const msg=u+w>=6?`<b>${inU} of your ${u} moments</b> happened between ${hl(b0)} and ${hl(b1+1)}, and so did <b>${inW} of ${w} waves</b>. That stretch is worth a plan.`
     :`Early signs point to <b>${b0<12?'mornings':b0<17?'afternoons':'evenings'}</b>. That’s from ${u+w} notes, so a few more will sharpen it.`;
   return `<section class="card"><div class="ctitle"><h2>When urges show up</h2><span class="badge">Last ${d.n} days</span></div>
     <div class="legend"><span><i style="background:var(--c-use)"></i>Moments of use</span><span><i style="background:var(--c-wave)"></i>Waves ridden out</span></div>
@@ -49,7 +58,7 @@ function trigCard(d){
     </section>`;
   }
   const t=[...d.trig].sort((a,b)=>b[1]-a[1]),tot=sum(d.use);
-  if(!t.length)return `<section class="card" id="trigc"><div class="ctitle"><h2>What tends to come before</h2><span class="badge">${tot} moments</span></div><p class="muted" style="margin:0">${tot?'None of these moments has a trigger noted yet. Add one when you log a moment.':`No moments noted in the last ${d.n} days.`}</p></section>`;
+  if(!t.length)return `<section class="card" id="trigc"><div class="ctitle"><h2>What tends to come before</h2>${tot?`<span class="badge">${tot} moments</span>`:''}</div><p class="muted" style="margin:0">${tot?'None of these moments has a trigger noted yet. Add one when you log a moment.':`No moments noted in the last ${d.n} days.`}</p></section>`;
   const max=t[0][1];
   return `<section class="card ${d.justTagged?'reveal':''}" id="trigc"><div class="ctitle"><h2>What tends to come before</h2><span class="badge">${tot} moments</span></div>
     ${t.map(([k,v],i)=>`<div class="hb" data-tip="<b>${esc(k)}</b> · in ${v} of ${tot} moments"><span>${esc(k)}</span><span class="tr"><i style="width:${v/max*100}%;--d:${i}"></i></span><span class="v num">${v}</span></div>`).join('')}
@@ -58,21 +67,23 @@ function trigCard(d){
 }
 function ratioCard(d){
   const u=sum(d.use),w=sum(d.wave),pct=u+w?Math.round(w/(u+w)*100):0,C=2*Math.PI*42;
+  if(!(u+w))return `<section class="card unlock"><div class="ctitle"><h2>Waves you rode out</h2><span class="badge">${I('lock')}Not yet</span></div>
+    <p class="muted" style="margin:0">When a craving passes without use, note it as a wave in Quick log. You’ll see here how many urges passed.</p></section>`;
   return `<section class="card"><div class="ctitle"><h2>Waves you rode out</h2></div>
     <div class="ringwrap"><div class="ring" role="img" aria-label="${pct}% of urges ridden out"><svg viewBox="0 0 100 100"><circle class="rt" cx="50" cy="50" r="42"/><circle class="rv" cx="50" cy="50" r="42" stroke-dasharray="${C}" stroke-dashoffset="${C}" data-off="${C*(1-pct/100)}"/></svg><b class="num">${hide()?'••':pct+'%'}</b></div>
     <div><div style="font-weight:700;font-size:16px">${blur(w)} of ${blur(u+w)} urges</div><div class="muted" style="font-size:14px">passed without use ${thisP(d)}</div>
     ${d.lastPct!=null&&pct>=d.lastPct?`<span class="delta">${I('up')}Up from ${d.lastPct}% ${lastP(d)}</span>`:d.lastPct!=null?`<div class="muted" style="font-size:13px;margin-top:8px">${d.lastPct}% ${lastP(d)}</div>`:`<div class="muted" style="font-size:13px;margin-top:8px">${d.n===7?'Next week':'In 30 days'} you’ll see how it compares.</div>`}</div></div></section>`;
 }
 function heatCard(d){
-  const start=pd(d.heatStart),act=d.heat.filter(x=>x>0).length;
+  const start=pd(d.heatStart),act=d.heat.filter(x=>x>0).length,fs=S.firstWeek&&S.firstWeek.since>d.heatStart?S.firstWeek.since:null,pre=fs?dBetween(d.heatStart,fs):0;
   const lv=['No notes','1–2 notes','3–4 notes','5+ notes'];
   const cells=Array.from({length:35},(_,i)=>{const dt=new Date(start);dt.setDate(start.getDate()+i);const lab=dt.toLocaleDateString(dateLocale(), {weekday:'short',month:'short',day:'numeric'});
-    if(i>=d.heat.length)return `<span class="c fut" style="--d:${i}" aria-hidden="true"></span>`;
+    if(i>=d.heat.length||i<pre)return `<span class="c fut" style="--d:${i}" aria-hidden="true"></span>`;
     return `<button class="c l${d.heat[i]} ${i===d.heat.length-1?'today':''}" style="--d:${i}" data-act="jopen:${dk(dt)}" data-tip="<b>${lab}</b> · ${lv[d.heat[i]]}" aria-label="${lab}: ${lv[d.heat[i]]}. Open this day"></button>`;}).join('');
-  return `<section class="card"><div class="ctitle"><h2>Showing up</h2><span class="badge">${act} of ${d.heat.length} days</span></div>
+  return `<section class="card"><div class="ctitle"><h2>Showing up</h2><span class="badge">${d.heat.length-pre===1?'First day':`${act} of ${d.heat.length-pre} days`}</span></div>
     <div class="heat">${['M','T','W','T','F','S','S'].map(x=>`<span class="wd">${x}</span>`).join('')}${cells}</div>
     <div class="hscale">Fewer<i style="background:var(--soft)"></i><i style="background:color-mix(in srgb,var(--primary) 28%,var(--card))"></i><i style="background:color-mix(in srgb,var(--primary) 58%,var(--card))"></i><i style="background:var(--primary)"></i>More</div>
-    <p class="muted" style="margin:10px 0 0;font-size:14px">${act*2>=d.heat.length?'Most days have a note or two. Gaps are fine; this isn’t a streak.':'Any note counts: a dose, a check-in, a wave. Gaps are fine; this isn’t a streak.'}</p></section>`;
+    <p class="muted" style="margin:10px 0 0;font-size:14px">${act*2>=d.heat.length-pre&&act?'Most days have a note or two. Gaps are fine; this isn’t a streak.':'Any note counts: a dose, a check-in, a wave. Gaps are fine; this isn’t a streak.'}</p></section>`;
 }
 /* a callout only when one time of day sits clearly (¾ of a mood step) below the others. */
 function moodNote(m){const r=[['Mornings',m.m],['Afternoons',m.a],['Evenings',m.e]].filter(([,v])=>v).sort((a,b)=>a[1]-b[1]);
@@ -128,7 +139,8 @@ function toolsCard(){
    then one per active medicine with a "What to expect" timeline (MED_TIMELINES, M8c) */
 /* RECM: the app's own markers (scripts/habits TRACKING_MILESTONES), in the mockup's [minutes, label, text] shape */
 const RECM={smoke:TRACKING_MILESTONES.smoking.map(m=>[m.minutes,m.label,m.detail]),drink:TRACKING_MILESTONES.drinking.map(m=>[m.minutes,m.label,m.detail])};
-const togo=m=>m<1440?`${Math.ceil(m/60)} hours`:m<2*525600?`${Math.ceil(m/1440)} days`:`${Math.round(m/525600)} years`;
+const plu=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+const togo=m=>m<60?plu(Math.max(1,Math.ceil(m)),'minute'):m<1440?plu(Math.ceil(m/60),'hour'):m<2*525600?plu(Math.ceil(m/1440),'day'):plu(Math.round(m/525600),'year');
 /* the markers around the next one (all with V.rall); st(i): done / cur / up */
 const rList=(items,ni,st)=>{const shown=V.rall?items:items.filter((m,i)=>ni<0||i>=ni-1&&i<=ni+2),hidden=items.length-shown.length;
   return `<ol class="rlist">${shown.map(m=>{const i=items.indexOf(m),c=st(i);return `<li class="${c}"><span class="rd" aria-label="${c==='done'?'Time marker passed':'Time marker not yet reached'}">${c==='done'?I('check'):''}</span><div><b>${m[1]}</b><span>${m[2]}</span></div></li>`;}).join('')}</ol>
@@ -159,7 +171,7 @@ function recCard(){
   const tabsH=keys.length>1?`<div class="rtabs" role="tablist" aria-label="Recovery benefit timelines">${keys.map(x=>`<button role="tab" aria-selected="${x===k}" class="${x===k?'on':''}" data-act="rtab:${x}">${lab(x)}</button>`).join('')}</div>`:'';
   if(k.startsWith('med:'))return `<section class="card" id="recc">${head}${tabsH}${recMed(meds.find(m=>'med:'+m.id===k))}${recMore()}</section>`;
   const t=track(k),n=dBetween(localToday(),t.start),best=bestStreak(VK[k]);
-  const sl=slipCount(k),bestH=best>0||sl?`<p class="muted rbest">${best>0?`Best streak <b>${blur(shortDur(best))}</b>`:''}${best>0&&sl?' · ':''}${sl?`<b>${blur(sl)}</b> ${sl===1?'slip':'slips'} since your quit day`:''}</p>`:'';
+  const sl=slipCount(k),bestH=best>=6e4||sl?`<p class="muted rbest">${best>=6e4?`Best streak <b>${blur(shortDur(best))}</b>`:''}${best>=6e4&&sl?' · ':''}${sl?`<b>${blur(sl)}</b> ${sl===1?'slip':'slips'} since your quit day`:''}</p>`:'';
   let body;
   if(t.mode==='track')body=`<p class="empty">You’re tracking ${HB[k].v} without a limit, so there’s no quit timeline here. Your pattern is still in Tracking and Insights.</p><p class="muted rbest">7-day avg <b>${blur(fmtNum(avg7(k)))}/day</b>${Number(S.vices[VK[k]].perDay)>0?` · vs. your usual ${fmtNum(S.vices[VK[k]].perDay)}/day`:''}</p>`;
   else if(t.mode!=='quit')body=`<p class="empty">Time-based ${HB[k].v} benefits are shown for a Quit plan. Your reduction progress is still tracked in Tracking and Insights.</p><p class="muted rbest">7-day avg <b>${blur(fmtNum(avg7(k)))}/day</b>${Number(S.vices[VK[k]].perDay)>0?` · vs. your usual ${fmtNum(S.vices[VK[k]].perDay)}/day`:''}</p>${bestH}`;
