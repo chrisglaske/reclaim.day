@@ -305,6 +305,12 @@ body.doc-page .btn{background:var(--cob);color:var(--but)}
 .changelog .tag{display:inline-block;font-weight:800;font-size:13px;letter-spacing:.02em;text-transform:uppercase;padding:2px 10px;border-radius:99px;border:2px solid var(--navy);margin-right:8px}
 .changelog .tag.new{background:var(--cob);color:var(--but)}
 .changelog .tag.fixed{background:transparent;color:var(--navy)}
+.changelog .tag[hidden],.changelog .part[hidden]{display:none}
+.changelog .part+.part{margin-top:18px}
+.changelog .part .kind{margin:0 0 6px}
+.changelog .part h4{font-size:17px;font-weight:800;letter-spacing:-.01em;line-height:1.25;margin:14px 0 4px}
+.changelog .part .kind+h4{margin-top:4px}
+.changelog .part>p:last-child{margin-bottom:6px}
 body.doc-page footer{background:transparent;color:var(--navy);padding:40px 0 50px}
 body.doc-page footer a{margin-left:14px}
 
