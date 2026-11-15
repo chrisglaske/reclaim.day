@@ -31,7 +31,7 @@ vm.runInContext(`{ const Real = Date; let current = Real.now();
 vm.runInContext(['core', 'state', 'habits', 'meds', 'today', 'settings', 'settings-meds', 'insights'].map(source).join('\n') + `
 ;globalThis.__app = { S, applyState, todayUI, localToday, dateKey, dayOffset, dayDistance, dailyUse, limitStatus, streakHistory, nextMilestone, habitWeek,
   totals, dailyEstimatedSavings, makeMoment, trackingDoseSchedule, trackingDoseLate, medDayStatus, medAdherence, missedDoses, addDoseEvent, skipDoseEvent,
-  todayActions, saveMedication, setQuitPlan, vicePlan, migrate, firstWeekChecklist, startFirstWeek, returnDay, noteForTomorrow, supplyLeft, runningLow, insightsDaily };`, context);
+  todayActions, saveMedication, setQuitPlan, vicePlan, migrate, firstWeekChecklist, startFirstWeek, returnDay, noteForTomorrow, supplyLeft, runningLow, insightsDaily, fmtMoney };`, context);
 const app = context.__app;
 const same = (got, want) => assert.deepEqual(JSON.parse(JSON.stringify(got)), want);
 const setNow = at => { context.__clock(at); app.todayUI.now = new context.Date(); };
@@ -585,4 +585,10 @@ test('day by day: nothing noted averages zero', () => {
   assert.ok(daily.bars.every(entry => entry.used === 0));
   start({ firstWeek: { since: '2026-11-13', dismissed: false }, vices: drinking({ mode: 'track', at: '2026-11-01T09:00:00', target: 0 }) });
   assert.equal(app.insightsDaily('drinking', WEEK).average, null);
+});
+test('money under 100 shows cents, 100 and up whole', () => {
+  const money = (amount, currency, locale) => { start({ profile: { name: 'Sam', currency, companion: { trackMedications: true, reminders: {} } } }); return app.fmtMoney(amount, locale).replace(/\u00a0|\u202f/g, ' '); };
+  same([8.47, 25, 99.99, 99.996, 100, 1240.5, -3].map(amount => money(amount, 'USD', 'en-US')), ['$8.47', '$25.00', '$99.99', '$100.00', '$100', '$1,241', '$0.00']);
+  assert.equal(money(8.5, 'EUR', 'en-US'), '€8.50');
+  assert.equal(money(8.5, 'EUR', 'de-DE'), '8,50 €');
 });

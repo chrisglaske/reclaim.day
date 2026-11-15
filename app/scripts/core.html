@@ -406,10 +406,12 @@
     return Number(amount) === 1 ? unit.one : unit.many;
   }
 
-  function formatCurrency(amount) {
+  // fmtMoney: every money amount shown in the saved currency; cents under 100 ($8.50), whole units from 100 ($146, $1,240).
+  function fmtMoney(amount, locale) {
     const currency = STATE_CURRENCIES.includes(S.profile.currency) ? S.profile.currency : 'USD';
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: currency })
-      .format(Math.max(0, Number(amount) || 0));
+    const n = Math.max(0, Number(amount) || 0);
+    const digits = n < 100 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { minimumFractionDigits: 0, maximumFractionDigits: 0 };
+    return new Intl.NumberFormat(locale, { style: 'currency', currency, ...digits }).format(n);
   }
 
   // Saves for doses and daily intentions: alerts when a save fails outright, then rethrows so the caller can react.

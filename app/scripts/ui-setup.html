@@ -99,7 +99,7 @@ function obStep(){
         ['pill','peach','Medication',o.medsOn?(ms.map(m=>`${esc(m.name)} · ${medSub(m)}`).join('<br>')||'None added yet'):NT,o.medsOn?'meds':'track',!o.medsOn],
         ['spark','butter','Focus & coping',foc().length+cope().length?`${foc().length} focus idea${foc().length===1?'':'s'} · ${cope().length} coping idea${cope().length===1?'':'s'}`:'None chosen yet','ideas'],
         ['palette','sky','Theme',THEMES.find(x=>x[0]===theme())[1],'theme']];
-      rows.splice(1,0,['heart','peach','Your why',`${why().length?why().length+' reason'+(why().length===1?'':'s'):'No reasons yet'}${g.name?` · saving toward “${esc(g.name)}”${g.amt?' ('+curSym()+esc(g.amt)+')':''}`:''}`,'why']);
+      rows.splice(1,0,['heart','peach','Your why',`${why().length?why().length+' reason'+(why().length===1?'':'s'):'No reasons yet'}${g.name?` · saving toward “${esc(g.name)}”${Number(g.amt)>0?' ('+esc(fmtMoney(g.amt))+')':''}`:''}`,'why']);
       return `<div class="obq"><h1>Looks good${o.name?', '+esc(o.name):''}</h1><p>Here’s your setup. Tap Edit to change anything.</p></div>
       <section class="card">${rows.map(([i,c,k,v,s,off])=>`<div class="rv ${off?'off':''}"><span class="itile ${off?'':c}" ${off?'style="background:var(--soft);color:var(--muted)"':''}>${I(i)}</span><div><div class="k">${k}</div><div class="muted">${v}</div></div><button class="link nw" data-act="ostep:${s}">${off?'Turn on':'Edit'}</button></div>`).join('')}</section>
       <p class="help" style="text-align:center">Everything here can be changed in Settings, and you can walk through this setup again from there.</p>`;}

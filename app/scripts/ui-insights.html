@@ -22,7 +22,7 @@ function storyCard(d){
     <div class="stats">
       <button class="stat" data-act="itab:patterns"><b class="num">${blur(w)}</b><span>Waves ridden out ${I('chev')}</span></button>
       ${d.reduce.length?`<button class="stat" data-act="itab:patterns"><b class="num">${blur(d.limitDays)}<small style="font-size:16px;opacity:.7">/${d.n}</small></b><span>Days within limit ${I('chev')}</span></button>`:`<button class="stat" data-act="itab:wellbeing"><b class="num">${blur(sum(Array.from({length:d.n},(_,i)=>Object.keys(ckDay(addD(localToday(),-i))).length)))}</b><span>Check-ins ${I('chev')}</span></button>`}
-      <button class="stat" data-act="itab:progress"><b class="num">${blur(curSym()+d.kept)}</b><span>Kept in pocket ${I('chev')}</span></button>
+      <button class="stat" data-act="itab:progress"><b class="num">${blur(fmtMoney(d.kept))}</b><span>Kept in pocket ${I('chev')}</span></button>
       <button class="stat" data-act="itab:wellbeing"><b>${d.best||blur(u)}</b><span>${d.best?'Your steadiest day':'Moments noted'} ${I('chev')}</span></button>
     </div>${was}</section>`;
 }
@@ -116,11 +116,11 @@ function sleepCard(d){
 /* Coming up: the next marker of the first habit on a started quit plan, then the savings goal. */
 function msCard(){
   const k=HK.find(x=>{const t=track(x);return t.on&&t.mode==='quit'&&t.start<=localToday()&&nextMilestone(VK[x]);}),nm=k&&nextMilestone(VK[k]);
-  const amt=Number(S.profile.goal.amount),kept=Math.round(totals().estimatedSavings),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,stop=[25,50,75,100].find(m=>m>pct);
+  const amt=Number(S.profile.goal.amount),saved=totals().estimatedSavings,kept=Math.round(saved),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,stop=[25,50,75,100].find(m=>m>pct);
   if(!k&&!(amt>0))return '';
   return `<section class="card"><div class="ctitle"><h2>Coming up</h2></div>
     ${k?`<div class="ms"><span class="itile ${HB[k].tint}">${I(hemo(k))}</span><div class="grow"><div style="font-weight:700">${MARKW[nm.days]} without ${HB[k].v}</div><div class="muted" style="font-size:13px">${blur(nm.daysRemaining)} day${nm.daysRemaining===1?'':'s'} to go · Day ${blur(hday(k))}</div><div class="meter"><i style="width:${Math.round(hday(k)/nm.days*100)}%"></i></div></div></div>`:''}
-    ${amt>0?`<div class="ms"><span class="itile butter">${I('wallet')}</span><div class="grow"><div style="font-weight:700">${esc(S.profile.goal.name)||'Savings goal'}</div><div class="muted" style="font-size:13px">${blur(curSym()+kept+' of '+curSym()+amt)} · ${stop?'next stop '+stop+'%':'goal reached'}</div><div class="meter"><i style="width:${pct}%"></i></div></div></div>`:''}</section>`;
+    ${amt>0?`<div class="ms"><span class="itile butter">${I('wallet')}</span><div class="grow"><div style="font-weight:700">${esc(S.profile.goal.name)||'Savings goal'}</div><div class="muted" style="font-size:13px">${blur(fmtMoney(saved)+' of '+fmtMoney(amt))} · ${stop?'next stop '+stop+'%':'goal reached'}</div><div class="meter"><i style="width:${pct}%"></i></div></div></div>`:''}</section>`;
 }
 function medCard(m){
   const n=[...m.s].filter(c=>c==='1').length;
@@ -183,15 +183,15 @@ function recCard(){
 }
 /* Kept in pocket: the app's estimated savings, savings-goal milestones and estimated amounts not used */
 function moneyCard(){
-  const d=V.ins,tot=totals(),amt=Number(S.profile.goal.amount)||0,kept=Math.round(tot.estimatedSavings),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,y=curSym(),stop=[25,50,75,100].find(m=>m>pct);
+  const d=V.ins,tot=totals(),amt=Number(S.profile.goal.amount)||0,saved=tot.estimatedSavings,kept=Math.round(saved),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,stop=[25,50,75,100].find(m=>m>pct);
   const nu=k=>Math.round(tot[VK[k]].unitsAvoided),NOT={smoke:[nu('smoke'),`${uw('smoke',nu('smoke'))} not smoked`],vape:[nu('vape'),`vape ${uw('vape',nu('vape'))} skipped`],drink:[nu('drink'),`${uw('drink',nu('drink'))} not had`]};
   const hs=HK.filter(k=>track(k).on);
   return `<section class="card" id="moneyc"><div class="ctitle"><h2>Kept in pocket</h2><span class="badge">Estimated</span></div>
-    <div class="mkept"><span class="hv num">${blur(y+kept)}</span><span class="muted">since your plans started · ${blur(y+d.kept)} ${thisP(d)}</span></div>
-    ${amt>0?`<div class="goalbar"><div class="inl"><b>${esc(S.profile.goal.name)||'Savings goal'}</b><span class="muted">${hide()?'':`${pct}% of ${y}${amt}`}</span></div>
+    <div class="mkept"><span class="hv num">${blur(fmtMoney(saved))}</span><span class="muted">since your plans started · ${blur(fmtMoney(d.kept))} ${thisP(d)}</span></div>
+    ${amt>0?`<div class="goalbar"><div class="inl"><b>${esc(S.profile.goal.name)||'Savings goal'}</b><span class="muted">${hide()?'':`${pct}% of ${fmtMoney(amt)}`}</span></div>
       <div class="gtrack"><i style="width:${pct}%"></i>${[25,50,75,100].map(m=>`<span class="gm ${pct>=m?'on':''}" style="left:${m}%" title="${m}%"></span>`).join('')}</div>
       <div class="gl2">${[25,50,75,100].map(m=>`<span class="${pct>=m?'on':''}">${pct>=m?I('check'):''}${m}%</span>`).join('')}</div>
-      <p class="help" style="margin:6px 0 0">${hide()?'Your goal is here when you want it.':stop?`${y}${Math.max(0,Math.round(amt*stop/100-kept))} to go until ${stop}%`:'Goal reached'}</p></div>`:''}
+      <p class="help" style="margin:6px 0 0">${hide()?'Your goal is here when you want it.':stop?`${fmtMoney(Math.max(0,amt*stop/100-saved))} to go until ${stop}%`:'Goal reached'}</p></div>`:''}
     ${hs.length?`<div class="notused"><span class="lbl">Estimated amounts not used</span>${hs.map(k=>`<div class="nu"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><b class="num">${hide()?'':'~'+NOT[k][0]}</b><span>${NOT[k][1]}</span></div>`).join('')}</div>`:''}
     <p class="muted" style="margin:10px 0 0;font-size:12.5px">From your usual amounts and spend, minus what you’ve noted. Not exact.</p></section>`;
 }
