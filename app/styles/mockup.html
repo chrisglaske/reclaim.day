@@ -173,6 +173,8 @@ textarea,.field{width:100%;font:inherit;font-size:15px;color:var(--ink);backgrou
 textarea:focus,.field:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 18%,transparent)}
 /* iOS zooms in on focusing text under 16px and stays zoomed */
 @media (pointer:coarse){textarea,.field{font-size:16px}}
+/* iOS Safari sizes date and time fields by their content and lets them run past their box */
+@supports (-webkit-touch-callout:none){input[type=date].field,input[type=time].field{-webkit-appearance:none;appearance:none;display:block;min-width:0;text-align:left}input.field::-webkit-date-and-time-value{text-align:left;min-height:1.2em}}
 .exrow{display:flex;gap:10px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 .task .btn.ghost{color:var(--on-row)}
 .task .btn.ghost:hover{background:color-mix(in srgb,var(--on-row) 6%,transparent)}
