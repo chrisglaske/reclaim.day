@@ -1,16 +1,21 @@
 <script>
   // Insights data logic. The screen is scripts/ui-insights.html; its figures come from ins() in scripts/model.
 
+  // How many notes a day holds: check-ins, doses, waves and moments.
+  function insightsDayNotes(day) {
+    return Object.values(((S.journal[day] || {}).checkins) || {}).filter(item => item && item.updatedAt).length +
+      Object.values(S.doses[day] || {}).reduce((total, list) => total + (Array.isArray(list) ? list.length : 0), 0) +
+      S.cravings.filter(item => item && dateKey(item.at) === day).length +
+      S.slips.filter(item => item && dateKey(item.at) === day).length;
+  }
+
   // Overview "Showing up": five Monday-first weeks ending with this one. Each past day is shaded by how many
   // notes it holds (check-ins, doses, waves, moments): 0, 1–2, 3–4, 5+. Days after today are left blank.
   function insightsHeat() {
     const today = dateKey(todayUI.now);
     const monday = dayOffset(today, -((new Date(today + 'T12:00:00').getDay() + 6) % 7) - 28);
     const levels = ['No notes', '1–2 notes', '3–4 notes', '5+ notes'];
-    const notes = day => Object.values(((S.journal[day] || {}).checkins) || {}).filter(item => item && item.updatedAt).length +
-      Object.values(S.doses[day] || {}).reduce((total, list) => total + (Array.isArray(list) ? list.length : 0), 0) +
-      S.cravings.filter(item => item && dateKey(item.at) === day).length +
-      S.slips.filter(item => item && dateKey(item.at) === day).length;
+    const notes = insightsDayNotes;
     const cells = Array.from({ length: 35 }, (_, index) => {
       const day = dayOffset(monday, index);
       if (day > today) return { day: day, future: true };

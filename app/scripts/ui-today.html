@@ -85,9 +85,9 @@ const tcard=(k,title,sum,body,extra='',hint='')=>`<section class="card tcard ${V
 function glRow(k){const u=hused(k),lim=hlim(k),t=track(k),n=dBetween(localToday(),t.start);
   return `<div class="gl"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><div><div class="lbl">${HB[k].n} today</div><div class="sub">${t.mode==='track'?'Just tracking, no limit':hrest(k)?'Rest day, nothing planned':lim?`Up to ${lim} ${uw(k,lim)}${hwk(k)?' '+hphrase(k):''}`:n>0?`Quit day in ${n} day${n>1?'s':''}`:`Day ${hday(k)} of your quit journey`}</div></div><span class="v num"><span data-c="${k}">${blur(u)}</span>${lim?`<small>/${lim}</small>`:''}</span>${lim?`<div class="meter"><i id="meter-${k}" style="width:${Math.min(u/lim,1)*100}%"></i></div>`:''}</div>`;}
 function glance(){
-  const nk=['smoke','vape'].filter(hShown),G=goal();
-  return tcard('glance','Today at a glance',`${blur(formatCurrency(pocket()))} · ${blur(waves())} waves${nk.map(k=>` · ${HEMO[k][0]} ${blur(hused(k))}${hlim(k)&&!hrest(k)?'/'+hlim(k):''}`).join('')}`,`<div class="gls">
-    <div class="gl"><span class="itile sky">${I('wallet')}</span><div><div class="lbl">Kept in pocket</div><div class="sub">${G?`Toward “${esc(G.name)}” · ${G.pct}%`:'Estimated from usual daily spend'}</div></div><span class="v num" data-c="pocket">${blur(formatCurrency(pocket()))}</span>${G?`<div class="meter"><i style="width:${G.pct}%"></i></div>`:''}</div>
+  const nk=['smoke','vape'].filter(hShown),G=goal(),money=HK.some(k=>track(k).on);
+  return tcard('glance','Today at a glance',`${money?blur(formatCurrency(pocket()))+' · ':''}${blur(waves())} waves${nk.map(k=>` · ${HEMO[k][0]} ${blur(hused(k))}${hlim(k)&&!hrest(k)?'/'+hlim(k):''}`).join('')}`,`<div class="gls">
+    ${money?`<div class="gl"><span class="itile sky">${I('wallet')}</span><div><div class="lbl">Kept in pocket</div><div class="sub">${G?`Toward “${esc(G.name)}” · ${G.pct}%`:'Estimated from usual daily spend'}</div></div><span class="v num" data-c="pocket">${blur(formatCurrency(pocket()))}</span>${G?`<div class="meter"><i style="width:${G.pct}%"></i></div>`:''}</div>`:''}
     <div class="gl"><span class="itile peach">${I('wave')}</span><div><div class="lbl">Waves ridden out</div><div class="sub">Cravings you resisted</div></div><span class="v num" data-c="waves">${blur(waves())}</span></div>
     ${nk.map(glRow).join('')}</div>`);
 }
@@ -122,13 +122,17 @@ function hchip(k){const t=track(k);if(!t.on)return '';
   const v=hval(k);
   const nm=HB[k].n,em=hemo(k);
   return `<button class="hchip" data-act="nav:tracking" title="${nm} · ${t.mode==='reduce'?'cutting down':t.mode==='track'?'just tracking':'quitting'}"><span class="itile hem ${HB[k].tint}" aria-hidden="true">${em}</span><span class="vh">${nm}: </span><b>${v}</b></button>`;}
-/* first-week checklist: two steps that tick from real data; on a phone in a browser tab, an add-to-home-screen tip that never counts */
+/* first-week checklist: two steps that tick from real data and open what they ask for; the second matches what setup turned on
+   (nothing tracked and no medication: a wave, which counts too); on a phone in a browser tab, an add-to-home-screen tip that never counts */
 const fwTip=()=>matchMedia('(max-width: 600px)').matches&&!matchMedia('(display-mode: standalone)').matches&&!navigator.standalone;
 function fwHTML(){
   const c=firstWeekChecklist();if(!c)return '<div id="fw" hidden></div>';
-  const row=(on,t)=>`<li class="${on?'on':''}"><span class="fwk" aria-hidden="true">${on?I('check'):''}</span><span>${t}<span class="vh">${on?', done':''}</span></span></li>`;
+  const row=(on,t,act)=>{const body=`<span class="fwk" aria-hidden="true">${on?I('check'):''}</span><span>${t}<span class="vh">${on?', done':''}</span></span>`;
+    return `<li class="${on?'on':''}">${on?body:`<button class="fwgo" data-act="${act}">${body}${I('chev','chev')}</button>`}</li>`;};
+  const hab=HK.some(k=>track(k).on),med=activeMedications().length>0;
+  const second=hab&&med?'Note a first moment or dose':hab?'Note a first moment':med?'Note a first dose':'Note a wave when one comes';
   return `<section class="card fwcard" id="fw" aria-labelledby="fwh"><div class="ctitle"><div><h2 id="fwh">Getting started</h2><span class="hint">Two small things, whenever you like</span></div><button class="iconbtn" data-act="fwclose" aria-label="Close getting started">${I('x')}</button></div>
-    <ul class="fwlist">${row(c.checkin,'Do your first check-in')}${row(c.moment,'Note a first moment or dose')}</ul>
+    <ul class="fwlist">${row(c.checkin,'Do your first check-in','flow:now')}${row(c.moment,second,'fwlog')}</ul>
     ${fwTip()?`<p class="fwtip">Tip: add Reclaim to your home screen to open it like an app. <a href="https://reclaim.day/faq/#home-screen" target="_blank" rel="noopener">How</a></p>`:''}</section>`;
 }
 /* gentle return note: shown once on a return day, until closed or until something is logged; its seen mark is kept on this device only */
@@ -172,6 +176,8 @@ Object.assign(ACT,{
     saveInBackground(()=>{delete c.noteForTomorrowSeen;refreshFirstWeek();});},
   rtclose:()=>{const r=returnDay();if(!r)return;V.rtseen=r.prior;try{localStorage.setItem('reclaim-return-seen',r.prior);}catch(error){/* device storage is optional */}
     refreshFirstWeek();$('#view button')?.focus({preventScroll:true});},
+  /* the checklist's second row: Quick log beside the sidebar button on a wide screen, the tab bar's sheet on a phone */
+  fwlog:()=>{const q=$('.qlog',app);if(q?.offsetParent)openQ();else{const p=$('.tabbar .plus',app);if(p)ACT.quick(p);}},
   fwclose:()=>{if(!S.firstWeek)return;const was=S.firstWeek.dismissed;S.firstWeek.dismissed=true;refreshFirstWeek();toast('Closed. Your check-ins and doses are still on Today.');
     saveInBackground(()=>{S.firstWeek.dismissed=was;refreshFirstWeek();});},
   dose:(b,e,x)=>{const t=T(x);if(!t||$('#t-'+x)?.dataset.going)return;

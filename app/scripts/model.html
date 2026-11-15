@@ -339,6 +339,8 @@
       lastPct: pu + pw ? Math.round(pw / (pu + pw) * 100) : null, limitDays, reduce: VICE_KEYS.filter(v => red(td).includes(v)),
       kept: Math.round(sum(days.map(day => dailyEstimatedSavings(day)))), med, medName: fm ? fm.name : '', medDays: fm ? days.filter(day => medDayStatus(fm, day).hasDoseNoted).length : 0,
       best, trig, untagged, heat: past.map(c => c.level), heatStart: hm.cells[0].day,
+      // notes in the period, and the setup day when setup finished within it (first days get gentler cards)
+      noted: sum(days.map(insightsDayNotes)), since: S.firstWeek && S.firstWeek.since > addD(td, -n) ? S.firstWeek.since : null,
       moods, sleep: nights.length, short: next(0, 6), long: next(7, 99), ask: ask ? (ask === td ? 'last night' : 'on ' + dlab(addD(ask, -1), { weekday: 'long' }) + ' night') : 'that night', askDay: ask
     };
   }
