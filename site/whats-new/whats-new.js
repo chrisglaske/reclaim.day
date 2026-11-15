@@ -10,6 +10,9 @@ bar.addEventListener('click', e => {
   const show = b.dataset.show;
   bar.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
   entries.forEach(a => { a.hidden = show !== 'all' && !a.querySelector('.tag.' + show); });
+  // A day with both kinds shows only the chosen kind's part and tag.
+  document.querySelectorAll('.changelog .part').forEach(p => { p.hidden = show !== 'all' && p.dataset.kind !== show; });
+  document.querySelectorAll('.changelog .meta .tag').forEach(t => { t.hidden = show !== 'all' && !t.classList.contains(show); });
   months.forEach(h => { let n = h.nextElementSibling, any = false; while (n?.classList.contains('entry')) { any ||= !n.hidden; n = n.nextElementSibling; } h.hidden = !any; });
   count.textContent = `Showing ${entries.filter(a => !a.hidden).length} of ${entries.length} entries`;
 });
