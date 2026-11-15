@@ -27,6 +27,23 @@
     return { cells: cells, days: past.length, active: past.filter(cell => cell.level).length };
   }
 
+  // Overview "Day by day": how much of one habit was noted on each of `days`, with that day's daily limit on a
+  // cut-down plan (none on rest days, weekly ranges, quit or just track). Days before setup, or before the habit had
+  // a plan, are `before`: empty slots left out of the average and the weekly summary.
+  function insightsDaily(vice, days) {
+    const since = S.firstWeek && S.firstWeek.since;
+    const bars = days.map(day => {
+      const status = limitStatus(vice, day);
+      const reduce = status.mode === 'reduce', daily = reduce && status.per === 'day';
+      return { day: day, used: dailyUse(vice, day), limit: daily && status.allowedToday ? status.target : null,
+        rest: daily && !status.allowedToday, before: Boolean(since && day < since) || status.mode === null,
+        weekly: reduce && status.per === 'week' };
+    });
+    const drawn = bars.filter(entry => !entry.before), weeklyDays = drawn.filter(entry => entry.weekly).length;
+    return { bars: bars, weekly: !weeklyDays ? 'none' : weeklyDays === drawn.length ? 'all' : 'some',
+      average: drawn.length ? drawn.reduce((sum, entry) => sum + entry.used, 0) / drawn.length : null };
+  }
+
 
   // The live app's From / Through check for a custom summary range; '' when it is fine.
   function appointmentRangeError(start, end) {
