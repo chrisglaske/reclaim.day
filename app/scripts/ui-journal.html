@@ -134,7 +134,7 @@ function jRes(){
 const jSearch=()=>`<section class="card"><div class="ctitle"><h2>Past notes</h2></div><div class="searchf">${I('search')}<input class="field" id="jq" type="search" placeholder="Search your notes" value="${esc(V.jq)}" autocomplete="off" aria-label="Search past notes" maxlength="200"></div><div class="res" id="jres">${jRes()}</div></section>`;
 function journal(){
   const td=localToday();if(!V.jday||V.jday>td){V.jday=td;V.jmon=monthNo(td);}
-  return `<div class="hello"><div><div class="eyebrow">Journal</div><h1>Your day, in your words</h1><div class="lead">Check-ins, moments, doses and notes, day by day.</div></div>${V.jday!==td?`<button class="btn" data-act="jpick:${td}">${I('cal')}Back to today</button>`:''}</div>
+  return `<div class="hello"><div><div class="eyebrow">Journal</div><h1>Your day, in your words</h1><div class="lead">Look back on any day, or search what you wrote.</div></div>${V.jday!==td?`<button class="btn" data-act="jpick:${td}">${I('cal')}Back to today</button>`:''}</div>
     ${jWeek()}<div class="jjump"><button class="link" data-act="jto:cal">${I('cal')}Calendar</button><button class="link" data-act="jto:notes">${I('search')}Search notes</button></div>
     <div class="grid main2"><div class="col">${jDay()}</div><div class="col jside">${jCal()}${jSearch()}</div></div>`;
 }

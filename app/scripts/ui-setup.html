@@ -18,7 +18,6 @@ const trackDesc=(t,k)=>{if(!t.on)return 'Not tracking';if(t.mode==='track')retur
 /* the steps adapt to what someone picks: one setup screen per chosen thing */
 const OBS=()=>{const t=V.ob.track;return [['start','Start here'],['profile','About you'],['why','Your why'],['track','What to track'],...HK.filter(k=>t[k].on).flatMap(k=>[[k,HB[k].n+' plan',1],[k+'2',HB[k].n+' details',1,1],...(t[k].mode==='quit'&&t[k].start>localToday()?[[k+'3',HB[k].n+' ease-in',1,1]]:[])]),...(V.ob.medsOn?[['meds','Medication',1]]:[]),['ideas','Focus & coping'],['theme','Theme'],['review','Review']];};
 const obKey=()=>OBS()[V.ob.step]?.[0];
-const LATER=`<div class="later">${I('bulb')}<div><b>Not now is completely fine.</b> Anything you skip can be turned on later in Settings, or you can walk through this setup again from there.</div></div>`;
 const nicMode=()=>{const t=V.ob.track;return t.smoke.on&&t.vape.on?'both':t.smoke.on?'smoke':t.vape.on?'vape':'none';};
 function obTrack(){
   const o=V.ob,t=o.track,picked=OBS().filter(s=>s[2]),nm=nicMode(),nic=nm!=='none';
@@ -26,8 +25,7 @@ function obTrack(){
   const nicq=nic?`<div class="nicq" role="radiogroup" aria-labelledby="nicql"><span class="lbl" id="nicql">Which do you use?</span><div class="nicopts">${[['smoke','🚬','Smoke'],['vape','💨','Vape'],['both','🚬💨','Both']].map(([v,e,l])=>`<button class="nico ${nm===v?'on':''}" role="radio" aria-checked="${nm===v}" data-act="onic:${v}"><span class="e" aria-hidden="true">${e}</span>${l}</button>`).join('')}</div><p class="help">${nm==='both'?'Each gets its own plan, so you could quit one and cut down the other.':'Use both? Pick Both and each gets its own plan.'}</p></div>`:'';
   return `<div class="obq"><h1>What would you like support with?</h1><p>Pick any that fit. Each one gets its own short setup next.</p></div>
   <div class="pick">${tile(['nic',nm==='vape'?'💨':'🚬','mint','Smoking or vaping','Cigarettes, a vape, or both',nic])}${nicq}${tile(['drink','🍷','sky','Drinking','Quit or cut down, at your own pace',t.drink.on])}${tile(['meds','pill','peach','Medication','Doses, shown on Today when they’re due',o.medsOn])}</div>
-  <div class="nextup" aria-live="polite">${picked.length?`${I('chev')}<span>Next: ${picked.map(s=>s[1]).join(' → ')}</span>`:`${I('heart')}<span>Nothing picked? That’s okay. Check-ins, your journal and support still work for you.</span>`}</div>
-  ${LATER}`;
+  <div class="nextup" aria-live="polite">${picked.length?`${I('chev')}<span>Next: ${picked.map(s=>s[1]).join(' → ')}</span>`:`${I('heart')}<span>Nothing picked? That’s okay. Check-ins, your journal and support still work, and you can turn any of these on later in Settings.</span>`}</div>`;
 }
 const setNicOn=v=>{const t=V.ob.track;t.smoke.on=v==='smoke'||v==='both';t.vape.on=v==='vape'||v==='both';};
 function obPlan(k,part){
@@ -72,7 +70,7 @@ function obStep(){
   const o=V.ob,g=goalInfo();
   switch(obKey()){
     case 'start':if(o.back)return obBack(o);return `<div class="welcome"><div class="breathe"><div class="seed">${I('leaf')}</div></div><div class="brcap"><i></i>Take one slow breath. There’s no rush here.</div><div class="obq"><h1>Welcome. Let’s begin gently.</h1><p>Reclaim is a calm place to notice moments, follow the plans that matter to you, and make room for the next small step.</p></div>
-      <div class="points">${[['leaf','mint','Choose what to track','Smoking, vaping, drinking, medication, or none of them.'],['book','lilac','Move at your own pace','No required target or perfect day.'],['sliders','butter','Change anything later','Takes about 2 minutes. Everything stays editable.']].map(([i,t,b,p])=>`<div class="point"><span class="itile ${t}">${I(i)}</span><div><b>${b}</b><p>${p}</p></div></div>`).join('')}</div>${obRestHTML()}</div>`;
+      <div class="points">${[['leaf','mint','Choose what to track','Smoking, vaping, drinking, medication, or none of them.'],['book','lilac','Move at your own pace','No required target or perfect day.'],['sliders','butter','Change anything later','Everything stays editable in Settings.']].map(([i,t,b,p])=>`<div class="point"><span class="itile ${t}">${I(i)}</span><div><b>${b}</b><p>${p}</p></div></div>`).join('')}</div>${obRestHTML()}</div>`;
     case 'profile':return `<div class="obq"><h1>First, what should we call you?</h1><p>A first name or nickname is perfect.</p></div>
       <div class="obcard"><label class="lbl" for="obname">Your name</label><input class="field" id="obname" maxlength="40" value="${esc(o.name)}" placeholder="e.g. Sam" autocomplete="given-name"><div class="obhello" id="obhello" aria-live="polite">${o.name?`Nice to meet you, ${esc(o.name)} 👋`:''}</div></div>
       <div class="obcard"><label class="lbl" for="obcountry">Where do you need support? <span class="muted" style="font-weight:500">· optional</span></label><select class="field" id="obcountry">${countryOpts(country())}</select>${WHYCOUNTRY}</div>
@@ -92,7 +90,7 @@ function obStep(){
       <p class="help" style="text-align:center">You can add your own ideas later in Settings.</p>`;
     case 'theme':return `<div class="obq"><div class="obicon lilac">${I('palette')}</div><h1>Pick a look</h1><p>It applies right away, so try them on.</p></div>
       ${swatches()}`;
-    case 'review':{const t=o.track,NT='Not tracking · you can turn this on in Settings anytime',since=k=>t[k].mode==='quit'&&dBetween(localToday(),t[k].start)>0?'':' · from '+(t[k].start===localToday()?'today':dlab(t[k].start,{month:'short',day:'numeric'})),ms=medsList(),c=country();
+    case 'review':{const t=o.track,NT='Not tracking',since=k=>t[k].mode==='quit'&&dBetween(localToday(),t[k].start)>0?'':' · from '+(t[k].start===localToday()?'today':dlab(t[k].start,{month:'short',day:'numeric'})),ms=medsList(),c=country();
       const rows=[['user','lilac','About you',`${esc(o.name)||'No name yet'} · ${c&&STATE_SUPPORT_COUNTRIES[c]?'helplines for '+STATE_SUPPORT_COUNTRIES[c]:'no country chosen'} · ${cur()}`,'profile'],
         ...(t.smoke.on||t.vape.on?['smoke','vape'].filter(k=>t[k].on).map(k=>[hemo(k),HB[k].tint,HB[k].n,trackDesc(t[k],k)+since(k),k]):[['🚬','mint','Smoking or vaping',NT,'track',1]]),
         [hemo('drink'),'sky','Drinking',t.drink.on?trackDesc(t.drink,'drink')+since('drink'):NT,t.drink.on?'drink':'track',!t.drink.on],
@@ -175,7 +173,7 @@ function obDone(){
   return `<div class="obdone"><div class="glow"><i></i><i></i><i></i></div><div class="dcol">${sprout(9,'all',9)}<div class="eyebrow">${o.back?'All set':'Setup complete'}</div>
     ${o.back?`<h1>You’re all set${o.name?', '+esc(o.name):''}.</h1><p>Your plans are up to date. Here’s what’s waiting for you today.</p>`:`<h1>You’ve taken the first step${o.name?', '+esc(o.name):''}.</h1><p>That matters more than it might feel like right now. Here’s what’s waiting for you today.</p>`}
     <div class="firsts">${rows.map(([i,c,b,s])=>`<div><span class="itile ${c}">${I(i)}</span><span>${b}<small>${s}</small></span></div>`).join('')}</div>
-    ${(()=>{const sk=[!t.smoke.on&&!t.vape.on&&'Smoking or vaping',!t.drink.on&&'Drinking',!o.medsOn&&'Medication'].filter(Boolean);return sk.length?`<p style="font-size:14.5px">${sk.join(' and ').replace(/ and (?=.* and )/,', ')} ${sk.length>1?'aren’t':'isn’t'} set up yet. Add ${sk.length>1?'them':'it'} in Settings whenever you like.</p>`:'';})()}
+    ${(()=>{const sk=[!t.smoke.on&&!t.vape.on&&'Smoking or vaping',!t.drink.on&&'Drinking',!o.medsOn&&'Medication'].filter(Boolean);return sk.length?`<p style="font-size:14.5px">${sk.join(' and ').replace(/ and (?=.* and )/,', ')} ${sk.length>1?'aren’t':'isn’t'} set up yet; add ${sk.length>1?'them':'it'} whenever you like.</p>`:'';})()}
     <button class="btn primary lg" data-act="obgo">Go to Today ${I('chev')}</button><div style="font-size:13px;opacity:.75">Everything stays editable in Settings, and you can run this setup again from there.</div></div></div>
     ${OBTOAST}`;
 }

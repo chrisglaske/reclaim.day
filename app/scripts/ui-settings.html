@@ -48,7 +48,7 @@ function setHabit(k){const t=track(k),h=HB[k],r=S.vices[VK[k]];
     ${t.mode==='quit'?qSum(k):''}
     ${t.mode==='reduce'?`<div class="frow"><div><label class="lbl" for="hst-${k}">Plan started</label><input type="date" class="field" id="hst-${k}" value="${t.start}" max="${localToday()}" style="max-width:240px"></div></div>`:''}
     ${usualRow(k,t,r)}<div class="frow">
-      <p class="help">${t.mode!=='reduce'?'Saved moments remain in your history.':'Choose a past date if this plan began earlier. Saved moments remain in your history.'}</p><button class="btn sm" data-act="hsave:${k}" style="align-self:flex-start">Save habit details</button></div>`
+      ${t.mode==='reduce'?'<p class="help">Choose a past date if this plan began earlier.</p>':''}<button class="btn sm" data-act="hsave:${k}" style="align-self:flex-start">Save habit details</button></div>`
   :`<p class="muted" style="margin:0 0 6px;font-size:14px">Not tracking right now. Turn it on whenever you like; your history stays saved.</p>`}</div>`;}
 /* the medication editor: the mockup's Settings sheet with setup's how-often chips, a time per dose and start date */
 const FREQ=[['once','Once daily',1,'Once a day'],['twice','Twice daily',2,'Twice a day'],['three','Three times daily',3,'3 times a day'],['four','Four times daily',4,'4 times a day'],['prn','As needed',0]];
