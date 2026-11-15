@@ -577,6 +577,15 @@ test('day by day: days before a habit was turned on are empty slots', () => {
   const daily = app.insightsDaily('drinking', WEEK);
   same(daily.bars.map(entry => entry.before), [true, true, true, false, false, false, false]);
 });
+test('day by day: a quit day still ahead shows what was noted, from the day Reclaim was set up', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ createdAt: '2026-11-09T10:00:00', vices: drinking({ mode: 'quit', at: '2026-11-16T09:00:00', target: 0 }),
+    slips: [drink('2026-11-11T19:00:00', { amount: 3 })] });
+  const daily = app.insightsDaily('drinking', WEEK);
+  same(daily.bars.map(entry => entry.before), [true, true, true, false, false, false, false]);
+  same([bar(daily, '2026-11-11').used, bar(daily, '2026-11-11').limit], [3, null]);
+  assert.equal(daily.average, 3 / 4);
+});
 test('day by day: nothing noted averages zero', () => {
   setNow('2026-11-12T15:00:00');
   start({ vices: drinking({ mode: 'track', at: '2026-11-01T09:00:00', target: 0 }) });

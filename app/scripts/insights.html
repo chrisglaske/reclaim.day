@@ -32,11 +32,14 @@
   // a plan, are `before`: empty slots left out of the average and the weekly summary.
   function insightsDaily(vice, days) {
     const since = S.firstWeek && S.firstWeek.since;
+    // With a quit day still ahead there's no plan yet, but moments can be noted: those days count from setup.
+    const ahead = viceQuitAhead(vice) ? dateKey(S.createdAt) : null;
     const bars = days.map(day => {
       const status = limitStatus(vice, day);
       const reduce = status.mode === 'reduce', daily = reduce && status.per === 'day';
+      const unplanned = status.mode === null && !(ahead && day >= ahead);
       return { day: day, used: dailyUse(vice, day), limit: daily && status.allowedToday ? status.target : null,
-        rest: daily && !status.allowedToday, before: Boolean(since && day < since) || status.mode === null,
+        rest: daily && !status.allowedToday, before: Boolean(since && day < since) || unplanned,
         weekly: reduce && status.per === 'week' };
     });
     const drawn = bars.filter(entry => !entry.before), weeklyDays = drawn.filter(entry => entry.weekly).length;
