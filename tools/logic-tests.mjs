@@ -28,10 +28,10 @@ const context = vm.createContext({ window: {}, document: {}, requestAnimationFra
 vm.runInContext(`{ const Real = Date; let current = Real.now();
   globalThis.Date = class extends Real { constructor(...args) { super(...(args.length ? args : [current])); } static now() { return current; } };
   globalThis.__clock = at => { current = new Real(at).getTime(); }; }`, context);
-vm.runInContext(['core', 'state', 'habits', 'meds', 'today', 'settings', 'settings-meds'].map(source).join('\n') + `
+vm.runInContext(['core', 'state', 'habits', 'meds', 'today', 'settings', 'settings-meds', 'insights'].map(source).join('\n') + `
 ;globalThis.__app = { S, applyState, todayUI, localToday, dateKey, dayOffset, dayDistance, dailyUse, limitStatus, streakHistory, nextMilestone, habitWeek,
   totals, dailyEstimatedSavings, makeMoment, trackingDoseSchedule, trackingDoseLate, medDayStatus, medAdherence, missedDoses, addDoseEvent, skipDoseEvent,
-  todayActions, saveMedication, setQuitPlan, vicePlan, migrate, firstWeekChecklist, startFirstWeek, returnDay, noteForTomorrow, supplyLeft, runningLow };`, context);
+  todayActions, saveMedication, setQuitPlan, vicePlan, migrate, firstWeekChecklist, startFirstWeek, returnDay, noteForTomorrow, supplyLeft, runningLow, insightsDaily, fmtMoney };`, context);
 const app = context.__app;
 const same = (got, want) => assert.deepEqual(JSON.parse(JSON.stringify(got)), want);
 const setNow = at => { context.__clock(at); app.todayUI.now = new context.Date(); };
@@ -503,4 +503,101 @@ test('a quit day moved to today or earlier, or a plan start date, is a moment ag
   assert.equal(app.setQuitPlan('smoking', { start: '2026-11-08' }), '');
   assert.equal(app.vicePlan('smoking').day, undefined);
   assert.equal(app.dateKey(app.vicePlan('smoking').at), '2026-11-08');
+});
+
+// Insights "Day by day": one bar per day for one habit.
+const WEEK = ['2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12'];
+const drinking = (...phases) => ({ drinking: { enabled: true, perDay: 4, costPerDay: 10, phases } });
+const drink = (at, over = {}) => slip(at, { vice: 'drinking', ...over });
+const bar = (daily, key) => daily.bars.find(entry => entry.day === key);
+test('day by day: a daily limit sits on each bar', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: drinking({ mode: 'reduce', at: '2026-11-01T09:00:00', target: 2 }), slips: [drink('2026-11-10T19:00:00', { amount: 3 })] });
+  const daily = app.insightsDaily('drinking', WEEK);
+  same(daily.bars.map(entry => entry.day), WEEK);
+  same(bar(daily, '2026-11-10'), { day: '2026-11-10', used: 3, limit: 2, rest: false, before: false, weekly: false });
+  assert.equal(daily.weekly, 'none');
+  assert.equal(daily.average, 3 / 7);
+});
+test('day by day: a limit changed mid-week shows each day its own limit', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: drinking({ mode: 'reduce', at: '2026-11-01T09:00:00', target: 3 }, { mode: 'reduce', at: '2026-11-09T08:00:00', target: 1 }) });
+  const daily = app.insightsDaily('drinking', WEEK);
+  assert.equal(bar(daily, '2026-11-08').limit, 3);
+  assert.equal(bar(daily, '2026-11-09').limit, 1);
+});
+test('day by day: a rest day of a some-days plan has no limit mark', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: drinking({ mode: 'reduce', at: '2026-11-01T09:00:00', target: 2, days: [1, 3, 5] }) });
+  const daily = app.insightsDaily('drinking', WEEK);
+  same([bar(daily, '2026-11-10').limit, bar(daily, '2026-11-10').rest], [null, true]);   // a Tuesday
+  same([bar(daily, '2026-11-11').limit, bar(daily, '2026-11-11').rest], [2, false]);     // a Wednesday
+});
+test('day by day: a weekly range has no daily marks', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: drinking({ mode: 'reduce', at: '2026-11-01T09:00:00', target: 10, per: 'week' }), slips: [drink('2026-11-10T19:00:00', { amount: 2 })] });
+  const daily = app.insightsDaily('drinking', WEEK);
+  assert.ok(daily.bars.every(entry => entry.limit === null && entry.weekly === true && entry.rest === false));
+  same([bar(daily, '2026-11-10').used, bar(daily, '2026-11-11').used], [2, 0]);     // the day's amount, not the week's
+  assert.equal(daily.weekly, 'all');
+});
+test('day by day: weekly then daily is mixed', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: drinking({ mode: 'reduce', at: '2026-11-01T09:00:00', target: 10, per: 'week' }, { mode: 'reduce', at: '2026-11-09T08:00:00', target: 2 }) });
+  const daily = app.insightsDaily('drinking', WEEK);
+  assert.equal(daily.weekly, 'some');
+  same([bar(daily, '2026-11-08').weekly, bar(daily, '2026-11-09').weekly, bar(daily, '2026-11-09').limit], [true, false, 2]);
+});
+test('day by day: just track has no limits', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: drinking({ mode: 'track', at: '2026-11-01T09:00:00', target: 0 }), slips: [drink('2026-11-11T19:00:00', { amount: 2 })] });
+  const daily = app.insightsDaily('drinking', WEEK);
+  assert.ok(daily.bars.every(entry => entry.limit === null && entry.rest === false && entry.weekly === false && entry.before === false));
+  assert.equal(bar(daily, '2026-11-11').used, 2);
+  assert.equal(daily.weekly, 'none');
+});
+test('day by day: quit shows a moment with no limit', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: smoking({ mode: 'quit', at: '2026-11-01T09:00:00', target: 0 }), slips: [slip('2026-11-11T10:00:00')] });
+  const daily = app.insightsDaily('smoking', WEEK);
+  same([bar(daily, '2026-11-11').used, bar(daily, '2026-11-11').limit], [1, null]);
+  assert.ok(daily.bars.every(entry => entry.limit === null && !entry.rest));
+});
+test('day by day: days before setup are empty slots, left out of the average', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ firstWeek: { since: '2026-11-10', dismissed: false }, vices: drinking({ mode: 'reduce', at: '2026-11-01T09:00:00', target: 2 }),
+    slips: [drink('2026-11-11T19:00:00', { amount: 3 })] });
+  const daily = app.insightsDaily('drinking', WEEK);
+  same(daily.bars.map(entry => entry.before), [true, true, true, true, false, false, false]);
+  assert.equal(daily.average, 1);
+});
+test('day by day: days before a habit was turned on are empty slots', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: drinking({ mode: 'reduce', at: '2026-11-09T09:00:00', target: 2 }) });
+  const daily = app.insightsDaily('drinking', WEEK);
+  same(daily.bars.map(entry => entry.before), [true, true, true, false, false, false, false]);
+});
+test('day by day: a quit day still ahead shows what was noted, from the day Reclaim was set up', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ createdAt: '2026-11-09T10:00:00', vices: drinking({ mode: 'quit', at: '2026-11-16T09:00:00', target: 0 }),
+    slips: [drink('2026-11-11T19:00:00', { amount: 3 })] });
+  const daily = app.insightsDaily('drinking', WEEK);
+  same(daily.bars.map(entry => entry.before), [true, true, true, false, false, false, false]);
+  same([bar(daily, '2026-11-11').used, bar(daily, '2026-11-11').limit], [3, null]);
+  assert.equal(daily.average, 3 / 4);
+});
+test('day by day: nothing noted averages zero', () => {
+  setNow('2026-11-12T15:00:00');
+  start({ vices: drinking({ mode: 'track', at: '2026-11-01T09:00:00', target: 0 }) });
+  const daily = app.insightsDaily('drinking', WEEK);
+  assert.equal(daily.average, 0);
+  assert.ok(daily.bars.every(entry => entry.used === 0));
+  start({ firstWeek: { since: '2026-11-13', dismissed: false }, vices: drinking({ mode: 'track', at: '2026-11-01T09:00:00', target: 0 }) });
+  assert.equal(app.insightsDaily('drinking', WEEK).average, null);
+});
+test('money under 100 shows cents, 100 and up whole', () => {
+  const money = (amount, currency, locale) => { start({ profile: { name: 'Sam', currency, companion: { trackMedications: true, reminders: {} } } }); return app.fmtMoney(amount, locale).replace(/\u00a0|\u202f/g, ' '); };
+  same([8.47, 25, 99.99, 99.996, 100, 1240.5, -3].map(amount => money(amount, 'USD', 'en-US')), ['$8.47', '$25.00', '$99.99', '$100.00', '$100', '$1,241', '$0.00']);
+  assert.equal(money(8.5, 'EUR', 'en-US'), '€8.50');
+  assert.equal(money(8.5, 'EUR', 'de-DE'), '8,50 €');
 });

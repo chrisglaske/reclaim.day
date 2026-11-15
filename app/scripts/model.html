@@ -287,7 +287,7 @@
     const days = [...Object.keys(S.journal), ...Object.keys(S.doses), ...S.slips.map(m => m && dateKey(m.at)), ...S.cravings.map(c => c && dateKey(c.at))].filter(k => k && dateKey(k));
     return monthNo(days.reduce((a, b) => b < a ? b : a, localToday()));
   }
-  // curSym(): the saved currency's symbol, for the mockup's whole-number amounts ("€52").
+  // curSym(): the saved currency's symbol, for input labels and values (amounts shown elsewhere use fmtMoney).
   function curSym() {
     const c = STATE_CURRENCIES.includes(S.profile.currency) ? S.profile.currency : 'USD';
     return (new Intl.NumberFormat(undefined, { style: 'currency', currency: c }).formatToParts(0).find(x => x.type === 'currency') || {}).value || '';
@@ -337,7 +337,7 @@
     return {
       n, days, use, wave, prevUse: pu, prevWave: pw, band: bi < 0 ? null : [bi + 6, bi + 8],
       lastPct: pu + pw ? Math.round(pw / (pu + pw) * 100) : null, limitDays, reduce: VICE_KEYS.filter(v => red(td).includes(v)),
-      kept: Math.round(sum(days.map(day => dailyEstimatedSavings(day)))), med, medName: fm ? fm.name : '', medDays: fm ? days.filter(day => medDayStatus(fm, day).hasDoseNoted).length : 0,
+      kept: sum(days.map(day => dailyEstimatedSavings(day))), med, medName: fm ? fm.name : '', medDays: fm ? days.filter(day => medDayStatus(fm, day).hasDoseNoted).length : 0,
       best, trig, untagged, heat: past.map(c => c.level), heatStart: hm.cells[0].day,
       // notes in the period, and the setup day when setup finished within it (first days get gentler cards)
       noted: sum(days.map(insightsDayNotes)), since: S.firstWeek && S.firstWeek.since > addD(td, -n) ? S.firstWeek.since : null,
@@ -382,7 +382,7 @@
     return t0 && t0 <= new Date() && at < t0 ? 'That\'s before you started tracking (' + t0.toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric', year: 'numeric' }) + ').' : '';
   }
   function archivedMeds() { return S.meds.filter(med => !med.active && !med.deletedAt); }
-  // Deleted from the lists but kept so they can be restored (Settings › Medication schedule).
+  // Deleted from the lists but kept so they can be restored (Settings › Medication).
   function deletedMeds() { return S.meds.filter(med => med.deletedAt); }
 
   // Recovery extras (M8c), from the live app's shortDur, streakHistory, timeline and achievements.
@@ -464,9 +464,8 @@
       list.push({ id: v + 'r30', title: '30 on target', sub: lbl, earned: h.bestRun >= 30, desc: '30 days in a row at or under target' });
       list.push({ id: v + 'half', title: 'Halved it', sub: lbl, earned: h.bestRed >= 0.5, desc: 'A week at half your usual amount' });
     });
-    const saved = totals().estimatedSavings, c = STATE_CURRENCIES.includes(cur()) ? cur() : 'USD';
-    const money = n => new Intl.NumberFormat(undefined, { style: 'currency', currency: c }).format(n);
-    [100, 500, 1000, 5000].forEach(amt => list.push({ id: 'save' + amt, title: money(amt).replace(/\.00$/, ''), sub: 'Saved', earned: saved >= amt, desc: 'Save ' + money(amt) }));
+    const saved = totals().estimatedSavings;
+    [100, 500, 1000, 5000].forEach(amt => list.push({ id: 'save' + amt, title: fmtMoney(amt), sub: 'Saved', earned: saved >= amt, desc: 'Save ' + fmtMoney(amt) }));
     const cn = S.cravings.length;
     [1, 10, 50].forEach(n => list.push({ id: 'crav' + n, title: n + ' craving' + (n > 1 ? 's' : ''), sub: 'Beaten', earned: cn >= n, desc: 'Beat ' + n + ' cravings' }));
     const j = Object.keys(S.journal).length;

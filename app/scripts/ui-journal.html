@@ -2,9 +2,10 @@
 /* ---------- Journal (from the design mockup, on the real data) ---------- */
 function jWeek(){
   const td=localToday(),off=(pd(V.jday).getDay()+6)%7,mon=addD(V.jday,-off);
+  const moods=Array.from({length:7},(_,i)=>dayInfo(addD(mon,i))).some(inf=>inf&&inf.mood!=null);
   return `<div class="wstrip" id="jweek"><button class="iconbtn" data-act="jshift:-7" aria-label="Previous week"><span style="display:grid;transform:scaleX(-1)">${I('chev')}</span></button><div class="days">
     ${Array.from({length:7},(_,i)=>{const k=addD(mon,i),inf=dayInfo(k),fut=k>td;
-      return `<button class="wd2 ${k===V.jday?'on':''}" data-act="jpick:${k}" ${fut?'disabled':''} aria-pressed="${k===V.jday}" aria-label="${dlab(k)}">${dlab(k,{weekday:'short'})}<b>${pd(k).getDate()}</b><span class="e">${inf&&inf.mood!=null?MOODS[inf.mood][0]:''}</span>${marks(inf)}</button>`;}).join('')}
+      return `<button class="wd2 ${k===V.jday?'on':''}" data-act="jpick:${k}" ${fut?'disabled':''} aria-pressed="${k===V.jday}" aria-label="${dlab(k)}">${dlab(k,{weekday:'short'})}<b>${pd(k).getDate()}</b>${moods?`<span class="e">${inf&&inf.mood!=null?MOODS[inf.mood][0]:''}</span>`:''}${marks(inf)}</button>`;}).join('')}
     </div><button class="iconbtn" data-act="jshift:7" aria-label="Next week" ${addD(mon,7)>td?'disabled':''}>${I('chev')}</button></div>`;
 }
 const marks=inf=>`<span class="mk" aria-hidden="true">${inf?`${inf.smoke?'<i class="s"></i>':''}${inf.vape?'<i class="v"></i>':''}${inf.drink?'<i class="d"></i>':''}${inf.dose?'<i class="m"></i>':''}`:''}</span>`;
@@ -134,7 +135,7 @@ function jRes(){
 const jSearch=()=>`<section class="card"><div class="ctitle"><h2>Past notes</h2></div><div class="searchf">${I('search')}<input class="field" id="jq" type="search" placeholder="Search your notes" value="${esc(V.jq)}" autocomplete="off" aria-label="Search past notes" maxlength="200"></div><div class="res" id="jres">${jRes()}</div></section>`;
 function journal(){
   const td=localToday();if(!V.jday||V.jday>td){V.jday=td;V.jmon=monthNo(td);}
-  return `<div class="hello"><div><div class="eyebrow">Journal</div><h1>Your day, in your words</h1><div class="lead">Check-ins, moments, doses and notes, day by day.</div></div>${V.jday!==td?`<button class="btn" data-act="jpick:${td}">${I('cal')}Back to today</button>`:''}</div>
+  return `<div class="hello"><div><div class="eyebrow">Journal</div><h1>Your day, in your words</h1><div class="lead">Look back on any day, or search what you wrote.</div></div>${V.jday!==td?`<button class="btn" data-act="jpick:${td}">${I('cal')}Back to today</button>`:''}</div>
     ${jWeek()}<div class="jjump"><button class="link" data-act="jto:cal">${I('cal')}Calendar</button><button class="link" data-act="jto:notes">${I('search')}Search notes</button></div>
     <div class="grid main2"><div class="col">${jDay()}</div><div class="col jside">${jCal()}${jSearch()}</div></div>`;
 }

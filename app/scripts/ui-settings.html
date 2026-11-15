@@ -9,9 +9,14 @@ const THEMES=[['zine','Zine','Cobalt and butter with a pink pop. Bold and friend
 const pvHTML=k=>`<div class="pv" data-theme="${k}" aria-hidden="true"><span class="ph"><i></i><i></i><u></u></span><span class="pc"><s><i class="mint"></i><i class="peach"></i><i class="lilac"></i></s><b></b><b></b></span><span class="pb"></span></div>`;
 const swatches=()=>`<div class="swatches">${THEMES.map(([k,n,d])=>`<button class="sw ${theme()===k?'on':''}" data-act="otheme:${k}" aria-pressed="${theme()===k}">${pvHTML(k)}<span><span class="tn">${n}</span><span class="td">${d}</span></span></button>`).join('')}</div>`;
 
-/* Settings sections start closed, showing a one-line summary; one opens at a time */
-const sec=(k,title,sub,body)=>{const [,ic,tint]=SETSEC.find(x=>x[0]===k),o=V.sopen===k;
-  return `<section class="card sets ${o?'open':''}" id="s-${k}"><h2 class="shd"><button data-act="stog:${k}" aria-expanded="${o}" aria-controls="sb-${k}"><span class="itile ${tint}">${I(ic)}</span><span class="grow"><span class="st">${title}</span><span class="ssum">${SSUM[k]()}</span></span><span class="svd" aria-live="polite">${I('check')}Saved</span>${I('chev')}</button></h2>
+/* Settings sections start closed, showing a one-line summary; one opens at a time.
+   On wide screens (the side list shows, V.sdesk) the list picks one section instead: only it shows, open, with a plain heading. */
+const setDesk=()=>{const n=$('.setnav',app);return !!n&&getComputedStyle(n).display!=='none';};
+const shead=(k,title,o)=>{const [,ic,tint]=SETSEC.find(x=>x[0]===k),tile=`<span class="itile ${tint}">${I(ic)}</span>`,svd=`<span class="svd" aria-live="polite">${I('check')}Saved</span>`;
+  return V.sdesk?`${tile}<span class="grow"><span class="st">${title}</span></span>${svd}`
+    :`<button data-act="stog:${k}" aria-expanded="${o}" aria-controls="sb-${k}">${tile}<span class="grow"><span class="st">${title}</span><span class="ssum">${SSUM[k]()}</span></span>${svd}${I('chev')}</button>`;};
+const sec=(k,title,sub,body)=>{const o=V.sdesk?V.sset===k:V.sopen===k;
+  return `<section class="card sets ${o?'open':''}" id="s-${k}" data-t="${title}" ${V.sdesk&&!o?'hidden':''}><h2 class="shd ${V.sdesk?'plain':''}">${shead(k,title,o)}</h2>
   <div class="tbody" id="sb-${k}" ${o?'':'inert'}><div><div class="sbin">${sub?`<p class="muted">${sub}</p>`:''}${body}</div></div></div></section>`;};
 const SSUM={
   profile:()=>`${esc(obName())||'No name yet'} · ${cur()}${goalInfo().name?' · saving for “'+esc(goalInfo().name)+'”':''}`,
@@ -43,7 +48,7 @@ function setHabit(k){const t=track(k),h=HB[k],r=S.vices[VK[k]];
     ${t.mode==='quit'?qSum(k):''}
     ${t.mode==='reduce'?`<div class="frow"><div><label class="lbl" for="hst-${k}">Plan started</label><input type="date" class="field" id="hst-${k}" value="${t.start}" max="${localToday()}" style="max-width:240px"></div></div>`:''}
     ${usualRow(k,t,r)}<div class="frow">
-      <p class="help">${t.mode!=='reduce'?'Saved moments remain in your history.':'Choose a past date if this plan began earlier. Saved moments remain in your history.'}</p><button class="btn sm" data-act="hsave:${k}" style="align-self:flex-start">Save habit details</button></div>`
+      ${t.mode==='reduce'?'<p class="help">Choose a past date if this plan began earlier.</p>':''}<button class="btn sm" data-act="hsave:${k}" style="align-self:flex-start">Save habit details</button></div>`
   :`<p class="muted" style="margin:0 0 6px;font-size:14px">Not tracking right now. Turn it on whenever you like; your history stays saved.</p>`}</div>`;}
 /* the medication editor: the mockup's Settings sheet with setup's how-often chips, a time per dose and start date */
 const FREQ=[['once','Once daily',1,'Once a day'],['twice','Twice daily',2,'Twice a day'],['three','Three times daily',3,'3 times a day'],['four','Four times daily',4,'4 times a day'],['prn','As needed',0]];
@@ -100,7 +105,7 @@ const SECS={
   profile:()=>sec('profile','Profile','',`<div class="frow"><label class="lbl" for="sname">Your name</label><input class="field" id="sname" maxlength="40" value="${esc(obName())}" data-save></div>
     <div class="frow"><div class="ffl"><div><label class="lbl" for="scur">Currency</label><select class="field" id="scur" data-save>${curOpts()}</select></div><div><label class="lbl" for="sgoal">Savings goal</label><input class="field" id="sgoal" maxlength="60" value="${esc(goalInfo().name)}" data-save></div><div><label class="lbl" for="samt">Goal amount (${curSym()})</label><input class="field" id="samt" type="number" min="0" step="0.01" value="${esc(goalInfo().amt)}" data-save></div></div></div>`),
   habits:()=>sec('habits','Habits','There is no required target or perfect day. Smoke and vape? Turn both on and each gets its own plan.',HK.map(setHabit).join('')),
-  meds:()=>sec('meds','Medication schedule','Scheduled doses appear on Today when they’re due. Archiving keeps your history.',setMeds()),
+  meds:()=>sec('meds','Medication','Scheduled doses appear on Today when they’re due. Archiving keeps your history.',setMeds()),
   ideas:()=>sec('ideas','Focus & coping','Focus ideas show on Today. Your coping ideas appear in “Need support?” when you want one.',ideaBlock('foc')+ideaBlock('cope')),
   why:()=>sec('why','Remember why','Shown in “Need support?”, for the harder moments.',`<div class="frow"><label class="lbl" for="swhy">Your reasons</label><textarea id="swhy" data-save style="min-height:130px">${esc(why().join('\n'))}</textarea><div class="inl"><p class="help">One personal reason per line, up to 15.</p><span class="help" id="whyc">${why().length} of 15</span></div></div>`),
   support:()=>sec('support','Support','',`<div class="frow"><label class="lbl" for="scountry">Country for support <span class="muted" style="font-weight:500">· optional</span></label><select class="field" id="scountry" data-save>${countryOpts(country())}</select>${WHYCOUNTRY}</div>`),
@@ -119,14 +124,19 @@ const SECS={
     <a class="lrow" href="https://ko-fi.com/S5P629GQ84" target="_blank" rel="noopener" style="color:inherit;text-decoration:none;margin-top:12px"><span class="itile butter">${I('heart')}</span><span><b>Support Reclaim’s development</b><div class="muted" style="font-size:13px">Entirely optional. If it helps you, you can chip in on Ko-fi.</div></span>${I('chev','chev')}</a>`)};
 function settings(){
   return `<div class="hello"><div><div class="eyebrow">Settings</div><h1>Make it yours</h1><div class="lead">Selections save automatically. Text saves when you leave the field.</div></div></div>
-  <div class="setg"><nav class="setnav" aria-label="Settings sections">${SETSEC.map(([k,i,t,l])=>`<button class="setl ${V.sset===k?'on':''}" data-act="sgo:${k}"><span class="itile ${t}">${I(i)}</span>${l}</button>`).join('')}<button class="btn" data-act="startob">${I('leaf')}Guided setup again</button></nav>
+  <div class="setg"><nav class="setnav" aria-label="Settings sections">${SETSEC.map(([k,i,t,l])=>`<button class="setl ${V.sset===k?'on':''}" data-act="sgo:${k}"${V.sset===k?' aria-current="true"':''}><span class="itile ${t}">${I(i)}</span>${l}</button>`).join('')}<button class="btn" data-act="startob">${I('leaf')}Guided setup again</button></nav>
   <div class="col setl2">${SETSEC.map(([k])=>SECS[k]()).join('')}<button class="btn obagain" data-act="startob">${I('leaf')}Guided setup again</button></div></div>`;
 }
 VIEWS.settings=settings;
 function mainTo(el,how){if(!el)return;const m=$('#main'),r=el.getBoundingClientRect(),mr=m.getBoundingClientRect();let d=r.top-mr.top-12;
   if(how==='nearest'){if(r.top>=mr.top&&r.bottom<=mr.bottom)return;if(r.bottom>mr.bottom&&r.height<mr.height)d=r.bottom-mr.bottom+12;}m.scrollTo({top:m.scrollTop+d,behavior:'smooth'});}
-function setOpen(x){V.sopen=x;if(x)V.sset=x;$$('.sets',app).forEach(c=>{const k=c.id.slice(2),o=x===k;c.classList.toggle('open',o);$('.shd button',c).setAttribute('aria-expanded',o);$('.tbody',c).inert=!o;$('.ssum',c).innerHTML=SSUM[k]();});
-  $$('.setl',app).forEach(l=>l.classList.toggle('on',l.dataset.act==='sgo:'+V.sset));requestAnimationFrame(placeSeg);}
+function setOpen(x){V.sopen=x;if(x)V.sset=x;setMode(true);requestAnimationFrame(placeSeg);}
+/* applies the current mode to the drawn sections; redraws the headings when the side list appeared or went away */
+function setMode(sum){const d=setDesk(),ch=d!==!!V.sdesk;if(!V.sset)V.sset='profile';if(ch&&!d)V.sopen=V.sset;V.sdesk=d;
+  $$('.sets',app).forEach(c=>{const k=c.id.slice(2),o=d?k===V.sset:V.sopen===k,h=$('.shd',c);c.hidden=d&&!o;c.classList.toggle('open',o);$('.tbody',c).inert=!o;
+    if(ch){h.innerHTML=shead(k,c.dataset.t,o);h.classList.toggle('plain',d);}else if(!d){$('button',h).setAttribute('aria-expanded',o);if(sum)$('.ssum',h).innerHTML=SSUM[k]();}});
+  $$('.setl',app).forEach(l=>{const on=l.dataset.act==='sgo:'+V.sset;l.classList.toggle('on',on);if(on)l.setAttribute('aria-current','true');else l.removeAttribute('aria-current');});}
+new ResizeObserver(()=>{if(V.view==='settings'&&$('.setg',app)&&setDesk()!==!!V.sdesk){setMode();requestAnimationFrame(placeSeg);}}).observe(app);
 function flashSaved(el){const s=el?.closest('.sets')?.querySelector('.svd');if(!s)return;s.classList.add('show');clearTimeout(s._t);s._t=setTimeout(()=>s.classList.remove('show'),1600);}
 /* a section redrawn after a change or a failed save, kept open */
 const resec=k=>{swap('s-'+k,SECS[k]());requestAnimationFrame(placeSeg);};
@@ -293,7 +303,7 @@ Object.assign(ACT,{
   /* the usual amount's cadence only relabels the fields until Save habit details */
   cusual:(b,e,x,y)=>{if(V.screen==='onboard')return obCad('cusual',x,y);$$(`[data-act^="cusual:${x}:"]`,app).forEach(c=>{c.classList.toggle('on',c===b);c.setAttribute('aria-checked',c===b);});
     const u=unitOf(x).many;$('#hup-'+x).previousElementSibling.textContent=`Usual ${u} per ${y}`;$('#hsp-'+x).previousElementSibling.textContent=`Usual spend per ${y} (${curSym()})`;},
-  sgo:(b,e,x)=>{if(V.sopen!==x)setOpen(x);else{V.sset=x;$$('.setl',app).forEach(l=>l.classList.toggle('on',l.dataset.act==='sgo:'+x));}setTimeout(()=>mainTo($('#s-'+x)),300);},
+  sgo:(b,e,x)=>{if(V.sopen!==x||V.sset!==x)setOpen(x);setTimeout(()=>mainTo($('#s-'+x)),V.sdesk?0:300);},
   stog:(b,e,x)=>{setOpen(V.sopen===x?null:x);if(V.sopen)setTimeout(()=>mainTo($('#s-'+x),'nearest'),420);},
   idrm:(b,e,x,y)=>{const l=IDEAS[x](),was=l.slice();l.splice(+y,1);swap('ib-'+x,ideaBlock(x));flashSaved($('#s-ideas h2'));
     saveInBackground(()=>{l.splice(0,l.length,...was);resec('ideas');});},

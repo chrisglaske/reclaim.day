@@ -81,14 +81,14 @@ function shell(){
 const pendingView=()=>`<section class="card"><div class="ctitle"><h2>This screen is being connected.</h2></div></section>`;
 const VIEWS={today:pendingView,tracking:pendingView,journal:pendingView,insights:pendingView,settings:pendingView};
 function renderView(){
-  const v=$('#view');v.innerHTML=VIEWS[V.view]();if(V.view==='insights')animInsights();
+  const v=$('#view');v.innerHTML=VIEWS[V.view]();if(V.view==='settings')setMode();if(V.view==='insights')animInsights();
   v.classList.remove('enter');void v.offsetWidth;v.classList.add('enter');$('#main').scrollTop=0;
   requestAnimationFrame(()=>{placePills();jSpy();placeSeg();});
 }
 /* re-render in place for the counters toggle: keep scroll, skip the page entrance, and fade in only what changed */
 function swapView(){
   const v=$('#view'),m=$('#main'),top=m.scrollTop,old=v.cloneNode(true);
-  v.innerHTML=VIEWS[V.view]();
+  v.innerHTML=VIEWS[V.view]();if(V.view==='settings')setMode();
   const own=e=>[...e.childNodes].filter(c=>c.nodeType===3).map(c=>c.textContent).join('');
   const diff=(o,n)=>{if(o.outerHTML===n.outerHTML)return;
     if(o.tagName!==n.tagName||o.children.length!==n.children.length||o.className!==n.className||own(o)!==own(n)){n.classList.add('swapin');return;}
@@ -96,7 +96,7 @@ function swapView(){
     if($$('.swapin',n).length===before)n.classList.add('swapin');};
   if(old.children.length===v.children.length)[...v.children].forEach((c,i)=>diff(old.children[i],c));else v.classList.add('swapin');
   v.getAnimations({subtree:true}).forEach(an=>{const t=an.effect?.target;if(t&&!t.closest('.swapin')&&isFinite(an.effect.getComputedTiming().endTime))an.finish();});
-  if(V.view==='insights')$$('.ring .rv,.mtrack .dot',v).forEach(e=>{e.style.transition='none';if(e.dataset.off)e.style.strokeDashoffset=e.dataset.off;if(e.dataset.left)e.style.left=e.dataset.left;void e.offsetWidth;e.style.transition='';});
+  if(V.view==='insights')$$('.ring .rv,.mtrack .dot,.dfill[data-h],.dval[data-h]',v).forEach(e=>{e.style.transition='none';if(e.dataset.off)e.style.strokeDashoffset=e.dataset.off;if(e.dataset.left)e.style.left=e.dataset.left;if(e.dataset.h){if(e.classList.contains('dval'))e.style.bottom=`calc(${e.dataset.h} + 4px)`;else e.style.height=e.dataset.h;}void e.offsetWidth;e.style.transition='';});
   m.scrollTo({top,behavior:'instant'});requestAnimationFrame(placePills);
 }
 function placePills(){$$('.side nav,.tabbar',app).forEach(n=>{const on=$('.nv.on',n),p=$('.navpill',n);if(!n.offsetParent)return;if(!on){p.style.opacity=0;return;}p.style.opacity=1;Object.assign(p.style,{left:on.offsetLeft+'px',top:on.offsetTop+'px',width:on.offsetWidth+'px',height:on.offsetHeight+'px'});});}

@@ -251,6 +251,8 @@ textarea:focus,.field:focus{outline:0;border-color:var(--primary);box-shadow:0 0
   .hero.calm .tl .tlt{display:none}
 }
 #tc-glance{container:gl/inline-size}
+/* tiles stack only where they sit side by side (phones, and caught up from 820px); between, the glance is a plain list */
+@container app ((max-width:519px) or (min-width:820px)){
 @container gl (max-width:760px){
   .tgrid.calm .gl,.tgrid.calm .gl:first-of-type{display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:12px 14px}
   .tgrid.calm .gl .itile{align-self:flex-start;width:30px;height:30px;border-radius:10px;margin-bottom:6px}.tgrid.calm .gl .itile .ic{width:16px;height:16px}
@@ -265,6 +267,7 @@ textarea:focus,.field:focus{outline:0;border-color:var(--primary);box-shadow:0 0
 .tgrid.calm .gls:has(>.gl:nth-child(4)) .gl>div:not(.meter){order:2;padding-bottom:8px}
 .tgrid.calm .gls:has(>.gl:nth-child(4)) .gl .meter{order:3;margin-top:auto;flex:none}
 .tgrid.calm .gls:has(>.gl:nth-child(4)) .gl .lbl{font-size:13px}
+}
 #now{view-transition-name:hero}#tc-glance{view-transition-name:glance}#tc-focus{view-transition-name:focusc}#tc-story{view-transition-name:story}
 ::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.34,1.2,.64,1)}
 /* collapsible cards */
@@ -1129,6 +1132,7 @@ select.field{appearance:none;background-image:linear-gradient(45deg,transparent 
 .card.sets{padding:0}
 .shd{margin:0;font-size:inherit}
 .shd button{width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;background:none;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit;border-radius:20px;letter-spacing:normal}
+.shd.plain{display:flex;align-items:center;gap:12px;padding:12px 14px}
 .shd button:hover{background:color-mix(in srgb,var(--soft) 60%,transparent)}
 .shd .itile{width:36px;height:36px;border-radius:11px}
 .shd .st{display:block;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:17px;letter-spacing:-.02em}

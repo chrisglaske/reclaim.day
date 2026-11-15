@@ -22,7 +22,7 @@ function storyCard(d){
     <div class="stats">
       <button class="stat" data-act="itab:patterns"><b class="num">${blur(w)}</b><span>Waves ridden out ${I('chev')}</span></button>
       ${d.reduce.length?`<button class="stat" data-act="itab:patterns"><b class="num">${blur(d.limitDays)}<small style="font-size:16px;opacity:.7">/${d.n}</small></b><span>Days within limit ${I('chev')}</span></button>`:`<button class="stat" data-act="itab:wellbeing"><b class="num">${blur(sum(Array.from({length:d.n},(_,i)=>Object.keys(ckDay(addD(localToday(),-i))).length)))}</b><span>Check-ins ${I('chev')}</span></button>`}
-      <button class="stat" data-act="itab:progress"><b class="num">${blur(curSym()+d.kept)}</b><span>Kept in pocket ${I('chev')}</span></button>
+      <button class="stat" data-act="itab:progress"><b class="num">${blur(fmtMoney(d.kept))}</b><span>Kept in pocket ${I('chev')}</span></button>
       <button class="stat" data-act="itab:wellbeing"><b>${d.best||blur(u)}</b><span>${d.best?'Your steadiest day':'Moments noted'} ${I('chev')}</span></button>
     </div>${was}</section>`;
 }
@@ -116,11 +116,11 @@ function sleepCard(d){
 /* Coming up: the next marker of the first habit on a started quit plan, then the savings goal. */
 function msCard(){
   const k=HK.find(x=>{const t=track(x);return t.on&&t.mode==='quit'&&t.start<=localToday()&&nextMilestone(VK[x]);}),nm=k&&nextMilestone(VK[k]);
-  const amt=Number(S.profile.goal.amount),kept=Math.round(totals().estimatedSavings),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,stop=[25,50,75,100].find(m=>m>pct);
+  const amt=Number(S.profile.goal.amount),saved=totals().estimatedSavings,kept=Math.round(saved),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,stop=[25,50,75,100].find(m=>m>pct);
   if(!k&&!(amt>0))return '';
   return `<section class="card"><div class="ctitle"><h2>Coming up</h2></div>
     ${k?`<div class="ms"><span class="itile ${HB[k].tint}">${I(hemo(k))}</span><div class="grow"><div style="font-weight:700">${MARKW[nm.days]} without ${HB[k].v}</div><div class="muted" style="font-size:13px">${blur(nm.daysRemaining)} day${nm.daysRemaining===1?'':'s'} to go · Day ${blur(hday(k))}</div><div class="meter"><i style="width:${Math.round(hday(k)/nm.days*100)}%"></i></div></div></div>`:''}
-    ${amt>0?`<div class="ms"><span class="itile butter">${I('wallet')}</span><div class="grow"><div style="font-weight:700">${esc(S.profile.goal.name)||'Savings goal'}</div><div class="muted" style="font-size:13px">${blur(curSym()+kept+' of '+curSym()+amt)} · ${stop?'next stop '+stop+'%':'goal reached'}</div><div class="meter"><i style="width:${pct}%"></i></div></div></div>`:''}</section>`;
+    ${amt>0?`<div class="ms"><span class="itile butter">${I('wallet')}</span><div class="grow"><div style="font-weight:700">${esc(S.profile.goal.name)||'Savings goal'}</div><div class="muted" style="font-size:13px">${blur(fmtMoney(saved)+' of '+fmtMoney(amt))} · ${stop?'next stop '+stop+'%':'goal reached'}</div><div class="meter"><i style="width:${pct}%"></i></div></div></div>`:''}</section>`;
 }
 function medCard(m){
   const n=[...m.s].filter(c=>c==='1').length;
@@ -183,21 +183,49 @@ function recCard(){
 }
 /* Kept in pocket: the app's estimated savings, savings-goal milestones and estimated amounts not used */
 function moneyCard(){
-  const d=V.ins,tot=totals(),amt=Number(S.profile.goal.amount)||0,kept=Math.round(tot.estimatedSavings),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,y=curSym(),stop=[25,50,75,100].find(m=>m>pct);
+  const d=V.ins,tot=totals(),amt=Number(S.profile.goal.amount)||0,saved=tot.estimatedSavings,kept=Math.round(saved),pct=amt>0?Math.min(100,Math.round(kept/amt*100)):0,stop=[25,50,75,100].find(m=>m>pct);
   const nu=k=>Math.round(tot[VK[k]].unitsAvoided),NOT={smoke:[nu('smoke'),`${uw('smoke',nu('smoke'))} not smoked`],vape:[nu('vape'),`vape ${uw('vape',nu('vape'))} skipped`],drink:[nu('drink'),`${uw('drink',nu('drink'))} not had`]};
   const hs=HK.filter(k=>track(k).on);
   return `<section class="card" id="moneyc"><div class="ctitle"><h2>Kept in pocket</h2><span class="badge">Estimated</span></div>
-    <div class="mkept"><span class="hv num">${blur(y+kept)}</span><span class="muted">since your plans started · ${blur(y+d.kept)} ${thisP(d)}</span></div>
-    ${amt>0?`<div class="goalbar"><div class="inl"><b>${esc(S.profile.goal.name)||'Savings goal'}</b><span class="muted">${hide()?'':`${pct}% of ${y}${amt}`}</span></div>
+    <div class="mkept"><span class="hv num">${blur(fmtMoney(saved))}</span><span class="muted">since your plans started · ${blur(fmtMoney(d.kept))} ${thisP(d)}</span></div>
+    ${amt>0?`<div class="goalbar"><div class="inl"><b>${esc(S.profile.goal.name)||'Savings goal'}</b><span class="muted">${hide()?'':`${pct}% of ${fmtMoney(amt)}`}</span></div>
       <div class="gtrack"><i style="width:${pct}%"></i>${[25,50,75,100].map(m=>`<span class="gm ${pct>=m?'on':''}" style="left:${m}%" title="${m}%"></span>`).join('')}</div>
       <div class="gl2">${[25,50,75,100].map(m=>`<span class="${pct>=m?'on':''}">${pct>=m?I('check'):''}${m}%</span>`).join('')}</div>
-      <p class="help" style="margin:6px 0 0">${hide()?'Your goal is here when you want it.':stop?`${y}${Math.max(0,Math.round(amt*stop/100-kept))} to go until ${stop}%`:'Goal reached'}</p></div>`:''}
+      <p class="help" style="margin:6px 0 0">${hide()?'Your goal is here when you want it.':stop?`${fmtMoney(Math.max(0,amt*stop/100-saved))} to go until ${stop}%`:'Goal reached'}</p></div>`:''}
     ${hs.length?`<div class="notused"><span class="lbl">Estimated amounts not used</span>${hs.map(k=>`<div class="nu"><span class="itile ${HB[k].tint}">${I(HEMO[k][0])}</span><b class="num">${hide()?'':'~'+NOT[k][0]}</b><span>${NOT[k][1]}</span></div>`).join('')}</div>`:''}
     <p class="muted" style="margin:10px 0 0;font-size:12.5px">From your usual amounts and spend, minus what you’ve noted. Not exact.</p></section>`;
 }
+/* "Day by day": how much was noted each day for one habit (chips pick it when 2+ are on); a quiet dashed mark at a daily limit.
+   Same color for every bar; no over/under wording. Days before setup keep their slot but stay empty. */
+function dayCard(d){
+  const on=HK.filter(k=>track(k).on);if(!on.length)return '';
+  const k=on.includes(V.iday)?V.iday:on[0];
+  const head=`<div class="ctitle"><h2>Day by day</h2>${on.length===1?`<span class="badge">${HB[k].n}</span>`:''}</div>`;
+  if(hide())return `<section class="card daycard" id="dayc">${head}<p class="muted" style="margin:0">Your pattern is here when you want it.</p></section>`;
+  const r=insightsDaily(VK[k],d.days),drawn=r.bars.filter(b=>!b.before),week=d.n===7,top=week?84:94;
+  const scale=Math.max(1,...drawn.map(b=>Math.max(b.used,b.limit||0)));
+  const calm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cols=r.bars.map((b,i)=>{
+    if(b.before)return `<span class="dslot" style="grid-column:${i+1}" aria-hidden="true"></span>`;
+    const lab=dlab(b.day,{weekday:'short',month:'short',day:'numeric'}),amt=`${fmtNum(b.used)} ${uw(k,b.used)}`;
+    const extra=b.limit!=null?` · your limit ${fmtNum(b.limit)}`:b.rest?' · Rest day':'',h=b.used/scale*top;
+    return `<button class="dbar" style="grid-column:${i+1};--d:${i}" data-act="jopen:${b.day}" data-tip="<b>${lab}</b> · ${amt}${extra}" aria-label="${lab}: ${amt}${extra.replace(' · ',', ')}. Open this day">
+      <i class="dfill" style="height:${calm?h:0}%" data-h="${h}%"></i>${b.limit!=null?`<i class="dtick" style="bottom:${b.limit/scale*top}%"></i>`:''}${week?`<span class="dval num" style="bottom:calc(${calm?h:0}% + 4px)" data-h="${h}%">${fmtNum(b.used)}</span>`:''}</button>`;}).join('');
+  const lab=r.bars.map((b,i)=>week?`<span class="dx" style="grid-column:${i+1}">${dlab(b.day,{weekday:'narrow'})}</span>`
+    :pd(b.day).getDay()===1&&r.bars.length-i>=4?`<span class="dx dmon" style="grid-column:${i+1}/span 4">${sdate(b.day)}</span>`:'').join('');
+  const ticks=r.bars.some(b=>!b.before&&b.limit!=null);
+  const avg=r.average?Math.max(.1,Math.round(r.average*10)/10):0;
+  const foot=(avg?`About ${fmtNum(avg)} ${uw(k,avg)} a day on average.`:'Nothing noted on these days.')
+    +(r.weekly==='all'?' Your range is weekly, so there’s no daily line.':r.weekly==='some'?' Days on a weekly range have no daily line.':'');
+  return `<section class="card daycard" id="dayc">${head}
+    ${on.length>1?`<div class="chips dchips">${on.map(x=>`<button class="chip ${x===k?'on':''}" data-act="iday:${x}" aria-pressed="${x===k}">${HB[x].n}</button>`).join('')}</div>`:''}
+    ${ticks?`<div class="legend"><span><i class="dleg"></i>Your limit</span></div>`:''}
+    <div class="days ${week?'d7':'d30'}" style="--n:${r.bars.length}">${cols}${lab}</div>
+    <p class="muted dfoot">${foot}</p></section>`;
+}
 const ITABS=[['overview','Overview'],['patterns','Patterns'],['progress','Progress'],['wellbeing','Wellbeing']];
 const IPANEL={
-  overview:d=>`${storyCard(d)}<div class="grid main2"><div class="col">${heatCard(d)}</div><div class="col">${msCard()}${toolsCard()}</div></div>`,
+  overview:d=>`${storyCard(d)}${dayCard(d)}<div class="grid main2"><div class="col">${heatCard(d)}</div><div class="col">${msCard()}${toolsCard()}</div></div>`,
   patterns:d=>`<div class="grid main2"><div class="col">${hoursCard(d)}</div><div class="col">${ratioCard(d)}${trigCard(d)}</div></div>`,
   progress:d=>`<div class="grid main2"><div class="col">${moneyCard()}</div><div class="col">${recCard()}</div></div>`,
   wellbeing:d=>`<div class="grid main2"><div class="col">${moodCard(d)}${sleepCard(d)}</div><div class="col">${d.med.map(medCard).join('')}</div></div>`};
@@ -210,7 +238,9 @@ function insights(){
 }
 function animInsights(){requestAnimationFrame(()=>requestAnimationFrame(()=>{
   $$('.ring .rv',app).forEach(c=>c.style.strokeDashoffset=c.dataset.off);
-  $$('.mtrack .dot',app).forEach(t=>t.style.left=t.dataset.left);}));}
+  $$('.mtrack .dot',app).forEach(t=>t.style.left=t.dataset.left);
+  $$('.dfill[data-h]',app).forEach(f=>f.style.height=f.dataset.h);
+  $$('.dval[data-h]',app).forEach(v=>v.style.bottom=`calc(${v.dataset.h} + 4px)`);}));}
 VIEWS.insights=insights;
 /* The weekly reflection sheet for the week starting V.rwk */
 const reflWeek=k=>`${dlab(k,{month:'short',day:'numeric'})} – ${dlab(addD(k,6),{month:'short',day:'numeric'})}`;
@@ -227,6 +257,8 @@ Object.assign(ACT,{
       const top=tb.offsetTop-6;if(m.scrollTop>top)m.scrollTo({top,behavior:'smooth'});if(b.closest('.stat'))$('#it-'+x)?.focus({focusVisible:kbd});},
   rtab:(b,e,x,y)=>{V.rtab=x==='med'?'med:'+y:x;swap('recc',recCard());$('#recc [aria-selected=true]')?.focus({focusVisible:kbd});},
   rall:()=>{V.rall=!V.rall;swap('recc',recCard());},
+  /* Day by day: which habit the chart shows (memory only) */
+  iday:(b,e,x)=>{V.iday=x;swap('dayc',dayCard(V.ins));animInsights();$(`#dayc [data-act="iday:${x}"]`)?.focus({focusVisible:kbd});},
   /* the 7 / 30 days chips: every card follows them */
   iper:(b,e,x)=>{V.iper=+x;swapView();requestAnimationFrame(placeSeg);},
   /* "Add a focus for 4 PM" really adds the focus */
