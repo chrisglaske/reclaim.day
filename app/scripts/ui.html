@@ -81,14 +81,14 @@ function shell(){
 const pendingView=()=>`<section class="card"><div class="ctitle"><h2>This screen is being connected.</h2></div></section>`;
 const VIEWS={today:pendingView,tracking:pendingView,journal:pendingView,insights:pendingView,settings:pendingView};
 function renderView(){
-  const v=$('#view');v.innerHTML=VIEWS[V.view]();if(V.view==='insights')animInsights();
+  const v=$('#view');v.innerHTML=VIEWS[V.view]();if(V.view==='settings')setMode();if(V.view==='insights')animInsights();
   v.classList.remove('enter');void v.offsetWidth;v.classList.add('enter');$('#main').scrollTop=0;
   requestAnimationFrame(()=>{placePills();jSpy();placeSeg();});
 }
 /* re-render in place for the counters toggle: keep scroll, skip the page entrance, and fade in only what changed */
 function swapView(){
   const v=$('#view'),m=$('#main'),top=m.scrollTop,old=v.cloneNode(true);
-  v.innerHTML=VIEWS[V.view]();
+  v.innerHTML=VIEWS[V.view]();if(V.view==='settings')setMode();
   const own=e=>[...e.childNodes].filter(c=>c.nodeType===3).map(c=>c.textContent).join('');
   const diff=(o,n)=>{if(o.outerHTML===n.outerHTML)return;
     if(o.tagName!==n.tagName||o.children.length!==n.children.length||o.className!==n.className||own(o)!==own(n)){n.classList.add('swapin');return;}

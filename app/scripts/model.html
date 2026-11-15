@@ -382,7 +382,7 @@
     return t0 && t0 <= new Date() && at < t0 ? 'That\'s before you started tracking (' + t0.toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric', year: 'numeric' }) + ').' : '';
   }
   function archivedMeds() { return S.meds.filter(med => !med.active && !med.deletedAt); }
-  // Deleted from the lists but kept so they can be restored (Settings › Medication schedule).
+  // Deleted from the lists but kept so they can be restored (Settings › Medication).
   function deletedMeds() { return S.meds.filter(med => med.deletedAt); }
 
   // Recovery extras (M8c), from the live app's shortDur, streakHistory, timeline and achievements.
